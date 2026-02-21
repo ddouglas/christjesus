@@ -1,0 +1,66 @@
+{{define "page.onboarding.need.welcome"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-5xl px-4 py-10 md:px-6">
+  <div class="mb-8 flex flex-col gap-4">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Person in Need</p>
+      <h1 class="text-3xl font-semibold text-foreground">Welcome to ChristJesus.app</h1>
+      <p class="text-muted-foreground">Here is what to expect as you build your profile.</p>
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+    <div class="space-y-6 px-6">
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+          <div class="space-y-2 px-4">
+            <p class="text-sm font-semibold text-foreground">Share your story</p>
+            <p class="text-sm text-muted-foreground">Tell us about your situation and the help you need.</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+          <div class="space-y-2 px-4">
+            <p class="text-sm font-semibold text-foreground">Provide documentation</p>
+            <p class="text-sm text-muted-foreground">Upload bills or documents that support your need.</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+          <div class="space-y-2 px-4">
+            <p class="text-sm font-semibold text-foreground">Get verified</p>
+            <p class="text-sm text-muted-foreground">A trusted validator may review and meet with you.</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+          <div class="space-y-2 px-4">
+            <p class="text-sm font-semibold text-foreground">Connect with helpers</p>
+            <p class="text-sm text-muted-foreground">Sponsors and organizations can respond to your need.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-border bg-slate-50 p-4 text-sm text-muted-foreground">
+        Your privacy matters. You control what is shown publicly.
+      </div>
+
+      <div class="flex items-center gap-3 text-sm text-muted-foreground">
+        Estimated time: 15-20 minutes
+        <a href="/guidelines" class="text-[color:var(--cj-accent)] hover:underline">Read guidelines</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6 flex items-center justify-between">
+    <div></div>
+    <a href="/onboarding/need/location"
+      class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+      Let's get started
+    </a>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}

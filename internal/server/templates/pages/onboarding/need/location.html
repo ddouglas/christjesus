@@ -1,0 +1,109 @@
+{{define "page.onboarding.need.location"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-5xl px-4 py-10 md:px-6">
+  <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Person in Need</p>
+      <h1 class="text-3xl font-semibold text-foreground">Where are you located?</h1>
+      <p class="text-muted-foreground">Your full address is never shown publicly.</p>
+    </div>
+    <div class="w-full max-w-[260px] flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+      <div class="space-y-2 px-6 pb-2">
+        <p class="text-sm font-semibold text-foreground">Step 2 of 7</p>
+        <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div class="h-full bg-[color:var(--cj-primary)] transition-all" style="width: 29%"></div>
+        </div>
+        <p class="mt-2 text-xs text-muted-foreground">Step 2 of 7</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+    <form action="/onboarding/need/location" method="post" class="space-y-6 px-6">
+      <div class="grid gap-4 md:grid-cols-2">
+        <div>
+          <input type="text" name="addressLine1" placeholder="Street address" required
+            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+        </div>
+        <input type="text" name="addressLine2" placeholder="Apartment / Unit (optional)"
+          class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+        <div>
+          <input type="text" name="city" placeholder="City (Charlotte)" required
+            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+        </div>
+        <div>
+          <input type="text" name="state" placeholder="State (NC)" required
+            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+        </div>
+        <div>
+          <input type="text" name="zipCode" placeholder="ZIP code" required
+            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <p class="text-sm font-semibold text-foreground">What should we show publicly?</p>
+        <div class="space-y-2 text-sm text-muted-foreground">
+          <label class="flex items-center gap-2">
+            <input type="radio" name="privacyDisplay" value="neighborhood" class="h-4 w-4 border-border" checked />
+            Neighborhood only
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" name="privacyDisplay" value="zip" class="h-4 w-4 border-border" />
+            ZIP code only
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" name="privacyDisplay" value="city" class="h-4 w-4 border-border" />
+            City only
+          </label>
+        </div>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="space-y-2">
+          <p class="text-sm font-semibold text-foreground">Best way to reach you</p>
+          <div class="space-y-2 text-sm text-muted-foreground">
+            <label class="flex items-center gap-2">
+              <input type="checkbox" name="contactMethods" value="phone" class="h-4 w-4 rounded border-border" />
+              Phone call
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" name="contactMethods" value="text" class="h-4 w-4 rounded border-border" />
+              Text message
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" name="contactMethods" value="email" class="h-4 w-4 rounded border-border" />
+              Email
+            </label>
+          </div>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-foreground">Preferred time</p>
+          <select name="contactTime"
+            class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+            <option value="">Select time of day</option>
+            <option value="morning">Morning</option>
+            <option value="afternoon">Afternoon</option>
+            <option value="evening">Evening</option>
+            <option value="anytime">Anytime</option>
+          </select>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="mt-6 flex items-center justify-between">
+    <a href="/onboarding/need/welcome"
+      class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
+      Back
+    </a>
+    <button type="submit" form="location-form" onclick="document.querySelector('form').submit()"
+      class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+      Continue
+    </button>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}

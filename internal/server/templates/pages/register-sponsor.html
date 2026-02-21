@@ -1,0 +1,45 @@
+{{define "page.register.sponsor"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-5xl px-4 py-10 md:px-6">
+  <div class="space-y-2">
+    <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Sponsor registration</p>
+    <h1 class="text-3xl font-semibold text-foreground">What type of sponsor are you?</h1>
+    <p class="text-muted-foreground">Choose the path that best fits how you want to manage needs.</p>
+  </div>
+
+  <div class="mt-8 grid gap-6 md:grid-cols-2">
+    <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+      <div class="flex flex-col gap-4 px-6">
+        <div>
+          <p class="text-lg font-semibold text-foreground">Individual Sponsor</p>
+          <p class="mt-2 text-sm text-muted-foreground">
+            Serve as an independent case manager, meeting needs directly and coordinating care.
+          </p>
+        </div>
+        <a href="/onboarding/sponsor/individual/welcome"
+          class="mt-auto inline-flex h-9 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+          Continue as individual
+        </a>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+      <div class="flex flex-col gap-4 px-6">
+        <div>
+          <p class="text-lg font-semibold text-foreground">Organization Sponsor</p>
+          <p class="mt-2 text-sm text-muted-foreground">
+            Join or create a church/nonprofit team to verify and manage cases together.
+          </p>
+        </div>
+        <a href="/onboarding/sponsor/organization/welcome"
+          class="mt-auto inline-flex h-9 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+          Continue with organization
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}

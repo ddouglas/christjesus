@@ -1,0 +1,65 @@
+{{define "page.register"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-5xl px-4 py-10 md:px-6">
+  <div class="space-y-2">
+    <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Registration</p>
+    <h1 class="text-3xl font-semibold text-foreground">Create your ChristJesus.app account</h1>
+    <p class="text-muted-foreground">Choose the path that fits how you want to engage.</p>
+  </div>
+
+  <div class="mt-8 grid gap-6 md:grid-cols-3">
+    <div class="flex flex-col  gap-6 rounded-xl border py-6 shadow-sm">
+      <div class="flex flex-col gap-4 px-6">
+        <div>
+          <p class="text-lg font-semibold text-foreground">I have a need</p>
+          <p class="mt-2 text-sm text-muted-foreground">
+            Create a verified profile and connect with sponsors and donors.
+          </p>
+        </div>
+        <a href="/onboarding/need/welcome"
+          class="mt-auto inline-flex h-9 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+          Get started
+        </a>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+      <div class="flex flex-col gap-4 px-6">
+        <div>
+          <p class="text-lg font-semibold text-foreground">Donor</p>
+          <p class="mt-2 text-sm text-muted-foreground">
+            Support verified needs financially and track your impact.
+          </p>
+        </div>
+        <a href="/onboarding/donor/welcome"
+          class="mt-auto inline-flex h-9 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+          Join as donor
+        </a>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+      <div class="flex flex-col gap-4 px-6">
+        <div>
+          <p class="text-lg font-semibold text-foreground">Sponsor</p>
+          <p class="mt-2 text-sm text-muted-foreground">
+            Personally manage needs as an individual or with your organization.
+          </p>
+        </div>
+        <a href="/register/sponsor"
+          class="mt-auto inline-flex h-9 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+          Become a sponsor
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <p class="mt-6 text-sm text-muted-foreground">
+    Already have an account?
+    <a href="/login" class="text-[color:var(--cj-accent)]">Log in</a>
+  </p>
+</div>
+
+{{template "footer" .}}
+{{end}}

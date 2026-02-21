@@ -1,0 +1,121 @@
+{{define "page.home"}}
+{{template "header" .}}
+<div class="flex flex-col">
+
+  <!-- Section 1: Hero with Featured Need -->
+  <section class="bg-gradient-to-br from-white via-slate-50 to-amber-50">
+    <div class="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-12 md:grid-cols-2 md:px-6 md:py-16">
+      <!-- Left: Hero Content -->
+      <div class="space-y-6">
+        <p class="text-sm font-medium uppercase tracking-wide text-[color:var(--cj-accent)]">
+          Charlotte, NC
+        </p>
+
+        <h1 class="text-3xl font-semibold leading-tight text-[color:var(--cj-primary)] sm:text-4xl md:text-5xl">
+          See needs. Meet needs. Change lives.
+        </h1>
+
+        <p class="text-base text-muted-foreground sm:text-lg">
+          ChristJesus.app connects the Charlotte body of Christ with verified neighbors experiencing hardship.
+        </p>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
+          <a href="/browse"
+            class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">Browse
+            Needs</a>
+          <a href="/share"
+            class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">Share
+            Your Story</a>
+          <a href="/register"
+            class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">Start
+            Onboarding</a>
+        </div>
+      </div>
+
+      <!-- Right: Featured Need Card -->
+      <div class="order-last border-0 bg-white/80 shadow-lg rounded-xl md:order-none">
+        <div class="space-y-2 p-6 pb-0">
+          <p class="text-sm font-semibold text-muted-foreground">Featured Need</p>
+          <p class="text-2xl font-semibold text-foreground">Personally verified needs ready for support.</p>
+        </div>
+        <div class="p-6">
+          {{template "component.need.card" .FeaturedNeed}}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 2: Featured Needs Grid -->
+  <section class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h2 class="text-2xl font-semibold text-foreground">Featured Needs</h2>
+      <a href="/browse" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
+    </div>
+
+    <div class="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {{range .Needs}}
+      {{template "component.need.card" .}}
+      {{end}}
+    </div>
+  </section>
+
+  <!-- Section 3: Need Categories -->
+  <section class="bg-slate-50 py-12">
+    <div class="mx-auto w-full max-w-6xl px-4 md:px-6">
+      <h2 class="text-2xl font-semibold text-foreground">Need Categories</h2>
+      <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {{range .Categories}}
+        {{template "component.category-card" .}}
+        {{end}}
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4: How It Works -->
+  <section class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
+    <h2 class="text-2xl font-semibold text-foreground">How it works</h2>
+    <div class="mt-6 grid gap-6 md:grid-cols-3">
+      {{range .Steps}}
+      {{template "component.step-card" .}}
+      {{end}}
+    </div>
+  </section>
+
+  <!-- Section 5: Stats Dashboard -->
+  <section class="bg-white py-12">
+    <div class="mx-auto w-full max-w-6xl px-4 md:px-6">
+      <div class="grid gap-6 rounded-2xl border border-border bg-slate-50 p-8 md:grid-cols-3">
+        <div>
+          <p class="text-sm text-muted-foreground">Total Raised</p>
+          <p class="text-3xl font-semibold text-foreground">${{div .Stats.TotalRaised 100}}</p>
+        </div>
+        <div>
+          <p class="text-sm text-muted-foreground">Needs Funded</p>
+          <p class="text-3xl font-semibold text-foreground">{{.Stats.NeedsFunded}}</p>
+        </div>
+        <div>
+          <p class="text-sm text-muted-foreground">Lives Changed</p>
+          <p class="text-3xl font-semibold text-foreground">{{.Stats.LivesChanged}}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 6: Final CTA -->
+  <section class="bg-[color:var(--cj-primary)] py-12 text-white">
+    <div class="mx-auto flex w-full max-w-6xl flex-col items-start justify-between gap-6 px-4 md:flex-row md:items-center md:px-6">
+      <div>
+        <h2 class="text-2xl font-semibold">Ready to share hope in Charlotte?</h2>
+        <p class="mt-2 text-white/80">Browse verified needs or partner with us as an organization.</p>
+      </div>
+      <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+        <a href="/browse" class="inline-flex h-9 items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-[color:var(--cj-primary)] hover:bg-white/90">Browse Needs</a>
+        <a href="/partner" class="inline-flex h-9 items-center justify-center rounded-md border border-white px-4 py-2 text-sm font-medium text-white hover:bg-white/10">Partner With Us</a>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+{{template "footer" .}}
+{{end}}

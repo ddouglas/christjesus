@@ -1,0 +1,72 @@
+{{define "page.need-detail"}}
+{{template "header" .}}
+
+<section class="mb-6 text-sm text-muted-foreground">
+  <a href="/" class="hover:text-foreground">Home</a> / <a href="/browse" class="hover:text-foreground">Browse</a> / <span class="text-foreground">{{.Need.Category}}</span>
+</section>
+
+<div class="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
+  <div class="space-y-8">
+    <article class="bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+      <div class="space-y-6 px-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 class="text-3xl font-semibold text-foreground">{{.Need.Name}}</h1>
+            <p class="text-sm text-muted-foreground">{{.Need.Neighborhood}} • {{.Need.City}}</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+            {{if eq .Need.Urgency "urgent"}}
+            <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--cj-error)]"></span>
+            {{else if eq .Need.Urgency "high"}}
+              <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--cj-warning)]"></span>
+              {{else}}
+                <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--cj-info)]"></span>
+                {{end}}
+                {{.Need.Urgency}}
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="inline-flex w-fit items-center justify-center rounded-full border border-border px-2 py-0.5 text-xs font-medium">{{.Need.Category}}</span>
+          {{if .Need.Verified}}
+          <span class="inline-flex w-fit items-center justify-center rounded-full border-0 bg-[color:var(--cj-secondary)] px-2 py-0.5 text-xs font-medium text-slate-900">Personally Verified</span>
+          {{end}}
+        </div>
+
+        <div class="space-y-3">
+          <p class="text-lg font-semibold text-foreground">Story</p>
+          <p class="text-sm text-muted-foreground">{{.Need.Description}}</p>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <aside class="space-y-6">
+    <article class="sticky top-6 bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+      <div class="space-y-6 px-6">
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs text-muted-foreground">
+            <span>${{div .Need.RaisedCents 100}} raised</span>
+            <span>${{div .Need.GoalCents 100}} goal</span>
+          </div>
+          <div class="h-2 w-full rounded-full bg-muted">
+            {{$percent := 0}}
+            {{if gt .Need.GoalCents 0}}
+            {{$percent = div (mul .Need.RaisedCents 100) .Need.GoalCents}}
+            {{end}}
+            <div class="h-2 rounded-full bg-[color:var(--cj-warning)]" style="width: {{$percent}}%"></div>
+          </div>
+          <div class="text-xs font-medium text-muted-foreground">{{$percent}}% funded</div>
+        </div>
+
+        <a href="#"
+          class="inline-flex h-9 w-full items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+          Donate Now
+        </a>
+      </div>
+    </article>
+  </aside>
+</div>
+
+{{template "footer" .}}
+{{end}}

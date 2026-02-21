@@ -1,0 +1,158 @@
+<!--
+  Static Tailwind component snippets extracted from the current app.
+  Use these as partials in Go html/template or Templ components.
+-->
+
+<!-- Site Header -->
+<header class="border-b border-border bg-white/80 backdrop-blur">
+  <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 md:px-6">
+    <a href="/" class="flex items-center gap-2">
+      <span class="text-xl font-semibold text-[color:var(--cj-primary)]">ChristJesus.app</span>
+    </a>
+
+    <nav class="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+      <a href="/browse" class="transition-colors hover:text-foreground">Browse Needs</a>
+      <a href="/categories" class="transition-colors hover:text-foreground">Categories</a>
+      <a href="/map" class="transition-colors hover:text-foreground">Map</a>
+      <a href="/guidelines" class="transition-colors hover:text-foreground">Guidelines</a>
+    </nav>
+
+    <div class="flex items-center gap-3">
+      <button class="hidden h-9 rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground md:inline-flex">
+        Sign In
+      </button>
+      <a href="/need/create"
+        class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+        Share Your Story
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- Site Footer -->
+<footer class="border-t border-border bg-white">
+  <div class="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
+    <div class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+      <div>
+        <p class="text-lg font-semibold text-[color:var(--cj-primary)]">ChristJesus.app</p>
+        <p class="mt-2 max-w-sm text-sm text-muted-foreground">
+          Connecting verified needs in Charlotte with sponsors and organizations ready to serve.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-4 text-sm text-muted-foreground">
+        <a href="/about" class="transition-colors hover:text-foreground">About</a>
+        <a href="/contact" class="transition-colors hover:text-foreground">Contact</a>
+        <a href="/guidelines" class="transition-colors hover:text-foreground">Community Guidelines</a>
+        <a href="/privacy" class="transition-colors hover:text-foreground">Privacy Policy</a>
+        <a href="/terms" class="transition-colors hover:text-foreground">Terms of Service</a>
+      </div>
+    </div>
+    <div class="mt-8 border-t border-border pt-6 text-xs text-muted-foreground">© 2026 ChristJesus.app. All rights reserved.</div>
+  </div>
+</footer>
+
+<!-- Card Primitive -->
+<section class="bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+  <header class="px-6">
+    <h3 class="text-lg font-semibold">Card Title</h3>
+    <p class="text-sm text-muted-foreground">Card description text.</p>
+  </header>
+  <div class="px-6">Card content goes here.</div>
+  <footer class="px-6">Card footer actions.</footer>
+</section>
+
+<!-- Need Card -->
+<article class="bg-card text-card-foreground flex h-full flex-col gap-6 rounded-xl border py-6 shadow-sm">
+  <header class="space-y-4 px-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-lg font-semibold text-foreground">Maria J.</p>
+        <p class="text-sm text-muted-foreground">East Charlotte • Charlotte, NC</p>
+      </div>
+      <div class="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+        <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--cj-warning)]"></span>
+        medium
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="inline-flex w-fit items-center justify-center rounded-full border border-border px-2 py-0.5 text-xs font-medium">Housing</span>
+      <span class="inline-flex w-fit items-center justify-center rounded-full border-0 bg-[color:var(--cj-secondary)] px-2 py-0.5 text-xs font-medium text-slate-900">Personally Verified</span>
+    </div>
+  </header>
+
+  <div class="flex-1 space-y-4 px-6">
+    <p class="text-sm text-muted-foreground">Family needs rental assistance after temporary work loss.</p>
+
+    <div class="space-y-2">
+      <div class="flex items-center justify-between text-xs text-muted-foreground">
+        <span>$1,200 raised</span>
+        <span>$2,400 goal</span>
+      </div>
+      <div class="h-2 w-full rounded-full bg-muted">
+        <div class="h-2 w-1/2 rounded-full bg-[color:var(--cj-warning)]"></div>
+      </div>
+      <div class="text-xs font-medium text-muted-foreground">50% funded</div>
+    </div>
+  </div>
+
+  <footer class="px-6">
+    <a href="/need/need-001"
+      class="inline-flex h-9 w-full items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+      View Details
+    </a>
+  </footer>
+</article>
+
+<!-- Need Detail Two-Column Skeleton -->
+<section class="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
+  <div class="mb-6 text-sm text-muted-foreground">
+    <a href="/">Home</a> / <a href="/browse">Browse</a> / <span class="text-foreground">Housing</span>
+  </div>
+
+  <div class="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
+    <div class="space-y-8">
+      <article class="bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+        <div class="space-y-6 px-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 class="text-3xl font-semibold text-foreground">Maria J.</h1>
+              <p class="text-sm text-muted-foreground">East Charlotte • Charlotte, NC</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+              <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--cj-error)]"></span>
+              urgent
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <p class="text-lg font-semibold text-foreground">Story</p>
+            <p class="text-sm text-muted-foreground">Detailed story content rendered by backend data.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <aside class="space-y-6">
+      <article class="sticky top-6 bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+        <div class="space-y-6 px-6">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs text-muted-foreground">
+              <span>$1,200 raised</span>
+              <span>$2,400 goal</span>
+            </div>
+            <div class="h-2 w-full rounded-full bg-muted">
+              <div class="h-2 w-1/2 rounded-full bg-[color:var(--cj-warning)]"></div>
+            </div>
+            <div class="text-xs font-medium text-muted-foreground">50% funded</div>
+          </div>
+
+          <a href="#"
+            class="inline-flex h-9 w-full items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+            Donate Now
+          </a>
+        </div>
+      </article>
+    </aside>
+  </div>
+</section>

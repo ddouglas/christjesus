@@ -1,0 +1,37 @@
+{{define "page.browse"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-6xl px-4 py-8 md:px-6 md:py-10">
+  <div class="space-y-2">
+    <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Browse</p>
+    <h1 class="text-2xl font-semibold text-foreground sm:text-3xl">Browse Verified Needs in Charlotte</h1>
+    <p class="text-muted-foreground">Filter by category, verification level, urgency, and neighborhood.</p>
+  </div>
+
+  <div class="mt-8 grid gap-8 lg:grid-cols-[280px_1fr]">
+    {{template "component.filters-panel"}}
+
+    <div class="space-y-6">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="text-sm text-muted-foreground">
+          Showing {{len .Needs}} needs
+        </div>
+      </div>
+
+      {{if .Needs}}
+      <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        {{range .Needs}}
+        {{template "component.need.card" .}}
+        {{end}}
+      </div>
+      {{else}}
+        <div class="rounded-xl border border-border bg-card px-6 py-12 text-center text-card-foreground shadow-sm">
+          <p class="text-sm text-muted-foreground">No needs available at this time.</p>
+        </div>
+        {{end}}
+    </div>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}

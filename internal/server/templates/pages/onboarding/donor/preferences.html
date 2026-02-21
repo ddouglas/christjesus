@@ -1,0 +1,86 @@
+{{define "page.onboarding.donor.preferences"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-5xl px-4 py-10 md:px-6">
+  <div class="mb-8 flex flex-col gap-4">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Donor onboarding</p>
+      <h1 class="text-3xl font-semibold text-foreground">Customize your giving experience</h1>
+      <p class="text-muted-foreground">Tell us what matters to you so we can show relevant needs.</p>
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+    <form action="/onboarding/donor/preferences" method="post" class="space-y-6 px-6">
+      <div class="grid gap-4 md:grid-cols-2">
+        <div>
+          <p class="text-sm font-semibold text-foreground">Your location</p>
+          <input type="text" name="zipCode" placeholder="ZIP code (optional)"
+            class="mt-2 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-foreground">Radius</p>
+          <select name="radius"
+            class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+            <option value="">Select a radius</option>
+            <option value="5-miles">5 miles</option>
+            <option value="15-miles">15 miles</option>
+            <option value="25-miles">25 miles</option>
+            <option value="anywhere">Anywhere</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <p class="text-sm font-semibold text-foreground">Need categories you care about</p>
+        <div class="flex flex-wrap gap-2">
+          {{range .Categories}}
+          <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-accent">
+            <input type="checkbox" name="categories" value="{{.Slug}}" class="h-3.5 w-3.5 rounded border-border" />
+            {{.Name}}
+          </label>
+          {{end}}
+        </div>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <div>
+          <p class="text-sm font-semibold text-foreground">Donation range</p>
+          <select name="donationRange"
+            class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+            <option value="">Select a range</option>
+            <option value="under-50">Under $50</option>
+            <option value="50-100">$50 - $100</option>
+            <option value="100-500">$100 - $500</option>
+            <option value="500-plus">$500+</option>
+          </select>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-foreground">Email notifications</p>
+          <select name="notificationFrequency"
+            class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+            <option value="">Select frequency</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="never">Never</option>
+          </select>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="mt-6 flex items-center justify-between">
+    <a href="/onboarding/donor/welcome"
+      class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
+      Back
+    </a>
+    <button type="submit" onclick="document.querySelector('form').submit()"
+      class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+      Complete Setup
+    </button>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}

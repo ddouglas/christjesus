@@ -1,0 +1,67 @@
+{{define "header"}}
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{with .Title}}{{.}}
+      {{else}}Welcome{{end}} | Christ Jesus
+    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/tokens.css" />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: 'var(--background)',
+              foreground: 'var(--foreground)',
+              card: 'var(--card)',
+              'card-foreground': 'var(--card-foreground)',
+              primary: 'var(--primary)',
+              'primary-foreground': 'var(--primary-foreground)',
+              secondary: 'var(--secondary)',
+              'secondary-foreground': 'var(--secondary-foreground)',
+              muted: 'var(--muted)',
+              'muted-foreground': 'var(--muted-foreground)',
+              accent: 'var(--accent)',
+              'accent-foreground': 'var(--accent-foreground)',
+              border: 'var(--border)',
+              destructive: 'var(--destructive)',
+            },
+          },
+        },
+        safelist: [
+          {
+            pattern: /bg-\[color:var\(--cj-.+\)\]/,
+          },
+          {
+            pattern: /text-\[color:var\(--cj-.+\)\]/,
+          },
+          {
+            pattern: /border-\[color:var\(--cj-.+\)\]/,
+          },
+        ],
+      }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/heroicons@2.0.18/24/outline/index.js"></script>
+  </head>
+
+  <body class="bg-background text-foreground min-h-screen">
+    <div class="min-h-screen bg-background text-foreground">
+      {{template "component.nav" .}}
+      <main>
+        {{end}}
+
+        {{define "footer"}}
+      </main>
+      {{template "component.footer" .}}
+    </div>
+  </body>
+
+</html>
+{{end}}

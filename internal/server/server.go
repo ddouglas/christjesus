@@ -1,0 +1,151 @@
+package server
+
+import (
+	"context"
+	"embed"
+	"fmt"
+	"html/template"
+	"io/fs"
+	"net/http"
+	"strings"
+	"time"
+
+	"christjesus/internal/store"
+	"christjesus/pkg/types"
+
+	"github.com/alexedwards/flow"
+	"github.com/sirupsen/logrus"
+)
+
+//go:embed templates static
+var uiFS embed.FS
+
+type Service struct {
+	logger    *logrus.Logger
+	config    *types.Config
+	forms     *store.FormsRepository
+	templates *template.Template
+	server    *http.Server
+}
+
+func New(config *types.Config, logger *logrus.Logger, forms *store.FormsRepository) (*Service, error) {
+	mux := flow.New()
+
+	s := &Service{
+		logger: logger,
+		config: config,
+		forms:  forms,
+		server: &http.Server{
+			Addr:              fmt.Sprintf(":%d", config.ServerPort),
+			Handler:           mux,
+			ReadTimeout:       time.Duration(config.ReadTimeoutSec) * time.Second,
+			ReadHeaderTimeout: time.Duration(config.ReadTimeoutSec) * time.Second,
+			WriteTimeout:      time.Duration(config.WriteTimeoutSec) * time.Second,
+			MaxHeaderBytes:    1 << 20,
+		},
+	}
+
+	templates, err := loadTemplates()
+	if err != nil {
+		return nil, err
+	}
+	s.templates = templates
+
+	s.buildRouter(mux)
+
+	return s, nil
+}
+
+func (s *Service) Start() error {
+	return s.server.ListenAndServe()
+}
+
+func (s *Service) Stop(ctx context.Context) error {
+	return s.server.Shutdown(ctx)
+}
+
+func (s *Service) buildRouter(r *flow.Mux) {
+	r.Use(s.LoggingMiddleware)
+
+	r.HandleFunc("/", s.handleHome, http.MethodGet)
+
+	r.HandleFunc("/register", s.handleRegister, http.MethodGet)
+
+	r.HandleFunc("/onboarding/need/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
+	r.HandleFunc("/onboarding/need/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
+	r.HandleFunc("/onboarding/need/location", s.handleGetOnboardingNeedLocation, http.MethodGet)
+	r.HandleFunc("/onboarding/need/location", s.handlePostOnboardingNeedLocation, http.MethodPost)
+	r.HandleFunc("/onboarding/need/categories", s.handleGetOnboardingNeedCategories, http.MethodGet)
+	r.HandleFunc("/onboarding/need/categories", s.handlePostOnboardingNeedCategories, http.MethodPost)
+	r.HandleFunc("/onboarding/need/details", s.handleGetOnboardingNeedDetails, http.MethodGet)
+	r.HandleFunc("/onboarding/need/details", s.handlePostOnboardingNeedDetails, http.MethodPost)
+	r.HandleFunc("/onboarding/need/story", s.handleGetOnboardingNeedStory, http.MethodGet)
+	r.HandleFunc("/onboarding/need/story", s.handlePostOnboardingNeedStory, http.MethodPost)
+	r.HandleFunc("/onboarding/need/documents", s.handleGetOnboardingNeedDocuments, http.MethodGet)
+	r.HandleFunc("/onboarding/need/documents", s.handlePostOnboardingNeedDocuments, http.MethodPost)
+	r.HandleFunc("/onboarding/need/review", s.handleGetOnboardingNeedReview, http.MethodGet)
+	r.HandleFunc("/onboarding/need/review", s.handlePostOnboardingNeedReview, http.MethodPost)
+	r.HandleFunc("/onboarding/need/confirmation", s.handleGetOnboardingNeedConfirmation, http.MethodGet)
+
+	// Donor onboarding flow
+	r.HandleFunc("/onboarding/donor/welcome", s.handleGetOnboardingDonorWelcome, http.MethodGet)
+	r.HandleFunc("/onboarding/donor/preferences", s.handleGetOnboardingDonorPreferences, http.MethodGet)
+	r.HandleFunc("/onboarding/donor/preferences", s.handlePostOnboardingDonorPreferences, http.MethodPost)
+
+	// Sponsor onboarding flow
+	r.HandleFunc("/register/sponsor", s.handleRegisterSponsor, http.MethodGet)
+	r.HandleFunc("/onboarding/sponsor/individual/welcome", s.handleGetOnboardingSponsorIndividualWelcome, http.MethodGet)
+	r.HandleFunc("/onboarding/sponsor/organization/welcome", s.handleGetOnboardingSponsorOrganizationWelcome, http.MethodGet)
+
+	r.HandleFunc("/browse", s.handleBrowse, http.MethodGet)
+	r.HandleFunc("/need/:id", s.handleNeedDetail, http.MethodGet)
+	r.HandleFunc("/forms/prayer", s.handlePrayerRequestSubmit, http.MethodPost)
+	r.HandleFunc("/forms/signup", s.handleEmailSignupSubmit, http.MethodPost)
+	// r.HandleFunc("/healthz", s.handleHealth, http.MethodGet)
+
+	staticRoot, err := fs.Sub(uiFS, "static")
+	if err != nil {
+		s.logger.WithError(err).Fatal("failed to mount static assets")
+	}
+	r.Handle("/static/...", http.StripPrefix("/static/", http.FileServer(http.FS(staticRoot))), http.MethodGet)
+}
+
+func loadTemplates() (*template.Template, error) {
+	funcMap := template.FuncMap{
+		"div": func(a, b int64) int64 {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
+		"mul": func(a, b int64) int64 {
+			return a * b
+		},
+	}
+
+	t := template.New("").Funcs(funcMap)
+	err := fs.WalkDir(uiFS, "templates", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".html") {
+			return nil
+		}
+
+		data, err := fs.ReadFile(uiFS, path)
+		if err != nil {
+			return fmt.Errorf("read template %s: %w", path, err)
+		}
+
+		if _, err := t.Parse(string(data)); err != nil {
+			return fmt.Errorf("parse template %s: %w", path, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return t, nil
+}

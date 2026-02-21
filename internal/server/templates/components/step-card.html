@@ -1,0 +1,9 @@
+{{define "component.step-card"}}
+<div class="bg-card text-card-foreground rounded-xl border border-border shadow-sm">
+  <div class="space-y-3 p-6">
+    <p class="text-sm font-semibold text-[color:var(--cj-secondary)]">Step {{.Number}}</p>
+    <p class="text-lg font-semibold text-foreground">{{.Title}}</p>
+    <p class="text-sm text-muted-foreground">{{.Description}}</p>
+  </div>
+</div>
+{{end}}

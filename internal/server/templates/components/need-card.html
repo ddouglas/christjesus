@@ -1,0 +1,75 @@
+{{define "component.need.card"}}
+<article class="bg-card text-card-foreground flex h-full flex-col gap-6 rounded-xl border py-6 shadow-sm">
+  <header class="space-y-4 px-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-lg font-semibold text-foreground">{{.Name}}</p>
+        <p class="text-sm text-muted-foreground">{{.Neighborhood}} • {{.City}}</p>
+      </div>
+      <div class="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+        {{if eq .Urgency "critical"}}
+        <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--cj-error)]"></span>
+        urgent
+        {{else if eq .Urgency "urgent"}}
+          <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--cj-error)]"></span>
+          urgent
+          {{else if eq .Urgency "high"}}
+            <span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>
+            high
+            {{else if eq .Urgency "medium"}}
+              <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--cj-warning)]"></span>
+              medium
+              {{else}}
+                <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--cj-success)]"></span>
+                low
+                {{end}}
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="inline-flex w-fit items-center justify-center rounded-full border border-border px-2 py-0.5 text-xs font-medium">{{.Category}}</span>
+      {{if .Verified}}
+      {{if eq .Verification "gold"}}
+      <span class="inline-flex w-fit items-center justify-center rounded-full border-0 bg-[color:var(--cj-secondary)] px-2 py-0.5 text-xs font-medium text-slate-900">Personally Verified</span>
+      {{else if eq .Verification "silver"}}
+        <span class="inline-flex w-fit items-center justify-center rounded-full border-0 bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">Documents Reviewed</span>
+        {{else}}
+          <span class="inline-flex w-fit items-center justify-center rounded-full border-0 bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Story Shared</span>
+          {{end}}
+          {{end}}
+    </div>
+  </header>
+
+  <div class="flex-1 space-y-4 px-6">
+    <p class="text-sm text-muted-foreground">{{.Description}}</p>
+
+    <div class="space-y-2">
+      <div class="flex items-center justify-between text-xs text-muted-foreground">
+        <span>${{div .RaisedCents 100}} raised</span>
+        <span>${{div .GoalCents 100}} goal</span>
+      </div>
+      <div class="h-2 w-full rounded-full bg-muted">
+        {{$percent := 0}}
+        {{if gt .GoalCents 0}}
+        {{$percent = div (mul .RaisedCents 100) .GoalCents}}
+        {{end}}
+        {{if ge $percent 75}}
+        <div class="h-2 rounded-full bg-[color:var(--cj-success)] transition-all" style="width: {{$percent}}%"></div>
+        {{else if ge $percent 50}}
+          <div class="h-2 rounded-full bg-[color:var(--cj-warning)] transition-all" style="width: {{$percent}}%"></div>
+          {{else}}
+            <div class="h-2 rounded-full bg-[color:var(--cj-error)] transition-all" style="width: {{$percent}}%"></div>
+            {{end}}
+      </div>
+      <div class="text-xs font-medium text-muted-foreground">{{$percent}}% funded</div>
+    </div>
+  </div>
+
+  <footer class="px-6">
+    <a href="/need/{{.ID}}"
+      class="inline-flex h-9 w-full items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+      View Details
+    </a>
+  </footer>
+</article>
+{{end}}

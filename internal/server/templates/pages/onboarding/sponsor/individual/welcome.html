@@ -1,0 +1,25 @@
+{{define "page.onboarding.sponsor.individual.welcome"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-5xl px-4 py-10 md:px-6">
+  <div class="mb-8 flex flex-col gap-4">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Individual Sponsor</p>
+      <h1 class="text-3xl font-semibold text-foreground">Welcome, Individual Sponsor</h1>
+      <p class="text-muted-foreground">Set up your profile to start managing needs.</p>
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+    <div class="space-y-6 px-6 text-center">
+      <p class="text-muted-foreground">Individual sponsor onboarding flow coming soon...</p>
+      <a href="/browse"
+        class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+        Browse Needs
+      </a>
+    </div>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}
