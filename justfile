@@ -1,3 +1,5 @@
+set dotenv-load
+
 default:
 	@just --list
 
@@ -17,7 +19,7 @@ fmt:
 	go fmt ./...
 
 migrate-plan:
-	cd migrations && atlas schema apply --env local --dry-run
+	cd migrations && atlas schema apply --env primary --dry-run
 
 migrate:
-	cd migrations && atlas schema apply --env local --auto-approve
+	cd migrations && atlas schema apply --env primary --auto-approve

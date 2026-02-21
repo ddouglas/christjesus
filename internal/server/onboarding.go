@@ -2,6 +2,18 @@ package server
 
 import "net/http"
 
+func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
+
+	var _ = r.Context()
+
+	err := s.templates.ExecuteTemplate(w, "page.onboarding", nil)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to render need welcome page")
+		s.internalServerError(w)
+		return
+	}
+}
+
 func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 

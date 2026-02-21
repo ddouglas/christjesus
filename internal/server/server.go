@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"embed"
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -14,7 +15,10 @@ import (
 	"christjesus/pkg/types"
 
 	"github.com/alexedwards/flow"
+	"github.com/gorilla/securecookie"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/sirupsen/logrus"
+	supauth "github.com/supabase-community/auth-go"
 )
 
 //go:embed templates static
@@ -25,16 +29,37 @@ type Service struct {
 	config    *types.Config
 	forms     *store.FormsRepository
 	templates *template.Template
-	server    *http.Server
+
+	supauth supauth.Client
+	cookie  *securecookie.SecureCookie
+
+	jwksCache *jwk.Cache
+	jwksURL   string
+
+	server *http.Server
 }
 
-func New(config *types.Config, logger *logrus.Logger, forms *store.FormsRepository) (*Service, error) {
+func New(
+	config *types.Config,
+	logger *logrus.Logger,
+	supauth supauth.Client,
+	forms *store.FormsRepository,
+	jwkCache *jwk.Cache,
+	jwksURL string,
+) (*Service, error) {
 	mux := flow.New()
 
+	hashKey, _ := base64.StdEncoding.DecodeString(config.CookieHashKey)
+	blockKey, _ := base64.StdEncoding.DecodeString(config.CookieBlockKey)
+
 	s := &Service{
-		logger: logger,
-		config: config,
-		forms:  forms,
+		logger:    logger,
+		config:    config,
+		forms:     forms,
+		supauth:   supauth,
+		cookie:    securecookie.New(hashKey, blockKey),
+		jwksCache: jwkCache,
+		jwksURL:   jwksURL,
 		server: &http.Server{
 			Addr:              fmt.Sprintf(":%d", config.ServerPort),
 			Handler:           mux,
@@ -69,28 +94,37 @@ func (s *Service) buildRouter(r *flow.Mux) {
 
 	r.HandleFunc("/", s.handleHome, http.MethodGet)
 
-	r.HandleFunc("/register", s.handleRegister, http.MethodGet)
+	r.HandleFunc("/register", s.handleGetRegister, http.MethodGet)
+	r.HandleFunc("/register", s.handlePostRegister, http.MethodPost)
+	r.HandleFunc("/login", s.handleGetLogin, http.MethodGet)
+	r.HandleFunc("/login", s.handlePostLogin, http.MethodPost)
 
-	r.HandleFunc("/onboarding/need/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
-	r.HandleFunc("/onboarding/need/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
-	r.HandleFunc("/onboarding/need/location", s.handleGetOnboardingNeedLocation, http.MethodGet)
-	r.HandleFunc("/onboarding/need/location", s.handlePostOnboardingNeedLocation, http.MethodPost)
-	r.HandleFunc("/onboarding/need/categories", s.handleGetOnboardingNeedCategories, http.MethodGet)
-	r.HandleFunc("/onboarding/need/categories", s.handlePostOnboardingNeedCategories, http.MethodPost)
-	r.HandleFunc("/onboarding/need/details", s.handleGetOnboardingNeedDetails, http.MethodGet)
-	r.HandleFunc("/onboarding/need/details", s.handlePostOnboardingNeedDetails, http.MethodPost)
-	r.HandleFunc("/onboarding/need/story", s.handleGetOnboardingNeedStory, http.MethodGet)
-	r.HandleFunc("/onboarding/need/story", s.handlePostOnboardingNeedStory, http.MethodPost)
-	r.HandleFunc("/onboarding/need/documents", s.handleGetOnboardingNeedDocuments, http.MethodGet)
-	r.HandleFunc("/onboarding/need/documents", s.handlePostOnboardingNeedDocuments, http.MethodPost)
-	r.HandleFunc("/onboarding/need/review", s.handleGetOnboardingNeedReview, http.MethodGet)
-	r.HandleFunc("/onboarding/need/review", s.handlePostOnboardingNeedReview, http.MethodPost)
-	r.HandleFunc("/onboarding/need/confirmation", s.handleGetOnboardingNeedConfirmation, http.MethodGet)
+	r.Group(func(r *flow.Mux) {
+		r.Use(s.RequireAuth)
 
-	// Donor onboarding flow
-	r.HandleFunc("/onboarding/donor/welcome", s.handleGetOnboardingDonorWelcome, http.MethodGet)
-	r.HandleFunc("/onboarding/donor/preferences", s.handleGetOnboardingDonorPreferences, http.MethodGet)
-	r.HandleFunc("/onboarding/donor/preferences", s.handlePostOnboardingDonorPreferences, http.MethodPost)
+		r.HandleFunc("/onboarding", s.handleGetOnboarding, http.MethodGet)
+
+		r.HandleFunc("/onboarding/need/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
+		r.HandleFunc("/onboarding/need/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
+		r.HandleFunc("/onboarding/need/location", s.handleGetOnboardingNeedLocation, http.MethodGet)
+		r.HandleFunc("/onboarding/need/location", s.handlePostOnboardingNeedLocation, http.MethodPost)
+		r.HandleFunc("/onboarding/need/categories", s.handleGetOnboardingNeedCategories, http.MethodGet)
+		r.HandleFunc("/onboarding/need/categories", s.handlePostOnboardingNeedCategories, http.MethodPost)
+		r.HandleFunc("/onboarding/need/details", s.handleGetOnboardingNeedDetails, http.MethodGet)
+		r.HandleFunc("/onboarding/need/details", s.handlePostOnboardingNeedDetails, http.MethodPost)
+		r.HandleFunc("/onboarding/need/story", s.handleGetOnboardingNeedStory, http.MethodGet)
+		r.HandleFunc("/onboarding/need/story", s.handlePostOnboardingNeedStory, http.MethodPost)
+		r.HandleFunc("/onboarding/need/documents", s.handleGetOnboardingNeedDocuments, http.MethodGet)
+		r.HandleFunc("/onboarding/need/documents", s.handlePostOnboardingNeedDocuments, http.MethodPost)
+		r.HandleFunc("/onboarding/need/review", s.handleGetOnboardingNeedReview, http.MethodGet)
+		r.HandleFunc("/onboarding/need/review", s.handlePostOnboardingNeedReview, http.MethodPost)
+		r.HandleFunc("/onboarding/need/confirmation", s.handleGetOnboardingNeedConfirmation, http.MethodGet)
+
+		// Donor onboarding flow
+		r.HandleFunc("/onboarding/donor/welcome", s.handleGetOnboardingDonorWelcome, http.MethodGet)
+		r.HandleFunc("/onboarding/donor/preferences", s.handleGetOnboardingDonorPreferences, http.MethodGet)
+		r.HandleFunc("/onboarding/donor/preferences", s.handlePostOnboardingDonorPreferences, http.MethodPost)
+	})
 
 	// Sponsor onboarding flow
 	r.HandleFunc("/register/sponsor", s.handleRegisterSponsor, http.MethodGet)

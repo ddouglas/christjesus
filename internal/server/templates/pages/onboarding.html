@@ -1,0 +1,181 @@
+{{define "page.onboarding"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
+  <!-- Header -->
+  <div class="text-center space-y-4 mb-12">
+    <h1 class="text-3xl font-semibold text-[color:var(--cj-primary)] md:text-4xl">
+      Welcome to ChristJesus.app
+    </h1>
+    <p class="text-lg text-muted-foreground max-w-2xl mx-auto">
+      Choose how you'd like to participate in our community
+    </p>
+  </div>
+
+  <!-- Three Path Cards -->
+  <div class="grid gap-8 md:grid-cols-3">
+
+    <!-- Need Card -->
+    <div class="flex flex-col bg-white border border-border rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+      <div class="p-8 flex-1 space-y-4">
+        <!-- Icon -->
+        <div class="w-16 h-16 rounded-full bg-[color:var(--cj-primary)]/10 flex items-center justify-center">
+          <svg class="w-8 h-8 text-[color:var(--cj-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        </div>
+
+        <!-- Content -->
+        <div class="space-y-2">
+          <h2 class="text-xl font-semibold text-foreground">I have a need</h2>
+          <p class="text-sm text-muted-foreground">
+            Share your story and connect with our community for support with verified needs
+          </p>
+        </div>
+
+        <!-- Benefits List -->
+        <ul class="space-y-2 text-sm">
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-[color:var(--cj-accent)] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Verified support process</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-[color:var(--cj-accent)] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Connect with caring donors</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-[color:var(--cj-accent)] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Track your need's progress</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- CTA Button -->
+      <div class="p-6 pt-0">
+        <a href="/onboarding/need/welcome"
+          class="block w-full text-center px-4 py-3 bg-[color:var(--cj-primary)] text-white rounded-md font-medium hover:bg-[color:var(--cj-primary)]/90 transition-colors">
+          Share Your Need
+        </a>
+      </div>
+    </div>
+
+    <!-- Donor Card -->
+    <div class="flex flex-col bg-white border border-border rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+      <div class="p-8 flex-1 space-y-4">
+        <!-- Icon -->
+        <div class="w-16 h-16 rounded-full bg-[color:var(--cj-secondary)]/10 flex items-center justify-center">
+          <svg class="w-8 h-8 text-[color:var(--cj-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </div>
+
+        <!-- Content -->
+        <div class="space-y-2">
+          <h2 class="text-xl font-semibold text-foreground">I want to give</h2>
+          <p class="text-sm text-muted-foreground">
+            Support verified needs in the Charlotte community through direct giving
+          </p>
+        </div>
+
+        <!-- Benefits List -->
+        <ul class="space-y-2 text-sm">
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-[color:var(--cj-accent)] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Browse verified needs</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-[color:var(--cj-accent)] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Direct impact on families</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-[color:var(--cj-accent)] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>See updates on your giving</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- CTA Button -->
+      <div class="p-6 pt-0">
+        <a href="/onboarding/donor/welcome"
+          class="block w-full text-center px-4 py-3 bg-[color:var(--cj-secondary)] text-white rounded-md font-medium hover:bg-[color:var(--cj-secondary)]/90 transition-colors">
+          Start Giving
+        </a>
+      </div>
+    </div>
+
+    <!-- Sponsor Card -->
+    <div class="flex flex-col bg-white border border-border rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+      <div class="p-8 flex-1 space-y-4">
+        <!-- Icon -->
+        <div class="w-16 h-16 rounded-full bg-[color:var(--cj-accent)]/10 flex items-center justify-center">
+          <svg class="w-8 h-8 text-[color:var(--cj-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+
+        <!-- Content -->
+        <div class="space-y-2">
+          <h2 class="text-xl font-semibold text-foreground">I want to sponsor</h2>
+          <p class="text-sm text-muted-foreground">
+            Partner as an organization or church to support the Charlotte community
+          </p>
+        </div>
+
+        <!-- Benefits List -->
+        <ul class="space-y-2 text-sm">
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-[color:var(--cj-accent)] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Amplify your impact</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-[color:var(--cj-accent)] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Engage your community</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-[color:var(--cj-accent)] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>Track organizational giving</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- CTA Button -->
+      <div class="p-6 pt-0">
+        <a href="/register/sponsor" class="block w-full text-center px-4 py-3 bg-[color:var(--cj-accent)] text-white rounded-md font-medium hover:bg-[color:var(--cj-accent)]/90 transition-colors">
+          Become a Sponsor
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Help Text -->
+  <div class="mt-12 text-center">
+    <p class="text-sm text-muted-foreground">
+      Not sure which path is right for you?
+      <a href="/about" class="text-[color:var(--cj-primary)] hover:underline font-medium">Learn more about how ChristJesus.app works</a>
+    </p>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}
