@@ -71,7 +71,7 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 			Path:     "/",
 			MaxAge:   -1,
 		})
-		http.Redirect(w, r, path, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, path, http.StatusSeeOther)
 	}
 
 	http.Redirect(w, r, "/browse", http.StatusSeeOther)

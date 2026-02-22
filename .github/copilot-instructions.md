@@ -1,5 +1,25 @@
 # ChristJesus.app - AI Coding Agent Instructions
 
+## Current Status (Last Updated: Feb 21, 2026)
+
+**✅ Completed:**
+- Supabase Auth integration with JWT verification (jwx v3)
+- Cookie-based redirect intent flow for authentication
+- Protected routes with RequireAuth middleware
+- Onboarding path selection page (Need/Donor/Sponsor)
+- Complete database schema design (4 tables: needs, categories, assignments, documents)
+- Atlas migration configuration (only manages christjesus schema)
+
+**🔄 In Progress:**
+- Database migration ready to apply (35 statements validated)
+- Need flow templates created (awaiting data persistence layer)
+
+**⏭️ Next Steps:**
+- Apply Atlas migration to create tables
+- Seed initial category data
+- Create Go types and repository layer
+- Wire POST handlers to persist onboarding data
+
 ## Architecture Overview
 
 **Stack:** Go 1.21+ SSR with HTMX, PostgreSQL, Tailwind CSS  
@@ -130,33 +150,90 @@ See `pkg/types/config.go` for full config struct.
 
 ## Onboarding Architecture
 
-**Multi-step flows with session-based progress tracking (planned):**
+**Multi-step flows with database-based progress tracking:**
 
-1. **Need Flow** (8 steps): welcome → location → categories → details → story → documents → review → confirmation
-2. **Donor Flow** (2 steps): welcome → preferences
-3. **Sponsor Flow** (incomplete): Individual vs Organization selection, then multi-step flows
+1. **Path Selection** (`/onboarding`): Three-card selection page for Need, Donor, or Sponsor roles
+2. **Need Flow** (8 steps): welcome → location → categories → details → story → documents → review → confirmation
+3. **Donor Flow** (2 steps): welcome → preferences
+4. **Sponsor Flow** (incomplete): Individual vs Organization selection, then multi-step flows
 
 **Handler Organization:**
-- `internal/server/onboarding.go` - All onboarding handlers
+- `internal/server/onboarding.go` - All onboarding handlers including path selection
 - `internal/server/register.go` - Registration entry points
 - `internal/server/pages.go` - Marketing/browse pages
+- `internal/server/auth.go` - Login/logout handlers with redirect intent
 
-## Authentication (Planned)
+**Route Protection:**
+- All `/onboarding/*` routes protected by `RequireAuth` middleware
+- Unauthenticated users redirected to login with return intent stored in cookie
 
-**Approach:** AWS Cognito OAuth with session management
-- OAuth callback handler sets httpOnly session cookie
-- Middleware verifies session on protected routes
-- User profile stored in local DB, linked via `cognito_id`
+## Authentication
 
-**Not yet implemented** - currently all pages accessible without auth.
+**Implementation:** Supabase Auth with JWT verification
+- **JWT Library:** `lestrrat-go/jwx v3` with ES256 algorithm
+- **JWK Fetching:** Downloads from `https://{supabase-project}.supabase.co/auth/v1/jwks`
+- **Token Storage:** Encrypted httpOnly cookie (`cja_access_token`) via `gorilla/securecookie`
+- **Middleware:** `RequireAuth` verifies JWT signature, validates claims, adds user context
+
+**Redirect Intent Flow:**
+- Cookie-based storage (`cja_redirect_after_login`) with 5-minute TTL
+- Set by middleware when auth required but user not authenticated
+- Cleared after successful login, redirects user to original destination
+- Helper functions: `setRedirectCookie()`, `getAndClearRedirectCookie()`, `clearRedirectCookie()`
+
+**Context Keys:**
+- Custom `contextKey` type prevents collisions
+- `contextKeyUserID`: User ID from JWT "sub" claim (UUID string)
+- `contextKeyEmail`: Email from JWT custom claim (string)
+
+**Access Pattern:**
+```go
+userID := r.Context().Value(contextKeyUserID).(string)
+email := r.Context().Value(contextKeyEmail).(string)
+```
+
+## Database Schema
+
+**Database:** PostgreSQL via Supabase (port 6543 pooled connection)
+**Schema:** `christjesus` - Custom schema separate from Supabase's `public`
+**Migration Tool:** Atlas with HCL declarative schemas
+
+**Tables:**
+1. **`needs`** - All need posts with status-based lifecycle
+   - Status flow: `draft` → `submitted` → `pending_review` → `approved`/`rejected` → `active` → `funded` → `closed`
+   - Progress tracking: `current_step`, `completed_steps` (jsonb array)
+   - Money stored as integers: `amount_needed_cents`, `amount_raised_cents`
+   - Nullable fields required when status=submitted: city, state, title, amount, story, etc.
+   - User reference: `user_id` UUID (no FK due to cross-schema, references `auth.users`)
+   
+2. **`need_categories`** - Category lookup table
+   - Fields: id, name, slug, description, icon, display_order, is_active
+   - Unique constraint on slug
+   
+3. **`need_category_assignments`** - Many-to-many junction
+   - Composite PK: (need_id, category_id)
+   - CASCADE deletes on both FKs
+   
+4. **`need_documents`** - File uploads via Supabase Storage
+   - Fields: id, need_id, user_id, document_type, file_name, file_size_bytes, mime_type, storage_key
+   - `storage_key` references Supabase Storage bucket path
+   - CASCADE delete on need_id FK
+
+**Atlas Configuration:**
+- `atlas.hcl` configured with `schemas = ["christjesus"]` to only manage app schema
+- Protects all Supabase schemas (auth, storage, public, extensions, etc.)
+- Migration commands: `just migrate-plan` (dry-run), `just migrate` (apply)
 
 ## Critical Files
 
 - `SCAFFOLDING_GUIDE.md` - Comprehensive architecture reference (1500+ lines)
 - `internal/server/server.go` - Server initialization, router setup, template loading
-- `internal/server/middleware.go` - Logging middleware pattern
+- `internal/server/middleware.go` - Authentication (RequireAuth) and logging middleware
+- `internal/server/auth.go` - Login/logout handlers with redirect intent
+- `internal/const.go` - Application constants (cookie names)
 - `pkg/types/` - All domain models with `db:"column"` tags for scany
-- `migrations/*.pg.hcl` - Atlas declarative schemas (not sequential migrations)
+- `migrations/schema.pg.hcl` - Atlas declarative schema for christjesus database
+- `migrations/atlas.hcl` - Atlas configuration (only manages christjesus schema)
 
 ## Working Boundaries
 
@@ -167,32 +244,61 @@ When generating handlers, provide simple pass-through implementations for user t
 
 ## Active TODO List
 
-### Auth & Sessions (High Priority)
-- [ ] Set up AWS Cognito user pool via IaC (Terraform/CloudFormation)
-- [ ] Create `internal/auth/cognito.go` - Token exchange, JWT verification
-- [ ] Create `internal/auth/middleware.go` - Session validation, RequireAuth middleware
-- [ ] Create `internal/auth/session.go` - Session management helpers
-- [ ] Add login/register templates with OAuth provider buttons
-- [ ] Implement `/auth/callback` handler - verify JWT, set cookie, redirect
-- [ ] Database migrations: `users` table (id, cognito_id, email, name, role, onboarding_complete)
-- [ ] Database migrations: `sessions` table (id, user_id, expires_at) OR Redis setup
-- [ ] Protect onboarding routes with RequireAuth middleware
-- [ ] Update config.go with Cognito settings (region, user pool ID, client ID)
+### Auth & Sessions
+- [x] JWT verification middleware with jwx v3 and ES256
+- [x] RequireAuth middleware with context key pattern
+- [x] Cookie-based redirect intent flow (5-minute TTL)
+- [x] Login/register handlers with redirect support
+- [x] Protect onboarding routes with RequireAuth middleware
+- [x] Supabase Auth integration (uses auth.users table)
+- [ ] Session refresh logic when JWT expires
+- [ ] Logout flow with cookie cleanup
+- [ ] User profile page
 
-### Data Models & Database
-- [ ] Create `needs` table - Store completed need posts
-- [ ] Create `need_drafts` table - Store in-progress onboarding (or use sessions)
-- [ ] Create `donor_preferences` table - Categories, location, donation range
-- [ ] Create `categories` table - Replace sampleCategories() with real data
+### Database Schema & Migrations
+- [x] Create `needs` table with status-based lifecycle
+- [x] Create `need_categories` lookup table
+- [x] Create `need_category_assignments` junction table
+- [x] Create `need_documents` table for file uploads
+- [x] Atlas configuration to only manage christjesus schema
+- [x] Migration plan validated (35 statements, no drops)
+- [ ] Run `just migrate` to apply schema to database
+- [ ] Seed initial category data (Housing, Food, Medical, etc.)
+- [ ] Create `donor_preferences` table
 - [ ] Create `locations` table - City/state data for filtering
-- [ ] Define types in `pkg/types/` for all new tables
-- [ ] Create repository files in `internal/store/` for each table
 
-### Onboarding Enhancements
-- [ ] Add form validation to all POST handlers (location, categories, details, etc.)
-- [ ] Implement draft saving - store partial data during onboarding flow
-- [ ] Implement draft loading - pre-fill forms on revisit
-- [ ] File upload handling for documents step (S3 integration)
+### Data Layer (Repository & Types)
+- [ ] Define `pkg/types/need.go` - Need, NeedCategory, NeedDocument structs
+- [ ] Define DTOs: NewNeed, UpdateNeed, NeedFilter
+- [ ] Create `internal/store/need.go` repository:
+  - [ ] CreateNeed(ctx, userID) - Initialize draft need
+  - [ ] GetNeedByID(ctx, id) - Fetch single need
+  - [ ] GetNeedsByUserID(ctx, userID) - User's needs dashboard
+  - [ ] UpdateNeed(ctx, id, updates) - Update any need fields
+  - [ ] UpdateNeedStep(ctx, id, step, completedSteps) - Progress tracking
+  - [ ] SetNeedCategories(ctx, needID, categoryIDs) - Replace all categories
+  - [ ] SubmitNeed(ctx, id) - Validate required fields, set status=submitted
+  - [ ] UploadDocument(ctx, needID, doc) - Create document record
+- [ ] Create `internal/store/category.go` repository:
+  - [ ] GetAllCategories(ctx) - For selection UI
+  - [ ] GetCategoryBySlug(ctx, slug)
+  - [ ] SeedCategories(ctx) - Insert initial data
+
+### Onboarding Implementation
+- [x] Create onboarding path selection page (`/onboarding`)
+- [x] Three-card layout for Need/Donor/Sponsor selection
+- [x] Template structure for 8-step need flow (welcome → confirmation)
+- [ ] Wire POST handlers to persist data to needs table:
+  - [ ] Location handler → Update city/state/zip_code, set current_step
+  - [ ] Categories handler → Insert/delete need_category_assignments
+  - [ ] Details handler → Update title/amount_needed_cents/short_description
+  - [ ] Story handler → Update story field
+  - [ ] Documents handler → Upload to Supabase Storage, create need_documents
+  - [ ] Review handler → Validate all required fields, set status=submitted
+- [ ] Add form validation with error display
+- [ ] Implement draft loading - pre-fill forms from existing draft
+- [ ] File upload handling for documents step (Supabase Storage integration)
+- [ ] Complete donor preference flow (2 steps)
 - [ ] Complete sponsor individual onboarding flow (5+ steps)
 - [ ] Complete sponsor organization onboarding flow (5+ steps)
 - [ ] Add edit functionality to review page
@@ -211,10 +317,13 @@ When generating handlers, provide simple pass-through implementations for user t
 - [ ] Create guidelines/how-it-works page
 
 ### Infrastructure
-- [ ] Set up S3 bucket for document uploads
-- [ ] Configure S3 signed URLs for secure uploads
-- [ ] Set up email service for notifications (SES?)
+- [x] Supabase PostgreSQL database connection (port 6543)
+- [x] Supabase Auth with JWT/JWK verification
+- [ ] Supabase Storage bucket for document uploads
+- [ ] Configure Storage signed URLs for secure uploads
+- [ ] Set up email service for notifications (Supabase Functions or SES?)
 - [ ] Production deployment configuration
+- [ ] Environment variable management for production
 
 ### Pending Decisions (Requires Project Owner Discussion)
 - [ ] **Multi-tenancy:** Can one user have multiple roles (e.g., both donor AND have a need)?
