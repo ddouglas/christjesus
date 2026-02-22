@@ -22,7 +22,6 @@ const (
 	NeedStepWelcome    NeedStep = "welcome"
 	NeedStepLocation   NeedStep = "location"
 	NeedStepCategories NeedStep = "categories"
-	NeedStepDetails    NeedStep = "details"
 	NeedStepStory      NeedStep = "story"
 	NeedStepDocuments  NeedStep = "documents"
 	NeedStepReview     NeedStep = "review"
@@ -33,7 +32,6 @@ var NeedStepOrder = []NeedStep{
 	NeedStepWelcome,
 	NeedStepLocation,
 	NeedStepCategories,
-	NeedStepDetails,
 	NeedStepStory,
 	NeedStepDocuments,
 	NeedStepReview,

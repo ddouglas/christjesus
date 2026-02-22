@@ -13,10 +13,15 @@ table "need_category_assignments" {
     null = false
   }
 
-  column "created_at" {
-    type    = timestamptz
+  column "is_primary" {
+    type    = boolean
     null    = false
-    default = sql("now()")
+    default = false
+  }
+
+  column "created_at" {
+    type = timestamptz
+    null = false
   }
 
   primary_key {
@@ -41,5 +46,11 @@ table "need_category_assignments" {
 
   index "idx_need_assignments_category_id" {
     columns = [column.category_id]
+  }
+
+  index "idx_only_one_primary_per_need" {
+    columns = [column.need_id]
+    unique  = true
+    where   = "is_primary = true"
   }
 }

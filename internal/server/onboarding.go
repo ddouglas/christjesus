@@ -168,8 +168,6 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 	need.CurrentStep = types.NeedStepLocation
 	need.NeedLocation = location
 
-	pp.Print(need)
-
 	err = s.needsRepo.UpdateNeed(ctx, needID, need)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to update need with location data")
@@ -182,11 +180,24 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/categories", need.ID), http.StatusSeeOther)
 }
 
+type needCategoriesTemplateData struct {
+	Title      string
+	Need       *types.Need
+	Categories []*types.NeedCategory
+}
+
 func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	needID := r.PathValue("needID")
 
-	categories, err := s.categoryRepo.AllCategories(ctx)
+	needID := r.PathValue("needID")
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch need from datastore")
+		s.internalServerError(w)
+		return
+	}
+
+	categories, err := s.categoryRepo.Categories(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to load categories from database")
 		s.internalServerError(w)
@@ -197,10 +208,10 @@ func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *ht
 		s.logger.Warn("no categories found in database - run 'just seed' to populate categories")
 	}
 
-	data := map[string]interface{}{
-		"Title":      "Select Categories",
-		"ID":         needID,
-		"Categories": categories,
+	data := &needCategoriesTemplateData{
+		Title:      "Select Categories",
+		Need:       need,
+		Categories: categories,
 	}
 
 	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.categories", data)
@@ -209,6 +220,105 @@ func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *ht
 		s.internalServerError(w)
 		return
 	}
+}
+
+func (s *Service) handlePostOnboardingNeedCategories(w http.ResponseWriter, r *http.Request) {
+
+	var ctx = r.Context()
+
+	needID := r.PathValue("needID")
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch need from datastore")
+		s.internalServerError(w)
+		return
+	}
+	err = r.ParseForm()
+	if err != nil {
+		s.logger.WithError(err).Error("failed to parse form")
+		return
+	}
+
+	if len(r.Form["primary"]) != 1 {
+		s.logger.WithError(err).Error("0 or multiple values submitted for primary category")
+		s.internalServerError(w)
+		return
+	}
+
+	ids := make([]string, 0, len(r.Form.Get("secondary"))+1)
+
+	ids = append(ids, r.Form.Get("primary"))
+	ids = append(ids, r.Form["secondary"]...)
+
+	categories, err := s.categoryRepo.CategoriesByIDs(ctx, ids)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to load categories from database")
+		s.internalServerError(w)
+		return
+	}
+
+	// Build a map of category ID to category for easy lookup
+	categoryMap := make(map[string]*types.NeedCategory)
+	for _, c := range categories {
+		categoryMap[c.ID] = c
+	}
+
+	needCategories := make([]*types.NeedCategory, 0, len(ids))
+	for _, id := range ids {
+		cat, ok := categoryMap[id]
+		if !ok {
+			s.logger.WithField("category_id", id).Error("submitted category ID not found in database")
+			s.internalServerError(w)
+			return
+		}
+		needCategories = append(needCategories, cat)
+	}
+
+	primaryCategory := categoryMap[r.Form.Get("primary")]
+	secondaryCategories := make([]*types.NeedCategory, 0)
+	for _, id := range r.Form["secondary"] {
+		secondaryCategories = append(secondaryCategories, categoryMap[id])
+	}
+
+	err = s.needCategoryAssignmentsRepo.DeleteAllAssignmentsByNeedID(ctx, need.ID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to delete existing need category assignments")
+		s.internalServerError(w)
+		return
+	}
+
+	assignments := make([]*types.NeedCategoryAssignment, 0, len(needCategories))
+	assignments = append(assignments, &types.NeedCategoryAssignment{
+		NeedID:     need.ID,
+		CategoryID: primaryCategory.ID,
+		IsPrimary:  true,
+	})
+	for _, cat := range secondaryCategories {
+		assignments = append(assignments, &types.NeedCategoryAssignment{
+			NeedID:     need.ID,
+			CategoryID: cat.ID,
+			IsPrimary:  false,
+		})
+	}
+
+	err = s.needCategoryAssignmentsRepo.CreateAssignments(ctx, assignments)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to create need category assignments")
+		s.internalServerError(w)
+		return
+	}
+
+	need.CurrentStep = types.NeedStepCategories
+	err = s.needsRepo.UpdateNeed(ctx, need.ID, need)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to update need with selected categories")
+		s.internalServerError(w)
+		return
+	}
+
+	s.recordNeedProgress(ctx, need.ID, types.NeedStepCategories)
+
+	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/story", need.ID), http.StatusSeeOther)
 }
 
 func (s *Service) handleGetOnboardingNeedDetails(w http.ResponseWriter, r *http.Request) {
@@ -264,10 +374,6 @@ func (s *Service) handleGetOnboardingNeedConfirmation(w http.ResponseWriter, r *
 		s.internalServerError(w)
 		return
 	}
-}
-
-func (s *Service) handlePostOnboardingNeedCategories(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/onboarding/need/details", http.StatusSeeOther)
 }
 
 func (s *Service) handlePostOnboardingNeedDetails(w http.ResponseWriter, r *http.Request) {

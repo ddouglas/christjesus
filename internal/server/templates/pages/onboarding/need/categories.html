@@ -21,7 +21,7 @@
 
   <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
     {{if .Categories}}
-    <form action="/onboarding/need/categories" method="post" class="space-y-6 px-6">
+    <form id="categories-form" action="/onboarding/need/{{.Need.ID}}/categories" method="post" class="space-y-6 px-6">
       <div class="space-y-3">
         <p class="text-sm font-semibold text-foreground">Primary category</p>
         <div class="grid gap-3 md:grid-cols-2">
@@ -29,7 +29,7 @@
           <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
             <label class="flex items-center justify-between px-4 text-sm text-muted-foreground cursor-pointer">
               <span>{{.Name}}</span>
-              <input type="radio" name="primaryCategory" value="{{.Slug}}" class="h-4 w-4" />
+              <input type="radio" name="primary" value="{{.ID}}" class="h-4 w-4" />
             </label>
           </div>
           {{end}}
@@ -41,7 +41,7 @@
         <div class="grid gap-3 md:grid-cols-2">
           {{range .Categories}}
           <label class="flex items-center gap-2 rounded-lg border border-border p-3 text-sm text-muted-foreground cursor-pointer">
-            <input type="checkbox" name="secondaryCategories" value="{{.Slug}}" class="h-4 w-4 rounded border-border" />
+            <input type="checkbox" name="secondary" value="{{.ID}}" class="h-4 w-4 rounded border-border" />
             {{.Name}}
           </label>
           {{end}}
@@ -65,14 +65,16 @@
   </div>
 
   <div class="mt-6 flex items-center justify-between">
-    <a href="/onboarding/need/{{.ID}}/location"
+    <a href="/onboarding/need/{{.Need.ID}}/location"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
       Back
     </a>
-    <button type="submit" onclick="document.querySelector('form').submit()"
+    {{if .Categories}}
+    <button type="submit" form="categories-form"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
       Continue
     </button>
+    {{end}}
   </div>
 </div>
 

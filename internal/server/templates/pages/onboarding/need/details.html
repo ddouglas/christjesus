@@ -6,7 +6,7 @@
     <div>
       <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Person in Need</p>
       <h1 class="text-3xl font-semibold text-foreground">Tell us about your specific need</h1>
-      <p class="text-muted-foreground">Answer the questions that best fit your primary category.</p>
+      <p class="text-muted-foreground">Provide details about your situation and what assistance you're seeking.</p>
     </div>
     <div class="w-full max-w-[260px] flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
       <div class="space-y-2 px-6 pb-2">
@@ -20,54 +20,50 @@
   </div>
 
   <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
-    <form action="/onboarding/need/details" method="post" class="space-y-6 px-6">
-      <div class="grid gap-4 md:grid-cols-2">
-        <div>
-          <p class="text-sm font-semibold text-foreground">Urgency level</p>
-          <select name="urgency" required
-            class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-            <option value="">Select urgency</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+    <form id="details-form" action="/onboarding/need/{{.ID}}/details" method="post" class="space-y-6 px-6">
+      {{if .PrimaryCategory}}
+      <div class="space-y-2">
+        <p class="text-sm font-semibold text-foreground">Primary category</p>
+        <div class="flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--cj-primary)]/10">
+            <span class="text-lg">{{if .PrimaryCategory.Icon}}{{deref .PrimaryCategory.Icon}}
+              {{else}}📋{{end}}</span>
+          </div>
+          <div>
+            <p class="font-medium text-foreground">{{.PrimaryCategory.Name}}</p>
+            {{if .PrimaryCategory.Description}}
+            <p class="text-xs text-muted-foreground">{{deref .PrimaryCategory.Description}}</p>
+            {{end}}
+          </div>
         </div>
-        <div>
-          <p class="text-sm font-semibold text-foreground">Amount needed</p>
-          <input type="number" name="amountNeeded" placeholder="1200" required
-            class="mt-2 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+      </div>
+      {{end}}
+
+      <div class="space-y-2">
+        <label for="amount" class="text-sm font-semibold text-foreground">Amount needed (USD)</label>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+          <input type="number" id="amount" name="amount" placeholder="1200" min="1" step="0.01" required value="{{if .AmountNeededCents}}{{div .AmountNeededCents 100}}{{end}}"
+            class="flex h-9 w-full rounded-md border border-input bg-background pl-7 pr-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         </div>
+        <p class="text-xs text-muted-foreground">Enter the total amount you're requesting assistance for</p>
       </div>
 
       <div class="space-y-2">
-        <p class="text-sm font-semibold text-foreground">Category details</p>
-        <select name="needType" required
-          class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-          <option value="">Select a specific need type</option>
-          <option value="emergency-shelter">Emergency shelter</option>
-          <option value="rental-deposit">Rental deposit</option>
-          <option value="first-months-rent">First month's rent</option>
-          <option value="eviction-prevention">Eviction prevention</option>
-          <option value="transitional-housing">Transitional housing</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-
-      <div class="space-y-2">
-        <p class="text-sm font-semibold text-foreground">Additional context</p>
-        <textarea name="additionalContext" placeholder="Is there anything else we should know about your situation?" rows="5"
-          class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"></textarea>
+        <label for="shortDescription" class="text-sm font-semibold text-foreground">Brief description of your need</label>
+        <textarea id="shortDescription" name="shortDescription" placeholder="Tell us briefly what this assistance will help you accomplish..." rows="5" required
+          class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{deref .ShortDescription}}</textarea>
+        <p class="text-xs text-muted-foreground">Provide context about your situation (you'll be able to share your full story in the next step)</p>
       </div>
     </form>
   </div>
 
   <div class="mt-6 flex items-center justify-between">
-    <a href="/onboarding/need/categories"
+    <a href="/onboarding/need/{{.ID}}/categories"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
       Back
     </a>
-    <button type="submit" onclick="document.querySelector('form').submit()"
+    <button type="submit" form="details-form"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
       Continue
     </button>

@@ -10,11 +10,11 @@
     </div>
     <div class="w-full max-w-[260px] flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
       <div class="space-y-2 px-6 pb-2">
-        <p class="text-sm font-semibold text-foreground">Step 7 of 7</p>
+        <p class="text-sm font-semibold text-foreground">Step 6 of 6</p>
         <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
           <div class="h-full bg-[color:var(--cj-primary)] transition-all" style="width: 100%"></div>
         </div>
-        <p class="mt-2 text-xs text-muted-foreground">Step 7 of 7</p>
+        <p class="mt-2 text-xs text-muted-foreground">Step 6 of 6</p>
       </div>
     </div>
   </div>
@@ -25,22 +25,17 @@
         <div>
           <p class="text-sm font-semibold text-foreground">Location</p>
           <p class="text-sm text-muted-foreground">Charlotte, NC 28202</p>
-          <a href="/onboarding/need/location" class="mt-1 text-xs text-[color:var(--cj-accent)] hover:underline">Edit</a>
+          <a href="/onboarding/need/{{.ID}}/location" class="mt-1 text-xs text-[color:var(--cj-accent)] hover:underline">Edit</a>
         </div>
         <div>
           <p class="text-sm font-semibold text-foreground">Categories</p>
           <p class="text-sm text-muted-foreground">Housing & Shelter</p>
-          <a href="/onboarding/need/categories" class="mt-1 text-xs text-[color:var(--cj-accent)] hover:underline">Edit</a>
+          <a href="/onboarding/need/{{.ID}}/categories" class="mt-1 text-xs text-[color:var(--cj-accent)] hover:underline">Edit</a>
         </div>
         <div>
-          <p class="text-sm font-semibold text-foreground">Need details</p>
-          <p class="text-sm text-muted-foreground">$1,200 - Critical urgency</p>
-          <a href="/onboarding/need/details" class="mt-1 text-xs text-[color:var(--cj-accent)] hover:underline">Edit</a>
-        </div>
-        <div>
-          <p class="text-sm font-semibold text-foreground">Your story</p>
-          <p class="text-sm text-muted-foreground">3 sections completed</p>
-          <a href="/onboarding/need/story" class="mt-1 text-xs text-[color:var(--cj-accent)] hover:underline">Edit</a>
+          <p class="text-sm font-semibold text-foreground">Amount & Story</p>
+          <p class="text-sm text-muted-foreground">$1,200 requested</p>
+          <a href="/onboarding/need/{{.ID}}/story" class="mt-1 text-xs text-[color:var(--cj-accent)] hover:underline">Edit</a>
         </div>
       </div>
     </div>

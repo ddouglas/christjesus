@@ -6,58 +6,84 @@
     <div>
       <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Person in Need</p>
       <h1 class="text-3xl font-semibold text-foreground">Share your story</h1>
-      <p class="text-muted-foreground">Be honest and specific so supporters understand your situation.</p>
+      <p class="text-muted-foreground">Tell us about your situation and how much assistance you need.</p>
     </div>
     <div class="w-full max-w-[260px] flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
       <div class="space-y-2 px-6 pb-2">
-        <p class="text-sm font-semibold text-foreground">Step 5 of 7</p>
+        <p class="text-sm font-semibold text-foreground">Step 4 of 6</p>
         <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div class="h-full bg-[color:var(--cj-primary)] transition-all" style="width: 71%"></div>
+          <div class="h-full bg-[color:var(--cj-primary)] transition-all" style="width: 67%"></div>
         </div>
-        <p class="mt-2 text-xs text-muted-foreground">Step 5 of 7</p>
+        <p class="mt-2 text-xs text-muted-foreground">Step 4 of 6</p>
       </div>
     </div>
   </div>
 
   <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
-    <form action="/onboarding/need/story" method="post" class="space-y-6 px-6">
-      <div class="grid gap-4">
+    <form id="story-form" action="/onboarding/need/{{.ID}}/story" method="post" class="space-y-6 px-6">
+      {{if .PrimaryCategory}}
+      <div class="space-y-2 pb-4 border-b border-border">
+        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Primary category</p>
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--cj-primary)]/10">
+            <span class="text-lg">{{if .PrimaryCategory.Icon}}{{deref .PrimaryCategory.Icon}}
+              {{else}}📋{{end}}</span>
+          </div>
+          <div>
+            <p class="font-medium text-foreground">{{.PrimaryCategory.Name}}</p>
+          </div>
+        </div>
+      </div>
+      {{end}}
+
+      <div class="space-y-2">
+        <label for="amount" class="text-sm font-semibold text-foreground">Amount needed (USD)</label>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+          <input type="number" id="amount" name="amount" placeholder="1200" min="1" step="0.01" required value="{{if .AmountNeededCents}}{{div .AmountNeededCents 100}}{{end}}"
+            class="flex h-10 w-full rounded-md border border-input bg-background pl-7 pr-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+        </div>
+        <p class="text-xs text-muted-foreground">Enter the total amount you're requesting assistance for</p>
+      </div>
+
+      <div class="grid gap-4 pt-4">
         <div class="space-y-2">
-          <p class="text-sm font-semibold text-foreground">Current situation</p>
-          <textarea name="storyCurrent" placeholder="What is your current situation?" rows="4" required
-            class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"></textarea>
+          <label for="storyCurrent" class="text-sm font-semibold text-foreground">Current situation</label>
+          <textarea id="storyCurrent" name="storyCurrent" placeholder="What is your current situation?" rows="4" required
+            class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{.StoryCurrent}}</textarea>
         </div>
 
         <div class="space-y-2">
-          <p class="text-sm font-semibold text-foreground">Specific need</p>
-          <textarea name="storyNeed" placeholder="What specific help do you need?" rows="4" required
-            class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"></textarea>
+          <label for="storyNeed" class="text-sm font-semibold text-foreground">Specific need</label>
+          <textarea id="storyNeed" name="storyNeed" placeholder="What specific help do you need?" rows="4" required
+            class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{.StoryNeed}}</textarea>
         </div>
 
         <div class="space-y-2">
-          <p class="text-sm font-semibold text-foreground">How this will help</p>
-          <textarea name="storyOutcome" placeholder="How will this help change your situation?" rows="4" required
-            class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"></textarea>
+          <label for="storyOutcome" class="text-sm font-semibold text-foreground">How this will help</label>
+          <textarea id="storyOutcome" name="storyOutcome" placeholder="How will this help change your situation?" rows="4" required
+            class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{.StoryOutcome}}</textarea>
         </div>
       </div>
 
       <div class="rounded-xl border border-border bg-slate-50 p-4 text-sm text-muted-foreground">
         <p class="font-semibold text-foreground">Story tips</p>
         <ul class="mt-2 list-disc space-y-1 pl-4">
-          <li>Be specific about amounts and timelines.</li>
-          <li>Explain how you got into this situation.</li>
-          <li>Avoid sensitive details like SSN or full address.</li>
+          <li>Be specific about amounts and timelines</li>
+          <li>Explain how you got into this situation</li>
+          <li>Describe what steps you've already taken</li>
+          <li>Avoid sensitive details like SSN or full address</li>
         </ul>
       </div>
     </form>
   </div>
 
   <div class="mt-6 flex items-center justify-between">
-    <a href="/onboarding/need/details"
+    <a href="/onboarding/need/{{.ID}}/categories"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
       Back
     </a>
-    <button type="submit" onclick="document.querySelector('form').submit()"
+    <button type="submit" form="story-form"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
       Continue
     </button>

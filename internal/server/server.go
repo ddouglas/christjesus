@@ -27,12 +27,12 @@ var uiFS embed.FS
 var decoder = form.NewDecoder()
 
 type Service struct {
-	logger       *logrus.Logger
-	config       *types.Config
-	needsRepo    *store.NeedRepository
-	progressRepo *store.NeedProgressRepository
-	categoryRepo *store.CategoryRepository
-	templates    *template.Template
+	logger                      *logrus.Logger
+	config                      *types.Config
+	needsRepo                   *store.NeedRepository
+	progressRepo                *store.NeedProgressRepository
+	categoryRepo                *store.CategoryRepository
+	needCategoryAssignmentsRepo *store.AssignmentRepository
 
 	supauth supauth.Client
 	cookie  *securecookie.SecureCookie
@@ -40,7 +40,8 @@ type Service struct {
 	jwksCache *jwk.Cache
 	jwksURL   string
 
-	server *http.Server
+	server    *http.Server
+	templates *template.Template
 }
 
 func New(
@@ -50,6 +51,7 @@ func New(
 	needsRepo *store.NeedRepository,
 	progressRepo *store.NeedProgressRepository,
 	categoryRepo *store.CategoryRepository,
+	needCategoryAssignmentsRepo *store.AssignmentRepository,
 	jwkCache *jwk.Cache,
 	jwksURL string,
 ) (*Service, error) {
@@ -64,9 +66,10 @@ func New(
 		supauth: supauth,
 		cookie:  securecookie.New(hashKey, blockKey),
 
-		needsRepo:    needsRepo,
-		progressRepo: progressRepo,
-		categoryRepo: categoryRepo,
+		needsRepo:                   needsRepo,
+		progressRepo:                progressRepo,
+		categoryRepo:                categoryRepo,
+		needCategoryAssignmentsRepo: needCategoryAssignmentsRepo,
 
 		jwksCache: jwkCache,
 		jwksURL:   jwksURL,
@@ -122,8 +125,6 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc("/onboarding/need/:needID/location", s.handlePostOnboardingNeedLocation, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/categories", s.handleGetOnboardingNeedCategories, http.MethodGet)
 		r.HandleFunc("/onboarding/need/:needID/categories", s.handlePostOnboardingNeedCategories, http.MethodPost)
-		r.HandleFunc("/onboarding/need/:needID/details", s.handleGetOnboardingNeedDetails, http.MethodGet)
-		r.HandleFunc("/onboarding/need/:needID/details", s.handlePostOnboardingNeedDetails, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/story", s.handleGetOnboardingNeedStory, http.MethodGet)
 		r.HandleFunc("/onboarding/need/:needID/story", s.handlePostOnboardingNeedStory, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/documents", s.handleGetOnboardingNeedDocuments, http.MethodGet)

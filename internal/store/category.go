@@ -23,11 +23,31 @@ func NewCategoryRepository(pool *pgxpool.Pool) *CategoryRepository {
 	return &CategoryRepository{pool: pool}
 }
 
-func (r *CategoryRepository) AllCategories(ctx context.Context) ([]*types.NeedCategory, error) {
+func (r *CategoryRepository) Categories(ctx context.Context) ([]*types.NeedCategory, error) {
 	query, args, err := psql().
 		Select(categoryColumns...).
 		From(categoryTableName).
 		Where(sq.Eq{"is_active": true}).
+		OrderBy("display_order ASC", "name ASC").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate categories query: %w", err)
+	}
+
+	var categories []*types.NeedCategory
+	err = pgxscan.Select(ctx, r.pool, &categories, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch categories: %w", err)
+	}
+
+	return categories, nil
+}
+
+func (r *CategoryRepository) CategoriesByIDs(ctx context.Context, ids []string) ([]*types.NeedCategory, error) {
+	query, args, err := psql().
+		Select(categoryColumns...).
+		From(categoryTableName).
+		Where(sq.Eq{"id": ids}).
 		OrderBy("display_order ASC", "name ASC").
 		ToSql()
 	if err != nil {

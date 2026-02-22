@@ -12,3 +12,13 @@ type NeedCategory struct {
 	IsActive     bool      `db:"is_active"`
 	CreatedAt    time.Time `db:"created_at"`
 }
+
+type NeedCategoryAssignment struct {
+	NeedID     string    `db:"need_id"`
+	CategoryID string    `db:"category_id"`
+	IsPrimary  bool      `db:"is_primary"`
+	CreatedAt  time.Time `db:"created_at"`
+
+	Need     *Need         `db:"-"`
+	Category *NeedCategory `db:"-"`
+}
