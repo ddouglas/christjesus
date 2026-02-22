@@ -12,7 +12,7 @@
     </p>
   </div>
 
-  <!-- Three Path Cards -->
+  <!-- Path Cards -->
   <div class="grid gap-8 md:grid-cols-2">
 
     <!-- Need Card -->
@@ -58,10 +58,12 @@
 
       <!-- CTA Button -->
       <div class="p-6 pt-0">
-        <a href="/onboarding/need/welcome"
-          class="block w-full text-center px-4 py-3 bg-[color:var(--cj-primary)] text-white rounded-md font-medium hover:bg-[color:var(--cj-primary)]/90 transition-colors">
-          Share Your Need
-        </a>
+        <form method="POST" action="/onboarding">
+          <button type="submit" name="path" value="need"
+            class="w-full px-4 py-3 bg-[color:var(--cj-primary)] text-white rounded-md font-medium hover:bg-[color:var(--cj-primary)]/90 transition-colors">
+            Share Your Need
+          </button>
+        </form>
       </div>
     </div>
 
@@ -109,16 +111,17 @@
 
       <!-- CTA Button -->
       <div class="p-6 pt-0">
-        <a href="/onboarding/donor/welcome"
-          class="block w-full text-center px-4 py-3 bg-[color:var(--cj-secondary)] text-white rounded-md font-medium hover:bg-[color:var(--cj-secondary)]/90 transition-colors">
-          Start Giving
-        </a>
+        <form method="POST" action="/onboarding">
+          <button type="submit" name="path" value="donor"
+            class="w-full px-4 py-3 bg-[color:var(--cj-secondary)] text-white rounded-md font-medium hover:bg-[color:var(--cj-secondary)]/90 transition-colors">
+            Start Giving
+          </button>
+        </form>
       </div>
     </div>
 
-
-
   </div>
+
   <!-- Bottom Help Text -->
   <div class="mt-12 text-center">
     <p class="text-sm text-muted-foreground">
@@ -126,6 +129,7 @@
       <a href="/about" class="text-[color:var(--cj-primary)] hover:underline font-medium">Learn more about how ChristJesus.app works</a>
     </p>
   </div>
+</div>
 
-  {{template "footer" .}}
-  {{end}}
+{{template "footer" .}}
+{{end}}

@@ -1,6 +1,4 @@
 schema "christjesus" {}
-
-# Category lookup table
 table "need_categories" {
   schema = schema.christjesus
 
@@ -75,6 +73,18 @@ table "needs" {
   }
 
   # Location (Step 2)
+  column "address" {
+    type    = text
+    null    = true
+    comment = "Street address. Required when status = submitted"
+  }
+
+  column "address_ext" {
+    type    = text
+    null    = true
+    comment = "Apartment, suite, unit number (optional)"
+  }
+
   column "city" {
     type    = text
     null    = true
@@ -93,6 +103,25 @@ table "needs" {
     comment = "Required when status = submitted"
   }
 
+  column "privacy_display" {
+    type    = text
+    null    = true
+    default = "neighborhood"
+    comment = "What to show publicly: neighborhood, zip, or city"
+  }
+
+  column "contact_methods" {
+    type    = jsonb
+    null    = true
+    comment = "Array of preferred contact methods: phone, text, email"
+  }
+
+  column "preferred_contact_time" {
+    type    = text
+    null    = true
+    comment = "Preferred time to contact: morning, afternoon, evening, anytime"
+  }
+
   # Details (Step 4)
   column "title" {
     type    = text
@@ -102,8 +131,9 @@ table "needs" {
 
   column "amount_needed_cents" {
     type    = integer
-    null    = true
+    null    = false
     comment = "Amount in cents. Required when status = submitted"
+    default = 0
   }
 
   column "amount_raised_cents" {
@@ -131,12 +161,6 @@ table "needs" {
     null    = false
     default = "draft"
     comment = "draft, submitted, pending_review, approved, rejected, active, funded, closed"
-  }
-
-  column "verification_level" {
-    type    = text
-    null    = true
-    comment = "gold, silver, bronze - verification tiers"
   }
 
   column "verified_at" {

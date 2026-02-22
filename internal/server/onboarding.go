@@ -1,6 +1,13 @@
 package server
 
-import "net/http"
+import (
+	"christjesus/pkg/types"
+	"context"
+	"fmt"
+	"net/http"
+
+	"github.com/k0kubun/pp"
+)
 
 func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
 
@@ -12,6 +19,65 @@ func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
 		s.internalServerError(w)
 		return
 	}
+}
+
+type onboardingDirector struct {
+	Path string `form:"path"`
+}
+
+func (s *Service) handlePostOnboarding(w http.ResponseWriter, r *http.Request) {
+
+	var ctx = r.Context()
+
+	err := r.ParseForm()
+	if err != nil {
+		s.logger.WithError(err).Error("failed to parse form")
+		return
+	}
+
+	var onboarding = new(onboardingDirector)
+	err = decoder.Decode(onboarding, r.Form)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to decode form")
+		s.internalServerError(w)
+		return
+	}
+
+	switch onboarding.Path {
+	case "need":
+		s.handleCreateNeed(ctx, w, r)
+		return
+	}
+
+	err = s.templates.ExecuteTemplate(w, "page.onboarding", nil)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to render need welcome page")
+		s.internalServerError(w)
+		return
+	}
+}
+
+func (s *Service) handleCreateNeed(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("ctx doesn't contain user")
+		s.internalServerError(w)
+		return
+	}
+
+	need := &types.Need{
+		UserID: userID,
+	}
+
+	err = s.needsRepo.CreateNeed(ctx, need)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to create need in datastore")
+		s.internalServerError(w)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/welcome", need.ID), http.StatusSeeOther)
 }
 
 func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +185,26 @@ func (s *Service) handleGetOnboardingNeedConfirmation(w http.ResponseWriter, r *
 
 // POST handlers - temporary pass-through redirects
 func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/onboarding/need/categories", http.StatusSeeOther)
+
+	var _ = r.Context()
+
+	err := r.ParseForm()
+	if err != nil {
+		s.logger.WithError(err).Error("failed to parse form")
+		return
+	}
+
+	var location = new(types.NeedLocation)
+	err = decoder.Decode(location, r.Form)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to decode form onto location form")
+		s.internalServerError(w)
+		return
+	}
+
+	pp.Print(location)
+
+	// http.Redirect(w, r, "/onboarding/need/categories", http.StatusSeeOther)
 }
 
 func (s *Service) handlePostOnboardingNeedCategories(w http.ResponseWriter, r *http.Request) {

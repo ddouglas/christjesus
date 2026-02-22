@@ -23,10 +23,10 @@
     <form action="/onboarding/need/location" method="post" class="space-y-6 px-6">
       <div class="grid gap-4 md:grid-cols-2">
         <div>
-          <input type="text" name="addressLine1" placeholder="Street address" required
+          <input type="text" name="address" placeholder="Street address" required
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         </div>
-        <input type="text" name="addressLine2" placeholder="Apartment / Unit (optional)"
+        <input type="text" name="address_ext" placeholder="Apartment / Unit (optional)"
           class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         <div>
           <input type="text" name="city" placeholder="City (Charlotte)" required
@@ -37,7 +37,7 @@
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         </div>
         <div>
-          <input type="text" name="zipCode" placeholder="ZIP code" required
+          <input type="text" name="zip_code" placeholder="ZIP code" required
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         </div>
       </div>
@@ -46,15 +46,15 @@
         <p class="text-sm font-semibold text-foreground">What should we show publicly?</p>
         <div class="space-y-2 text-sm text-muted-foreground">
           <label class="flex items-center gap-2">
-            <input type="radio" name="privacyDisplay" value="neighborhood" class="h-4 w-4 border-border" checked />
+            <input type="radio" name="privacy_display" value="neighborhood" class="h-4 w-4 border-border" checked />
             Neighborhood only
           </label>
           <label class="flex items-center gap-2">
-            <input type="radio" name="privacyDisplay" value="zip" class="h-4 w-4 border-border" />
+            <input type="radio" name="privacy_display" value="zip" class="h-4 w-4 border-border" />
             ZIP code only
           </label>
           <label class="flex items-center gap-2">
-            <input type="radio" name="privacyDisplay" value="city" class="h-4 w-4 border-border" />
+            <input type="radio" name="privacy_display" value="city" class="h-4 w-4 border-border" />
             City only
           </label>
         </div>
@@ -65,22 +65,22 @@
           <p class="text-sm font-semibold text-foreground">Best way to reach you</p>
           <div class="space-y-2 text-sm text-muted-foreground">
             <label class="flex items-center gap-2">
-              <input type="checkbox" name="contactMethods" value="phone" class="h-4 w-4 rounded border-border" />
+              <input type="checkbox" name="contact_methods" value="phone" class="h-4 w-4 rounded border-border" />
               Phone call
             </label>
             <label class="flex items-center gap-2">
-              <input type="checkbox" name="contactMethods" value="text" class="h-4 w-4 rounded border-border" />
+              <input type="checkbox" name="contact_methods" value="text" class="h-4 w-4 rounded border-border" />
               Text message
             </label>
             <label class="flex items-center gap-2">
-              <input type="checkbox" name="contactMethods" value="email" class="h-4 w-4 rounded border-border" />
+              <input type="checkbox" name="contact_methods" value="email" class="h-4 w-4 rounded border-border" />
               Email
             </label>
           </div>
         </div>
         <div>
           <p class="text-sm font-semibold text-foreground">Preferred time</p>
-          <select name="contactTime"
+          <select name="preferred_contact_time"
             class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
             <option value="">Select time of day</option>
             <option value="morning">Morning</option>

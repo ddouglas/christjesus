@@ -47,7 +47,7 @@ func serve(cCtx *cli.Context) error {
 	}
 	defer pool.Close()
 
-	formsStore := store.NewFormsRepository(pool)
+	needsRepo := store.NewNeedRepository(pool)
 
 	jwkCache, err := jwk.NewCache(context.Background(), httprc.NewClient())
 	if err != nil {
@@ -65,7 +65,7 @@ func serve(cCtx *cli.Context) error {
 		config,
 		logger,
 		supabaseAuthClient,
-		formsStore,
+		needsRepo,
 		jwkCache,
 		supabaseJWKUrl,
 	)

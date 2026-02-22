@@ -23,3 +23,6 @@ migrate-plan:
 
 migrate:
 	cd migrations && atlas schema apply --env primary --auto-approve
+
+dev:
+	air 

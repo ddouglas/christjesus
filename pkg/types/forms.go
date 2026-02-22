@@ -17,22 +17,6 @@ type EmailSignup struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-type Need struct {
-	ID           string
-	Name         string
-	City         string
-	Neighborhood string
-	Category     string
-	Urgency      string
-	Verified     bool
-	Verification string // bronze, silver, gold
-	Description  string
-	RaisedCents  int64
-	GoalCents    int64
-	DonorsCount  int
-	ImageURL     string
-}
-
 type CategoryData struct {
 	Name  string
 	Slug  string

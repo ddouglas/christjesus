@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"christjesus/internal"
@@ -120,5 +121,25 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 
 		// Continue to the next handler with updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func (s *Service) StripTrailingSlash(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		// Only strip if path is not root and has trailing slash
+		if path != "/" && strings.HasSuffix(path, "/") {
+			// Build redirect URL
+			newPath := strings.TrimSuffix(path, "/")
+			newURL := *r.URL
+			newURL.Path = newPath
+
+			// Preserve query string
+			http.Redirect(w, r, newURL.String(), http.StatusMovedPermanently)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }

@@ -32,17 +32,17 @@ type NeedDetailPageData struct {
 func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
-	needs := sampleNeeds()
-	
+	_ = sampleNeeds()
+
 	data := HomePageData{
-		Title:        "",
-		Notice:       r.URL.Query().Get("notice"),
-		Error:        r.URL.Query().Get("error"),
-		FeaturedNeed: needs[0], // First need is featured
-		Needs:        needs[1:], // Rest are in the grid
-		Categories:   sampleCategories(),
-		Stats:        getStats(),
-		Steps:        getSteps(),
+		Title:  "",
+		Notice: r.URL.Query().Get("notice"),
+		Error:  r.URL.Query().Get("error"),
+		// FeaturedNeed: needs[0], // First need is featured
+		// Needs:        needs[1:], // Rest are in the grid
+		Categories: sampleCategories(),
+		Stats:      getStats(),
+		Steps:      getSteps(),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -109,8 +109,8 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := NeedDetailPageData{
-		Title: need.Name + " - Need Details",
-		Need:  need,
+		// Title: need.Name + " - Need Details",
+		Need: need,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -122,78 +122,7 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func sampleNeeds() []*types.Need {
-	return []*types.Need{
-		{
-			ID:           "need-001",
-			Name:         "Maria",
-			City:         "Charlotte, NC",
-			Neighborhood: "Uptown Charlotte",
-			Category:     "Health Condition",
-			Urgency:      "high",
-			Verified:     true,
-			Verification: "gold",
-			Description:  "Recovering from surgery and facing mounting bills while searching for stable work",
-			RaisedCents:  214000,
-			GoalCents:    320000,
-			DonorsCount:  24,
-		},
-		{
-			ID:           "need-002",
-			Name:         "James T.",
-			City:         "Charlotte, NC",
-			Neighborhood: "West Charlotte",
-			Category:     "Food",
-			Urgency:      "medium",
-			Verified:     true,
-			Verification: "silver",
-			Description:  "Elderly veteran needs groceries and meal support for three weeks while recovering from surgery",
-			RaisedCents:  45000,
-			GoalCents:    75000,
-			DonorsCount:  12,
-		},
-		{
-			ID:           "need-003",
-			Name:         "Sarah K.",
-			City:         "Charlotte, NC",
-			Neighborhood: "South Charlotte",
-			Category:     "Medical",
-			Urgency:      "high",
-			Verified:     true,
-			Verification: "gold",
-			Description:  "Medical bills assistance needed for unexpected emergency room visit and follow-up care",
-			RaisedCents:  80000,
-			GoalCents:    100600,
-			DonorsCount:  18,
-		},
-		{
-			ID:           "need-004",
-			Name:         "David M.",
-			City:         "Charlotte, NC",
-			Neighborhood: "North Charlotte",
-			Category:     "Utility & Basic Needs",
-			Urgency:      "medium",
-			Verified:     true,
-			Verification: "bronze",
-			Description:  "Family needs help with electricity bills and winter heating costs after job transition",
-			RaisedCents:  35000,
-			GoalCents:    60000,
-			DonorsCount:  8,
-		},
-		{
-			ID:           "need-005",
-			Name:         "Lisa R.",
-			City:         "Charlotte, NC",
-			Neighborhood: "University Area",
-			Category:     "Family & Children",
-			Urgency:      "high",
-			Verified:     true,
-			Verification: "silver",
-			Description:  "Single parent needs childcare assistance to maintain part-time employment",
-			RaisedCents:  80000,
-			GoalCents:    100000,
-			DonorsCount:  15,
-		},
-	}
+	return []*types.Need{}
 }
 
 func sampleCategories() []types.CategoryData {

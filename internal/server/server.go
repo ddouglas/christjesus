@@ -15,6 +15,7 @@ import (
 	"christjesus/pkg/types"
 
 	"github.com/alexedwards/flow"
+	"github.com/go-playground/form/v4"
 	"github.com/gorilla/securecookie"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/sirupsen/logrus"
@@ -23,11 +24,12 @@ import (
 
 //go:embed templates static
 var uiFS embed.FS
+var decoder = form.NewDecoder()
 
 type Service struct {
 	logger    *logrus.Logger
 	config    *types.Config
-	forms     *store.FormsRepository
+	needsRepo *store.NeedRepository
 	templates *template.Template
 
 	supauth supauth.Client
@@ -43,7 +45,7 @@ func New(
 	config *types.Config,
 	logger *logrus.Logger,
 	supauth supauth.Client,
-	forms *store.FormsRepository,
+	needsRepo *store.NeedRepository,
 	jwkCache *jwk.Cache,
 	jwksURL string,
 ) (*Service, error) {
@@ -55,7 +57,7 @@ func New(
 	s := &Service{
 		logger:    logger,
 		config:    config,
-		forms:     forms,
+		needsRepo: needsRepo,
 		supauth:   supauth,
 		cookie:    securecookie.New(hashKey, blockKey),
 		jwksCache: jwkCache,
@@ -90,6 +92,7 @@ func (s *Service) Stop(ctx context.Context) error {
 }
 
 func (s *Service) buildRouter(r *flow.Mux) {
+	r.Use(s.StripTrailingSlash)
 	r.Use(s.LoggingMiddleware)
 
 	r.HandleFunc("/", s.handleHome, http.MethodGet)
@@ -103,22 +106,22 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.Use(s.RequireAuth)
 
 		r.HandleFunc("/onboarding", s.handleGetOnboarding, http.MethodGet)
+		r.HandleFunc("/onboarding", s.handlePostOnboarding, http.MethodPost)
 
-		r.HandleFunc("/onboarding/need/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
-		r.HandleFunc("/onboarding/need/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
-		r.HandleFunc("/onboarding/need/location", s.handleGetOnboardingNeedLocation, http.MethodGet)
-		r.HandleFunc("/onboarding/need/location", s.handlePostOnboardingNeedLocation, http.MethodPost)
-		r.HandleFunc("/onboarding/need/categories", s.handleGetOnboardingNeedCategories, http.MethodGet)
-		r.HandleFunc("/onboarding/need/categories", s.handlePostOnboardingNeedCategories, http.MethodPost)
-		r.HandleFunc("/onboarding/need/details", s.handleGetOnboardingNeedDetails, http.MethodGet)
-		r.HandleFunc("/onboarding/need/details", s.handlePostOnboardingNeedDetails, http.MethodPost)
-		r.HandleFunc("/onboarding/need/story", s.handleGetOnboardingNeedStory, http.MethodGet)
-		r.HandleFunc("/onboarding/need/story", s.handlePostOnboardingNeedStory, http.MethodPost)
-		r.HandleFunc("/onboarding/need/documents", s.handleGetOnboardingNeedDocuments, http.MethodGet)
-		r.HandleFunc("/onboarding/need/documents", s.handlePostOnboardingNeedDocuments, http.MethodPost)
-		r.HandleFunc("/onboarding/need/review", s.handleGetOnboardingNeedReview, http.MethodGet)
-		r.HandleFunc("/onboarding/need/review", s.handlePostOnboardingNeedReview, http.MethodPost)
-		r.HandleFunc("/onboarding/need/confirmation", s.handleGetOnboardingNeedConfirmation, http.MethodGet)
+		r.HandleFunc("/onboarding/need/:needID/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
+		r.HandleFunc("/onboarding/need/:needID/location", s.handleGetOnboardingNeedLocation, http.MethodGet)
+		r.HandleFunc("/onboarding/need/:needID/location", s.handlePostOnboardingNeedLocation, http.MethodPost)
+		r.HandleFunc("/onboarding/need/:needID/categories", s.handleGetOnboardingNeedCategories, http.MethodGet)
+		r.HandleFunc("/onboarding/need/:needID/categories", s.handlePostOnboardingNeedCategories, http.MethodPost)
+		r.HandleFunc("/onboarding/need/:needID/details", s.handleGetOnboardingNeedDetails, http.MethodGet)
+		r.HandleFunc("/onboarding/need/:needID/details", s.handlePostOnboardingNeedDetails, http.MethodPost)
+		r.HandleFunc("/onboarding/need/:needID/story", s.handleGetOnboardingNeedStory, http.MethodGet)
+		r.HandleFunc("/onboarding/need/:needID/story", s.handlePostOnboardingNeedStory, http.MethodPost)
+		r.HandleFunc("/onboarding/need/:needID/documents", s.handleGetOnboardingNeedDocuments, http.MethodGet)
+		r.HandleFunc("/onboarding/need/:needID/documents", s.handlePostOnboardingNeedDocuments, http.MethodPost)
+		r.HandleFunc("/onboarding/need/:needID/review", s.handleGetOnboardingNeedReview, http.MethodGet)
+		r.HandleFunc("/onboarding/need/:needID/review", s.handlePostOnboardingNeedReview, http.MethodPost)
+		r.HandleFunc("/onboarding/need/:needID/confirmation", s.handleGetOnboardingNeedConfirmation, http.MethodGet)
 
 		// Donor onboarding flow
 		r.HandleFunc("/onboarding/donor/welcome", s.handleGetOnboardingDonorWelcome, http.MethodGet)
@@ -127,14 +130,14 @@ func (s *Service) buildRouter(r *flow.Mux) {
 	})
 
 	// Sponsor onboarding flow
-	r.HandleFunc("/register/sponsor", s.handleRegisterSponsor, http.MethodGet)
-	r.HandleFunc("/onboarding/sponsor/individual/welcome", s.handleGetOnboardingSponsorIndividualWelcome, http.MethodGet)
-	r.HandleFunc("/onboarding/sponsor/organization/welcome", s.handleGetOnboardingSponsorOrganizationWelcome, http.MethodGet)
+	// r.HandleFunc("/register/sponsor", s.handleRegisterSponsor, http.MethodGet)
+	// r.HandleFunc("/onboarding/sponsor/individual/welcome", s.handleGetOnboardingSponsorIndividualWelcome, http.MethodGet)
+	// r.HandleFunc("/onboarding/sponsor/organization/welcome", s.handleGetOnboardingSponsorOrganizationWelcome, http.MethodGet)
 
 	r.HandleFunc("/browse", s.handleBrowse, http.MethodGet)
 	r.HandleFunc("/need/:id", s.handleNeedDetail, http.MethodGet)
-	r.HandleFunc("/forms/prayer", s.handlePrayerRequestSubmit, http.MethodPost)
-	r.HandleFunc("/forms/signup", s.handleEmailSignupSubmit, http.MethodPost)
+	// r.HandleFunc("/forms/prayer", s.handlePrayerRequestSubmit, http.MethodPost)
+	// r.HandleFunc("/forms/signup", s.handleEmailSignupSubmit, http.MethodPost)
 	// r.HandleFunc("/healthz", s.handleHealth, http.MethodGet)
 
 	staticRoot, err := fs.Sub(uiFS, "static")
@@ -182,4 +185,12 @@ func loadTemplates() (*template.Template, error) {
 	}
 
 	return t, nil
+}
+
+func (s *Service) userIDFromContext(ctx context.Context) (string, error) {
+	userID, ok := ctx.Value(contextKeyUserID).(string)
+	if !ok {
+		return "", fmt.Errorf("user id not found in context")
+	}
+	return userID, nil
 }
