@@ -67,7 +67,9 @@ func (s *Service) handleCreateNeed(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	need := &types.Need{
-		UserID: userID,
+		UserID:      userID,
+		Status:      types.NeedStatusDraft,
+		CurrentStep: types.NeedStepWelcome,
 	}
 
 	err = s.needsRepo.CreateNeed(ctx, need)
@@ -81,9 +83,18 @@ func (s *Service) handleCreateNeed(ctx context.Context, w http.ResponseWriter, r
 }
 
 func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+	var ctx = r.Context()
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.welcome", nil)
+	needID := r.PathValue("needID")
+
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch need from datastore")
+		s.internalServerError(w)
+		return
+	}
+
+	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.welcome", need)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need welcome page")
 		s.internalServerError(w)
@@ -91,10 +102,36 @@ func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.
 	}
 }
 
-func (s *Service) handleGetOnboardingNeedLocation(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+func (s *Service) handlePostOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {
+	var ctx = r.Context()
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.location", nil)
+	needID := r.PathValue("needID")
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch need from datastore")
+		s.internalServerError(w)
+		return
+	}
+
+	s.recordNeedProgress(ctx, need.ID, types.NeedStepWelcome)
+	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/location", need.ID), http.StatusSeeOther)
+
+}
+
+func (s *Service) handleGetOnboardingNeedLocation(w http.ResponseWriter, r *http.Request) {
+	var ctx = r.Context()
+
+	needID := r.PathValue("needID")
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch need from datastore")
+		s.internalServerError(w)
+		return
+	}
+
+	pp.Print(need)
+
+	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.location", need)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need location page")
 		s.internalServerError(w)
@@ -102,25 +139,53 @@ func (s *Service) handleGetOnboardingNeedLocation(w http.ResponseWriter, r *http
 	}
 }
 
+func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *http.Request) {
+
+	var ctx = r.Context()
+
+	needID := r.PathValue("needID")
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch need from datastore")
+		s.internalServerError(w)
+		return
+	}
+
+	err = r.ParseForm()
+	if err != nil {
+		s.logger.WithError(err).Error("failed to parse form")
+		return
+	}
+
+	var location = new(types.NeedLocation)
+	err = decoder.Decode(location, r.Form)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to decode form onto location form")
+		s.internalServerError(w)
+		return
+	}
+
+	need.CurrentStep = types.NeedStepLocation
+	need.NeedLocation = location
+
+	pp.Print(need)
+
+	err = s.needsRepo.UpdateNeed(ctx, needID, need)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to update need with location data")
+		s.internalServerError(w)
+		return
+	}
+
+	s.recordNeedProgress(ctx, need.ID, types.NeedStepLocation)
+
+	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/categories", need.ID), http.StatusSeeOther)
+}
+
 func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
-	data := struct {
-		Title      string
-		Categories []any
-	}{
-		Title: "Foobar",
-		Categories: func() []any {
-			cats := sampleCategories()
-			result := make([]any, len(cats))
-			for i, c := range cats {
-				result[i] = c
-			}
-			return result
-		}(),
-	}
-
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.categories", data)
+	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.categories", nil)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need categories page")
 		s.internalServerError(w)
@@ -181,30 +246,6 @@ func (s *Service) handleGetOnboardingNeedConfirmation(w http.ResponseWriter, r *
 		s.internalServerError(w)
 		return
 	}
-}
-
-// POST handlers - temporary pass-through redirects
-func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *http.Request) {
-
-	var _ = r.Context()
-
-	err := r.ParseForm()
-	if err != nil {
-		s.logger.WithError(err).Error("failed to parse form")
-		return
-	}
-
-	var location = new(types.NeedLocation)
-	err = decoder.Decode(location, r.Form)
-	if err != nil {
-		s.logger.WithError(err).Error("failed to decode form onto location form")
-		s.internalServerError(w)
-		return
-	}
-
-	pp.Print(location)
-
-	// http.Redirect(w, r, "/onboarding/need/categories", http.StatusSeeOther)
 }
 
 func (s *Service) handlePostOnboardingNeedCategories(w http.ResponseWriter, r *http.Request) {
@@ -270,24 +311,34 @@ func (s *Service) handlePostOnboardingDonorPreferences(w http.ResponseWriter, r 
 }
 
 // Sponsor onboarding handlers (placeholders)
-func (s *Service) handleGetOnboardingSponsorIndividualWelcome(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+// func (s *Service) handleGetOnboardingSponsorIndividualWelcome(w http.ResponseWriter, r *http.Request) {
+// 	var _ = r.Context()
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.sponsor.individual.welcome", nil)
+// 	err := s.templates.ExecuteTemplate(w, "page.onboarding.sponsor.individual.welcome", nil)
+// 	if err != nil {
+// 		s.logger.WithError(err).Error("failed to render sponsor individual welcome page")
+// 		s.internalServerError(w)
+// 		return
+// 	}
+// }
+
+// func (s *Service) handleGetOnboardingSponsorOrganizationWelcome(w http.ResponseWriter, r *http.Request) {
+// 	var _ = r.Context()
+
+// 	err := s.templates.ExecuteTemplate(w, "page.onboarding.sponsor.organization.welcome", nil)
+// 	if err != nil {
+// 		s.logger.WithError(err).Error("failed to render sponsor organization welcome page")
+// 		s.internalServerError(w)
+// 		return
+// 	}
+// }
+
+func (s *Service) recordNeedProgress(ctx context.Context, needID string, step types.NeedStep) {
+	err := s.progressRepo.RecordStepCompletion(ctx, needID, step)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to render sponsor individual welcome page")
-		s.internalServerError(w)
-		return
-	}
-}
-
-func (s *Service) handleGetOnboardingSponsorOrganizationWelcome(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
-
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.sponsor.organization.welcome", nil)
-	if err != nil {
-		s.logger.WithError(err).Error("failed to render sponsor organization welcome page")
-		s.internalServerError(w)
-		return
+		s.logger.WithError(err).
+			WithField("need_id", needID).
+			WithField("step", step).
+			Warn("failed to record progress event")
 	}
 }

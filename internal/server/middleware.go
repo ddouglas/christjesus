@@ -57,7 +57,7 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 
 			s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
 
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 

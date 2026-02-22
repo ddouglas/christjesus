@@ -27,10 +27,11 @@ var uiFS embed.FS
 var decoder = form.NewDecoder()
 
 type Service struct {
-	logger    *logrus.Logger
-	config    *types.Config
-	needsRepo *store.NeedRepository
-	templates *template.Template
+	logger       *logrus.Logger
+	config       *types.Config
+	needsRepo    *store.NeedRepository
+	progressRepo *store.NeedProgressRepository
+	templates    *template.Template
 
 	supauth supauth.Client
 	cookie  *securecookie.SecureCookie
@@ -46,6 +47,7 @@ func New(
 	logger *logrus.Logger,
 	supauth supauth.Client,
 	needsRepo *store.NeedRepository,
+	progressRepo *store.NeedProgressRepository,
 	jwkCache *jwk.Cache,
 	jwksURL string,
 ) (*Service, error) {
@@ -55,11 +57,14 @@ func New(
 	blockKey, _ := base64.StdEncoding.DecodeString(config.CookieBlockKey)
 
 	s := &Service{
-		logger:    logger,
-		config:    config,
-		needsRepo: needsRepo,
-		supauth:   supauth,
-		cookie:    securecookie.New(hashKey, blockKey),
+		logger:  logger,
+		config:  config,
+		supauth: supauth,
+		cookie:  securecookie.New(hashKey, blockKey),
+
+		needsRepo:    needsRepo,
+		progressRepo: progressRepo,
+
 		jwksCache: jwkCache,
 		jwksURL:   jwksURL,
 		server: &http.Server{
@@ -109,6 +114,7 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc("/onboarding", s.handlePostOnboarding, http.MethodPost)
 
 		r.HandleFunc("/onboarding/need/:needID/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
+		r.HandleFunc("/onboarding/need/:needID/welcome", s.handlePostOnboardingNeedWelcome, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/location", s.handleGetOnboardingNeedLocation, http.MethodGet)
 		r.HandleFunc("/onboarding/need/:needID/location", s.handlePostOnboardingNeedLocation, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/categories", s.handleGetOnboardingNeedCategories, http.MethodGet)
@@ -157,6 +163,18 @@ func loadTemplates() (*template.Template, error) {
 		},
 		"mul": func(a, b int64) int64 {
 			return a * b
+		},
+		"deref": func(s *string) string {
+			if s == nil {
+				return ""
+			}
+			return *s
+		},
+		"derefOr": func(s *string, defaultVal string) string {
+			if s == nil {
+				return defaultVal
+			}
+			return *s
 		},
 	}
 

@@ -9,3 +9,4 @@ env "primary" {
 data "hcl_schema" "app" {
   paths = fileset("*.pg.hcl")
 }
+

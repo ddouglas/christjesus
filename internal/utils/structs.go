@@ -23,18 +23,42 @@ func StructTagValues(input any) []string {
 	result := make([]string, 0, targetValue.NumField())
 
 	for i := 0; i < targetValue.NumField(); i++ {
+		field := targetType.Field(i)
+		fieldValue := targetValue.Field(i)
 
-		if targetType.Field(i).PkgPath != "" {
+		// Skip unexported fields
+		if field.PkgPath != "" {
 			continue
 		}
 
-		tagValue := targetType.Field(i).Tag.Get(ColumnTag)
+		// Handle embedded structs (Anonymous fields)
+		if field.Anonymous {
+			// Dereference pointer if needed
+			embeddedValue := fieldValue
+			if embeddedValue.Kind() == reflect.Ptr {
+				if embeddedValue.IsNil() {
+					// For tag extraction, we need the type even if nil
+					embeddedValue = reflect.New(field.Type.Elem()).Elem()
+				} else {
+					embeddedValue = embeddedValue.Elem()
+				}
+			}
+
+			// Recursively get tags from embedded struct
+			if embeddedValue.Kind() == reflect.Struct {
+				embeddedTags := StructTagValues(embeddedValue.Interface())
+				result = append(result, embeddedTags...)
+			}
+			continue
+		}
+
+		// Handle regular fields with db tags
+		tagValue := field.Tag.Get(ColumnTag)
 		if tagValue == "" || tagValue == "-" {
 			continue
 		}
 
 		result = append(result, tagValue)
-
 	}
 
 	return result
@@ -57,18 +81,42 @@ func StructToMap(input any) map[string]any {
 	itemType := itemValue.Type()
 
 	for i := 0; i < itemValue.NumField(); i++ {
+		field := itemType.Field(i)
+		fieldValue := itemValue.Field(i)
 
-		if itemType.Field(i).PkgPath != "" {
+		// Skip unexported fields
+		if field.PkgPath != "" {
 			continue
 		}
 
-		tagValue := itemType.Field(i).Tag.Get(ColumnTag)
+		// Handle embedded structs (Anonymous fields)
+		if field.Anonymous {
+			// Dereference pointer if needed
+			embeddedValue := fieldValue
+			if embeddedValue.Kind() == reflect.Ptr {
+				if embeddedValue.IsNil() {
+					continue // Skip nil embedded pointers
+				}
+				embeddedValue = embeddedValue.Elem()
+			}
+
+			// Recursively flatten embedded struct fields
+			if embeddedValue.Kind() == reflect.Struct {
+				embeddedMap := StructToMap(embeddedValue.Interface())
+				for k, v := range embeddedMap {
+					result[k] = v
+				}
+			}
+			continue
+		}
+
+		// Handle regular fields with db tags
+		tagValue := field.Tag.Get(ColumnTag)
 		if tagValue == "" || tagValue == "-" {
 			continue
 		}
 
-		result[tagValue] = itemValue.Field(i).Interface()
-
+		result[tagValue] = fieldValue.Interface()
 	}
 
 	return result

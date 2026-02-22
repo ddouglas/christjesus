@@ -20,24 +20,24 @@
   </div>
 
   <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
-    <form action="/onboarding/need/location" method="post" class="space-y-6 px-6">
+    <form id="location-form" action="/onboarding/need/{{.ID}}/location" method="post" class="space-y-6 px-6">
       <div class="grid gap-4 md:grid-cols-2">
         <div>
-          <input type="text" name="address" placeholder="Street address" required
+          <input type="text" name="address" placeholder="Street address" value="{{deref .Address}}" required
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         </div>
-        <input type="text" name="address_ext" placeholder="Apartment / Unit (optional)"
+        <input type="text" name="address_ext" placeholder="Apartment / Unit (optional)" value="{{deref .AddressExt}}"
           class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         <div>
-          <input type="text" name="city" placeholder="City (Charlotte)" required
+          <input type="text" name="city" placeholder="City (Charlotte)" value="{{deref .City}}" required
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         </div>
         <div>
-          <input type="text" name="state" placeholder="State (NC)" required
+          <input type="text" name="state" placeholder="State (NC)" value="{{deref .State}}" required
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         </div>
         <div>
-          <input type="text" name="zip_code" placeholder="ZIP code" required
+          <input type="text" name="zip_code" placeholder="ZIP code" value="{{deref .ZipCode}}" required
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         </div>
       </div>
@@ -46,15 +46,15 @@
         <p class="text-sm font-semibold text-foreground">What should we show publicly?</p>
         <div class="space-y-2 text-sm text-muted-foreground">
           <label class="flex items-center gap-2">
-            <input type="radio" name="privacy_display" value="neighborhood" class="h-4 w-4 border-border" checked />
+            <input type="radio" name="privacy_display" value="neighborhood" {{if eq (derefOr .PrivacyDisplay "neighborhood") "neighborhood"}}checked{{end}} class="h-4 w-4 border-border" />
             Neighborhood only
           </label>
           <label class="flex items-center gap-2">
-            <input type="radio" name="privacy_display" value="zip" class="h-4 w-4 border-border" />
+            <input type="radio" name="privacy_display" value="zip" {{if eq (derefOr .PrivacyDisplay "neighborhood") "zip"}}checked{{end}} class="h-4 w-4 border-border" />
             ZIP code only
           </label>
           <label class="flex items-center gap-2">
-            <input type="radio" name="privacy_display" value="city" class="h-4 w-4 border-border" />
+            <input type="radio" name="privacy_display" value="city" {{if eq (derefOr .PrivacyDisplay "neighborhood") "city"}}checked{{end}} class="h-4 w-4 border-border" />
             City only
           </label>
         </div>
@@ -65,15 +65,15 @@
           <p class="text-sm font-semibold text-foreground">Best way to reach you</p>
           <div class="space-y-2 text-sm text-muted-foreground">
             <label class="flex items-center gap-2">
-              <input type="checkbox" name="contact_methods" value="phone" class="h-4 w-4 rounded border-border" />
+              <input type="checkbox" name="contact_methods" value="phone" {{range .ContactMethods}}{{if eq . "phone"}}checked{{end}}{{end}} class="h-4 w-4 rounded border-border" />
               Phone call
             </label>
             <label class="flex items-center gap-2">
-              <input type="checkbox" name="contact_methods" value="text" class="h-4 w-4 rounded border-border" />
+              <input type="checkbox" name="contact_methods" value="text" {{range .ContactMethods}}{{if eq . "text"}}checked{{end}}{{end}} class="h-4 w-4 rounded border-border" />
               Text message
             </label>
             <label class="flex items-center gap-2">
-              <input type="checkbox" name="contact_methods" value="email" class="h-4 w-4 rounded border-border" />
+              <input type="checkbox" name="contact_methods" value="email" {{range .ContactMethods}}{{if eq . "email"}}checked{{end}}{{end}} class="h-4 w-4 rounded border-border" />
               Email
             </label>
           </div>
@@ -83,10 +83,10 @@
           <select name="preferred_contact_time"
             class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
             <option value="">Select time of day</option>
-            <option value="morning">Morning</option>
-            <option value="afternoon">Afternoon</option>
-            <option value="evening">Evening</option>
-            <option value="anytime">Anytime</option>
+            <option value="morning" {{if eq (deref .PreferredContactTime) "morning"}}selected{{end}}>Morning</option>
+            <option value="afternoon" {{if eq (deref .PreferredContactTime) "afternoon"}}selected{{end}}>Afternoon</option>
+            <option value="evening" {{if eq (deref .PreferredContactTime) "evening"}}selected{{end}}>Evening</option>
+            <option value="anytime" {{if eq (deref .PreferredContactTime) "anytime"}}selected{{end}}>Anytime</option>
           </select>
         </div>
       </div>
@@ -94,11 +94,11 @@
   </div>
 
   <div class="mt-6 flex items-center justify-between">
-    <a href="/onboarding/need/welcome"
+    <a href="/onboarding/need/{{.ID}}/welcome"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
       Back
     </a>
-    <button type="submit" form="location-form" onclick="document.querySelector('form').submit()"
+    <button type="submit" form="location-form"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
       Continue
     </button>
