@@ -48,7 +48,6 @@ type Need struct {
 	AmountNeededCents int        `db:"amount_needed_cents"`
 	AmountRaisedCents int        `db:"amount_raised_cents"`
 	ShortDescription  *string    `db:"short_description"`
-	Story             *string    `db:"story"`
 	Status            NeedStatus `db:"status"`
 	VerifiedAt        *time.Time `db:"verified_at"`
 	VerifiedBy        *string    `db:"verified_by"`

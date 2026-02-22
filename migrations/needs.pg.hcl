@@ -89,13 +89,6 @@ table "needs" {
     comment = "Required when status = submitted"
   }
 
-  # Story (Step 5)
-  column "story" {
-    type    = text
-    null    = true
-    comment = "Required when status = submitted"
-  }
-
   # Status tracking
   column "status" {
     type    = text
@@ -120,7 +113,7 @@ table "needs" {
     type    = text
     null    = false
     default = "welcome"
-    comment = "Tracks onboarding progress: welcome, location, categories, details, story, documents, review"
+    comment = "Tracks onboarding progress: welcome, location, categories, story, documents, review"
   }
 
   # Visibility

@@ -321,21 +321,56 @@ func (s *Service) handlePostOnboardingNeedCategories(w http.ResponseWriter, r *h
 	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/story", need.ID), http.StatusSeeOther)
 }
 
-func (s *Service) handleGetOnboardingNeedDetails(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+func (s *Service) handleGetOnboardingNeedStory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	needID := r.PathValue("needID")
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.details", nil)
+	// Get the need
+	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to render need details page")
+		s.logger.WithError(err).Error("failed to fetch need")
 		s.internalServerError(w)
 		return
 	}
-}
 
-func (s *Service) handleGetOnboardingNeedStory(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+	// Get all assignments and find primary
+	var primaryCategory *types.NeedCategory
+	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch category assignments")
+		s.internalServerError(w)
+		return
+	}
+	
+	for _, assignment := range assignments {
+		if assignment.IsPrimary {
+			primaryCategory, err = s.categoryRepo.CategoryByID(ctx, assignment.CategoryID)
+			if err != nil {
+				s.logger.WithError(err).Error("failed to fetch primary category")
+				s.internalServerError(w)
+				return
+			}
+			break
+		}
+	}
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.story", nil)
+	// Get story (may be nil if not yet created)
+	story, err := s.storyRepo.GetStoryByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch story")
+		s.internalServerError(w)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title":             "Share Your Story",
+		"ID":                needID,
+		"AmountNeededCents": need.AmountNeededCents,
+		"PrimaryCategory":   primaryCategory,
+		"Story":             story,
+	}
+
+	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.story", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need story page")
 		s.internalServerError(w)
@@ -376,12 +411,73 @@ func (s *Service) handleGetOnboardingNeedConfirmation(w http.ResponseWriter, r *
 	}
 }
 
-func (s *Service) handlePostOnboardingNeedDetails(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/onboarding/need/story", http.StatusSeeOther)
-}
-
 func (s *Service) handlePostOnboardingNeedStory(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/onboarding/need/documents", http.StatusSeeOther)
+	ctx := r.Context()
+	needID := r.PathValue("needID")
+
+	// Parse form
+	if err := r.ParseForm(); err != nil {
+		s.logger.WithError(err).Error("failed to parse form")
+		s.internalServerError(w)
+		return
+	}
+
+	// Get the need
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch need")
+		s.internalServerError(w)
+		return
+	}
+
+	// Decode story data
+	story := &types.NeedStory{
+		NeedID: needID,
+	}
+	if err := decoder.Decode(story, r.Form); err != nil {
+		s.logger.WithError(err).Error("failed to decode story form")
+		s.internalServerError(w)
+		return
+	}
+
+	// Parse and convert amount from whole dollars to cents
+	amountStr := r.FormValue("amount")
+	if amountStr != "" {
+		var amountDollars int
+		if _, err := fmt.Sscanf(amountStr, "%d", &amountDollars); err == nil {
+			need.AmountNeededCents = amountDollars * 100
+		}
+	}
+
+	// Update need with amount
+	err = s.needsRepo.UpdateNeed(ctx, need.ID, need)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to update need with amount")
+		s.internalServerError(w)
+		return
+	}
+
+	// Upsert story
+	err = s.storyRepo.UpsertStory(ctx, story)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to upsert story")
+		s.internalServerError(w)
+		return
+	}
+
+	// Update current step
+	need.CurrentStep = types.NeedStepStory
+	err = s.needsRepo.UpdateNeed(ctx, need.ID, need)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to update need step")
+		s.internalServerError(w)
+		return
+	}
+
+	// Record progress
+	s.recordNeedProgress(ctx, need.ID, types.NeedStepStory)
+
+	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/documents", need.ID), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostOnboardingNeedDocuments(w http.ResponseWriter, r *http.Request) {

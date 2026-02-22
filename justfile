@@ -10,7 +10,7 @@ serve:
 	go run ./cmd/christjesus serve
 
 build:
-	go build -o ./bin/christjesus ./cmd/christjesus
+	go build -o ./.bin/christjesus ./cmd/christjesus
 
 test:
 	go test ./...

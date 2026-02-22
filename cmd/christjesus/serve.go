@@ -51,6 +51,7 @@ func serve(cCtx *cli.Context) error {
 	progressRepo := store.NewNeedProgressRepository(pool)
 	categoryRepo := store.NewCategoryRepository(pool)
 	needCategoryAssignmentsRepo := store.NewAssignmentRepository(pool)
+	storyRepo := store.NewStoryRepository(pool)
 
 	jwkCache, err := jwk.NewCache(context.Background(), httprc.NewClient())
 	if err != nil {
@@ -72,6 +73,7 @@ func serve(cCtx *cli.Context) error {
 		progressRepo,
 		categoryRepo,
 		needCategoryAssignmentsRepo,
+		storyRepo,
 		jwkCache,
 		supabaseJWKUrl,
 	)

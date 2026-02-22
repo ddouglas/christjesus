@@ -33,6 +33,7 @@ type Service struct {
 	progressRepo                *store.NeedProgressRepository
 	categoryRepo                *store.CategoryRepository
 	needCategoryAssignmentsRepo *store.AssignmentRepository
+	storyRepo                   *store.StoryRepository
 
 	supauth supauth.Client
 	cookie  *securecookie.SecureCookie
@@ -52,6 +53,7 @@ func New(
 	progressRepo *store.NeedProgressRepository,
 	categoryRepo *store.CategoryRepository,
 	needCategoryAssignmentsRepo *store.AssignmentRepository,
+	storyRepo *store.StoryRepository,
 	jwkCache *jwk.Cache,
 	jwksURL string,
 ) (*Service, error) {
@@ -68,6 +70,7 @@ func New(
 
 		needsRepo:                   needsRepo,
 		progressRepo:                progressRepo,
+		storyRepo:                   storyRepo,
 		categoryRepo:                categoryRepo,
 		needCategoryAssignmentsRepo: needCategoryAssignmentsRepo,
 
