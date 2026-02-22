@@ -24,5 +24,8 @@ migrate-plan:
 migrate:
 	cd migrations && atlas schema apply --env primary --auto-approve
 
+seed:
+	go run ./cmd/christjesus seed
+
 dev:
 	air 

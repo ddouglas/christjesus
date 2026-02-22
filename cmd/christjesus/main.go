@@ -21,6 +21,8 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			serveCommand,
+			seedCommand,
+			nanoidCommand,
 		},
 	}
 

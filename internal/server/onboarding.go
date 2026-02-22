@@ -183,9 +183,27 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 }
 
 func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+	ctx := r.Context()
+	needID := r.PathValue("needID")
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.categories", nil)
+	categories, err := s.categoryRepo.AllCategories(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to load categories from database")
+		s.internalServerError(w)
+		return
+	}
+
+	if len(categories) == 0 {
+		s.logger.Warn("no categories found in database - run 'just seed' to populate categories")
+	}
+
+	data := map[string]interface{}{
+		"Title":      "Select Categories",
+		"ID":         needID,
+		"Categories": categories,
+	}
+
+	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.categories", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need categories page")
 		s.internalServerError(w)

@@ -31,6 +31,7 @@ type Service struct {
 	config       *types.Config
 	needsRepo    *store.NeedRepository
 	progressRepo *store.NeedProgressRepository
+	categoryRepo *store.CategoryRepository
 	templates    *template.Template
 
 	supauth supauth.Client
@@ -48,6 +49,7 @@ func New(
 	supauth supauth.Client,
 	needsRepo *store.NeedRepository,
 	progressRepo *store.NeedProgressRepository,
+	categoryRepo *store.CategoryRepository,
 	jwkCache *jwk.Cache,
 	jwksURL string,
 ) (*Service, error) {
@@ -64,6 +66,7 @@ func New(
 
 		needsRepo:    needsRepo,
 		progressRepo: progressRepo,
+		categoryRepo: categoryRepo,
 
 		jwksCache: jwkCache,
 		jwksURL:   jwksURL,
