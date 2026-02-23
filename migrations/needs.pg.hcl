@@ -64,11 +64,11 @@ table "needs" {
   }
 
   # Details (Step 4)
-  column "title" {
-    type    = text
-    null    = true
-    comment = "Required when status = submitted"
-  }
+  # column "title" {
+  #   type    = text
+  #   null    = true
+  #   comment = "Required when status = submitted"
+  # }
 
   column "amount_needed_cents" {
     type    = integer

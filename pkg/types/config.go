@@ -12,6 +12,9 @@ type Config struct {
 	SupabaseAPIKey    string `envconfig:"SUPABASE_API_KEY"`
 	// SupabaseJWTSecret string `envconfig:"SUPABASE_JWT_SECRET"`
 
+	// Supabase Storage
+	StorageBucketName string `envconfig:"STORAGE_BUCKET_NAME" default:"need-documents"`
+
 	// Auth Configuration
 	CookieName       string `envconfig:"SESSION_COOKIE_NAME" default:"session_id"`
 	SessionMaxAgeSec int    `envconfig:"SESSION_MAX_AGE_SEC" default:"604800"` // 7 days

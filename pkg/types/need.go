@@ -44,7 +44,6 @@ type Need struct {
 
 	*NeedLocation
 
-	Title             *string    `db:"title"`
 	AmountNeededCents int        `db:"amount_needed_cents"`
 	AmountRaisedCents int        `db:"amount_raised_cents"`
 	ShortDescription  *string    `db:"short_description"`

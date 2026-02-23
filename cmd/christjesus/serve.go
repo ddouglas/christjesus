@@ -12,6 +12,7 @@ import (
 
 	"christjesus/internal/db"
 	"christjesus/internal/server"
+	"christjesus/internal/storage"
 	"christjesus/internal/store"
 
 	"github.com/lestrrat-go/httprc/v3"
@@ -52,6 +53,14 @@ func serve(cCtx *cli.Context) error {
 	categoryRepo := store.NewCategoryRepository(pool)
 	needCategoryAssignmentsRepo := store.NewAssignmentRepository(pool)
 	storyRepo := store.NewStoryRepository(pool)
+	documentRepo := store.NewDocumentRepository(pool)
+
+	// Initialize storage client
+	storageClient := storage.NewSupabaseStorage(
+		config.SupabaseProjectID,
+		config.SupabaseAPIKey,
+		config.StorageBucketName,
+	)
 
 	jwkCache, err := jwk.NewCache(context.Background(), httprc.NewClient())
 	if err != nil {
@@ -74,6 +83,8 @@ func serve(cCtx *cli.Context) error {
 		categoryRepo,
 		needCategoryAssignmentsRepo,
 		storyRepo,
+		documentRepo,
+		storageClient,
 		jwkCache,
 		supabaseJWKUrl,
 	)

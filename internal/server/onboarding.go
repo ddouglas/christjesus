@@ -1,10 +1,12 @@
 package server
 
 import (
+	"christjesus/internal/utils"
 	"christjesus/pkg/types"
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/k0kubun/pp"
 )
@@ -379,9 +381,24 @@ func (s *Service) handleGetOnboardingNeedStory(w http.ResponseWriter, r *http.Re
 }
 
 func (s *Service) handleGetOnboardingNeedDocuments(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+	ctx := r.Context()
+	needID := r.PathValue("needID")
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.documents", nil)
+	// Get existing documents
+	documents, err := s.documentRepo.GetDocumentsByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch documents")
+		s.internalServerError(w)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title":     "Upload Documents",
+		"ID":        needID,
+		"Documents": documents,
+	}
+
+	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.documents", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need documents page")
 		s.internalServerError(w)
@@ -481,7 +498,111 @@ func (s *Service) handlePostOnboardingNeedStory(w http.ResponseWriter, r *http.R
 }
 
 func (s *Service) handlePostOnboardingNeedDocuments(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/onboarding/need/review", http.StatusSeeOther)
+	ctx := r.Context()
+	needID := r.PathValue("needID")
+	userID := ctx.Value(contextKeyUserID).(string)
+
+	// Parse multipart form (10MB max per file)
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to parse multipart form")
+		s.internalServerError(w)
+		return
+	}
+
+	// Check if user wants to skip documents
+	if r.FormValue("skipDocuments") == "on" {
+		// Update current step and redirect to review
+		need, err := s.needsRepo.Need(ctx, needID)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to fetch need")
+			s.internalServerError(w)
+			return
+		}
+
+		need.CurrentStep = types.NeedStepDocuments
+		err = s.needsRepo.UpdateNeed(ctx, need.ID, need)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to update need step")
+			s.internalServerError(w)
+			return
+		}
+
+		s.recordNeedProgress(ctx, need.ID, types.NeedStepDocuments)
+		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/review", needID), http.StatusSeeOther)
+		return
+	}
+
+	// Get uploaded files
+	files := r.MultipartForm.File["documents"]
+	if len(files) == 0 {
+		// No files uploaded and not skipping - just continue
+		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/review", needID), http.StatusSeeOther)
+		return
+	}
+
+	// Process each file
+	for _, fileHeader := range files {
+		file, err := fileHeader.Open()
+		if err != nil {
+			s.logger.WithError(err).Error("failed to open uploaded file")
+			continue
+		}
+		defer file.Close()
+
+		// Generate unique storage key: needs/{needID}/{docID}-{filename}
+		docID := utils.NanoID()
+		storageKey := fmt.Sprintf("needs/%s/%s-%s", needID, docID, fileHeader.Filename)
+
+		// Upload to Supabase Storage
+		_, err = s.storageClient.UploadFile(ctx, storageKey, file, fileHeader.Header.Get("Content-Type"))
+		if err != nil {
+			s.logger.WithError(err).Error("failed to upload file to storage")
+			continue
+		}
+
+		// Create document record
+		doc := &types.NeedDocument{
+			ID:            docID,
+			NeedID:        needID,
+			UserID:        userID,
+			DocumentType:  types.DocTypeOther, // Could be enhanced to detect type from filename/form
+			FileName:      fileHeader.Filename,
+			FileSizeBytes: int(fileHeader.Size),
+			MimeType:      fileHeader.Header.Get("Content-Type"),
+			StorageKey:    storageKey,
+			UploadedAt:    time.Now(),
+		}
+
+		err = s.documentRepo.CreateDocument(ctx, doc)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to create document record")
+			// Try to clean up storage file
+			_ = s.storageClient.DeleteFile(ctx, storageKey)
+			continue
+		}
+	}
+
+	// Update current step
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch need")
+		s.internalServerError(w)
+		return
+	}
+
+	need.CurrentStep = types.NeedStepDocuments
+	err = s.needsRepo.UpdateNeed(ctx, need.ID, need)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to update need step")
+		s.internalServerError(w)
+		return
+	}
+
+	// Record progress
+	s.recordNeedProgress(ctx, need.ID, types.NeedStepDocuments)
+
+	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/review", needID), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostOnboardingNeedReview(w http.ResponseWriter, r *http.Request) {

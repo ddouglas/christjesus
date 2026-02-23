@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"christjesus/internal/storage"
 	"christjesus/internal/store"
 	"christjesus/pkg/types"
 
@@ -34,6 +35,8 @@ type Service struct {
 	categoryRepo                *store.CategoryRepository
 	needCategoryAssignmentsRepo *store.AssignmentRepository
 	storyRepo                   *store.StoryRepository
+	documentRepo                *store.DocumentRepository
+	storageClient               *storage.SupabaseStorage
 
 	supauth supauth.Client
 	cookie  *securecookie.SecureCookie
@@ -54,6 +57,8 @@ func New(
 	categoryRepo *store.CategoryRepository,
 	needCategoryAssignmentsRepo *store.AssignmentRepository,
 	storyRepo *store.StoryRepository,
+	documentRepo *store.DocumentRepository,
+	storageClient *storage.SupabaseStorage,
 	jwkCache *jwk.Cache,
 	jwksURL string,
 ) (*Service, error) {
@@ -73,6 +78,8 @@ func New(
 		storyRepo:                   storyRepo,
 		categoryRepo:                categoryRepo,
 		needCategoryAssignmentsRepo: needCategoryAssignmentsRepo,
+		documentRepo:                documentRepo,
+		storageClient:               storageClient,
 
 		jwksCache: jwkCache,
 		jwksURL:   jwksURL,
