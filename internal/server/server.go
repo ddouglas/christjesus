@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"christjesus/internal/storage"
 	"christjesus/internal/store"
 	"christjesus/pkg/types"
 
 	"github.com/alexedwards/flow"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-playground/form/v4"
 	"github.com/gorilla/securecookie"
 	"github.com/lestrrat-go/jwx/v3/jwk"
@@ -28,19 +28,20 @@ var uiFS embed.FS
 var decoder = form.NewDecoder()
 
 type Service struct {
-	logger                      *logrus.Logger
-	config                      *types.Config
+	config *types.Config
+	logger *logrus.Logger
+
+	cognitoClient *cognitoidentityprovider.Client
+	s3Client      *s3.Client
+
 	needsRepo                   *store.NeedRepository
 	progressRepo                *store.NeedProgressRepository
 	categoryRepo                *store.CategoryRepository
 	needCategoryAssignmentsRepo *store.AssignmentRepository
 	storyRepo                   *store.StoryRepository
 	documentRepo                *store.DocumentRepository
-	storageClient               *storage.SupabaseStorage
 
-	cognitoClient *cognitoidentityprovider.Client
-	cookie        *securecookie.SecureCookie
-
+	cookie    *securecookie.SecureCookie
 	jwksCache *jwk.Cache
 	jwksURL   string
 
@@ -51,14 +52,17 @@ type Service struct {
 func New(
 	config *types.Config,
 	logger *logrus.Logger,
+
 	cognitoClient *cognitoidentityprovider.Client,
+	s3Client *s3.Client,
+
 	needsRepo *store.NeedRepository,
 	progressRepo *store.NeedProgressRepository,
 	categoryRepo *store.CategoryRepository,
 	needCategoryAssignmentsRepo *store.AssignmentRepository,
 	storyRepo *store.StoryRepository,
 	documentRepo *store.DocumentRepository,
-	storageClient *storage.SupabaseStorage,
+
 	jwkCache *jwk.Cache,
 	jwksURL string,
 ) (*Service, error) {
@@ -68,10 +72,11 @@ func New(
 	blockKey, _ := base64.StdEncoding.DecodeString(config.CookieBlockKey)
 
 	s := &Service{
-		logger:        logger,
-		config:        config,
+		config: config,
+		logger: logger,
+
 		cognitoClient: cognitoClient,
-		cookie:        securecookie.New(hashKey, blockKey),
+		s3Client:      s3Client,
 
 		needsRepo:                   needsRepo,
 		progressRepo:                progressRepo,
@@ -79,10 +84,11 @@ func New(
 		categoryRepo:                categoryRepo,
 		needCategoryAssignmentsRepo: needCategoryAssignmentsRepo,
 		documentRepo:                documentRepo,
-		storageClient:               storageClient,
 
+		cookie:    securecookie.New(hashKey, blockKey),
 		jwksCache: jwkCache,
 		jwksURL:   jwksURL,
+
 		server: &http.Server{
 			Addr:              fmt.Sprintf(":%d", config.ServerPort),
 			Handler:           mux,
@@ -140,7 +146,9 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc("/onboarding/need/:needID/story", s.handleGetOnboardingNeedStory, http.MethodGet)
 		r.HandleFunc("/onboarding/need/:needID/story", s.handlePostOnboardingNeedStory, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/documents", s.handleGetOnboardingNeedDocuments, http.MethodGet)
-		r.HandleFunc("/onboarding/need/:needID/documents", s.handlePostOnboardingNeedDocuments, http.MethodPost)
+		// r.HandleFunc("/onboarding/need/:needID/documents", s.handlePostOnboardingNeedDocuments, http.MethodPost)
+		r.HandleFunc("/onboarding/need/:needID/documents/upload", s.handlePostOnboardingNeedDocumentsUpload, http.MethodPost)
+		// r.HandleFunc("/onboarding/need/:needID/documents/metadata", s.handlePostOnboardingNeedDocumentMetadata, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/review", s.handleGetOnboardingNeedReview, http.MethodGet)
 		r.HandleFunc("/onboarding/need/:needID/review", s.handlePostOnboardingNeedReview, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/confirmation", s.handleGetOnboardingNeedConfirmation, http.MethodGet)

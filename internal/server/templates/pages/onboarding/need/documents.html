@@ -19,56 +19,102 @@
     </div>
   </div>
 
+  {{if .Notice}}
+  <div class="mb-4 rounded-md border border-[color:var(--cj-accent)]/30 bg-[color:var(--cj-accent)]/10 px-4 py-3 text-sm text-foreground">
+    {{.Notice}}
+  </div>
+  {{end}}
+
+  {{if .Error}}
+  <div class="mb-4 rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-4 py-3 text-sm font-semibold text-[color:var(--cj-error)]" role="alert">
+    {{.Error}}
+  </div>
+  {{end}}
+
   <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
-    <form action="/onboarding/need/{{.ID}}/documents" method="post" enctype="multipart/form-data" class="space-y-6 px-6">
-      {{if .Documents}}
-      <div class="space-y-3">
-        <p class="text-sm font-semibold text-foreground">Uploaded documents</p>
-        <div class="space-y-2">
-          {{range .Documents}}
-          <div class="flex items-center justify-between rounded-lg border border-border bg-slate-50 p-3">
-            <div class="flex items-center gap-3">
-              <svg class="h-5 w-5 text-[color:var(--cj-accent)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-              </svg>
-              <div>
-                <p class="text-sm font-medium text-foreground">{{.FileName}}</p>
-                <p class="text-xs text-muted-foreground">{{div .FileSizeBytes 1024}} KB</p>
-              </div>
-            </div>
-          </div>
-          {{end}}
+
+    {{if .Documents}}
+    <div class="space-y-3 px-6">
+      <p class="text-sm font-semibold text-foreground">Uploaded documents</p>
+
+      <form action="/onboarding/need/{{.ID}}/documents/metadata" method="post" class="space-y-4">
+        <div class="overflow-x-auto rounded-lg border border-border bg-slate-50">
+          <table class="min-w-full divide-y divide-border">
+            <thead class="bg-muted/50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">File Name</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Document Type</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border bg-background">
+              {{range .Documents}}
+              {{$doc := .}}
+              <tr>
+                <td class="px-4 py-3 align-top">
+                  <input type="hidden" name="document_id" value="{{.ID}}" />
+                  <input type="text" name="file_name" value="{{.FileName}}" required
+                    class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                </td>
+                <td class="px-4 py-3 align-top">
+                  <select name="document_type"
+                    class="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                    {{range $.DocumentTypes}}
+                    <option value="{{.}}" {{if eq . $doc.DocumentType}}selected{{end}}>{{.}}</option>
+                    {{end}}
+                  </select>
+                </td>
+                <td class="px-4 py-3 align-top text-sm text-muted-foreground">
+                  {{div .FileSizeBytes 1024}} KB
+                </td>
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center justify-end">
+          <button type="submit"
+            class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">
+            Update Document Metadata
+          </button>
+        </div>
+      </form>
+    </div>
+    {{end}}
+
+    <form id="documents-upload-form" action="/onboarding/need/{{.ID}}/documents/upload" method="post" enctype="multipart/form-data" class="space-y-4 px-6">
+      <div class="rounded-xl border-2 border-dashed border-border bg-slate-50 p-8 text-center">
+        <input type="file" name="documents" multiple accept=".pdf,.jpg,.jpeg,.png" class="hidden" id="file-upload" />
+        <label for="file-upload" class="cursor-pointer">
+          <svg class="mx-auto h-12 w-12 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
+          <p class="mt-2 text-sm font-semibold text-foreground">Click to upload or drag and drop</p>
+          <p class="mt-1 text-xs text-muted-foreground">PDF, JPG, PNG up to 10MB each</p>
+        </label>
+
+        <div id="selected-files" class="mt-4 hidden rounded-md border border-border bg-background p-3 text-left">
+          <p id="selected-files-count" class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"></p>
+          <ul id="selected-files-list" class="mt-2 space-y-1 text-sm text-foreground"></ul>
         </div>
       </div>
-      {{end}}
 
-      <div class="space-y-4">
-        <div class="rounded-xl border-2 border-dashed border-border bg-slate-50 p-8 text-center">
-          <input type="file" name="documents" multiple accept=".pdf,.jpg,.jpeg,.png" class="hidden" id="file-upload" />
-          <label for="file-upload" class="cursor-pointer">
-            <svg class="mx-auto h-12 w-12 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-            </svg>
-            <p class="mt-2 text-sm font-semibold text-foreground">Click to upload or drag and drop</p>
-            <p class="mt-1 text-xs text-muted-foreground">PDF, JPG, PNG up to 10MB each</p>
-          </label>
-        </div>
+      <div class="rounded-xl border border-border bg-slate-50 p-4 text-sm text-muted-foreground">
+        <p class="font-semibold text-foreground">What to upload</p>
+        <ul class="mt-2 list-disc space-y-1 pl-4">
+          <li>Eviction notice or past-due rent statement</li>
+          <li>Utility bills or shut-off notices</li>
+          <li>Medical bills or prescriptions</li>
+          <li>Pay stubs or proof of income loss</li>
+        </ul>
+      </div>
 
-        <div class="rounded-xl border border-border bg-slate-50 p-4 text-sm text-muted-foreground">
-          <p class="font-semibold text-foreground">What to upload</p>
-          <ul class="mt-2 list-disc space-y-1 pl-4">
-            <li>Eviction notice or past-due rent statement</li>
-            <li>Utility bills or shut-off notices</li>
-            <li>Medical bills or prescriptions</li>
-            <li>Pay stubs or proof of income loss</li>
-          </ul>
-        </div>
-
-        <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <input type="checkbox" name="skipDocuments" class="h-4 w-4 rounded border-border" />
-          <span>I don't have documents right now (I can upload later)</span>
-        </div>
+      <div class="flex items-center justify-end">
+        <button type="submit"
+          class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">
+          Upload
+        </button>
       </div>
     </form>
   </div>
@@ -78,12 +124,48 @@
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
       Back
     </a>
-    <button type="submit" onclick="document.querySelector('form').submit()"
-      class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
-      Continue
-    </button>
+
+    <form action="/onboarding/need/{{.ID}}/documents" method="post">
+      <button type="submit"
+        class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+        Continue
+      </button>
+    </form>
   </div>
 </div>
+
+<script>
+  (function () {
+    var fileInput = document.getElementById('file-upload')
+    var selectedFilesContainer = document.getElementById('selected-files')
+    var selectedFilesCount = document.getElementById('selected-files-count')
+    var selectedFilesList = document.getElementById('selected-files-list')
+
+    if (!fileInput || !selectedFilesContainer || !selectedFilesCount || !selectedFilesList) return
+
+    fileInput.addEventListener('change', function () {
+      var files = fileInput.files
+      if (!files || files.length === 0) {
+        selectedFilesContainer.classList.add('hidden')
+        selectedFilesList.innerHTML = ''
+        selectedFilesCount.textContent = ''
+        return
+      }
+
+      selectedFilesContainer.classList.remove('hidden')
+      selectedFilesCount.textContent = files.length + (files.length === 1 ? ' file selected' : ' files selected')
+      selectedFilesList.innerHTML = ''
+
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i]
+        var item = document.createElement('li')
+        var sizeKb = Math.max(1, Math.round(file.size / 1024))
+        item.textContent = file.name + ' (' + sizeKb + ' KB)'
+        selectedFilesList.appendChild(item)
+      }
+    })
+  })()
+</script>
 
 {{template "footer" .}}
 {{end}}

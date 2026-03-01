@@ -15,6 +15,7 @@ import (
 	"christjesus/internal/store"
 
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/lestrrat-go/httprc/v3"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/sirupsen/logrus"
@@ -45,6 +46,7 @@ func serve(cCtx *cli.Context) error {
 	}
 
 	cognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
+	s3Client := s3.NewFromConfig(awsConfig)
 
 	pool, err := db.Connect(ctx, config)
 	if err != nil {
@@ -58,13 +60,6 @@ func serve(cCtx *cli.Context) error {
 	needCategoryAssignmentsRepo := store.NewAssignmentRepository(pool)
 	storyRepo := store.NewStoryRepository(pool)
 	documentRepo := store.NewDocumentRepository(pool)
-
-	// Initialize storage client
-	// storageClient := storage.NewSupabaseStorage(
-	// 	config.SupabaseProjectID,
-	// 	config.SupabaseAPIKey,
-	// 	config.StorageBucketName,
-	// )
 
 	jwkCache, err := jwk.NewCache(context.Background(), httprc.NewClient())
 	if err != nil {
@@ -82,13 +77,13 @@ func serve(cCtx *cli.Context) error {
 		config,
 		logger,
 		cognitoClient,
+		s3Client,
 		needsRepo,
 		progressRepo,
 		categoryRepo,
 		needCategoryAssignmentsRepo,
 		storyRepo,
 		documentRepo,
-		nil,
 		jwkCache,
 		jwksURL,
 	)

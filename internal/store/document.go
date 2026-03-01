@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const documentTableName = "need_documents"
+const documentTableName = "christjesus.need_documents"
 
 var documentTableColumns = []string{
 	"id",
@@ -80,6 +80,19 @@ func (r *DocumentRepository) CreateDocument(ctx context.Context, doc *types.Need
 			doc.StorageKey,
 			doc.UploadedAt,
 		).
+		ToSql()
+
+	_, err := r.pool.Exec(ctx, query, args...)
+	return err
+}
+
+// UpdateDocumentMetadata updates editable metadata fields for an existing document
+func (r *DocumentRepository) UpdateDocumentMetadata(ctx context.Context, needID, id, fileName, documentType string) error {
+	query, args, _ := psql().
+		Update(documentTableName).
+		Set("file_name", fileName).
+		Set("document_type", documentType).
+		Where(squirrel.Eq{"id": id, "need_id": needID}).
 		ToSql()
 
 	_, err := r.pool.Exec(ctx, query, args...)

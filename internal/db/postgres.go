@@ -17,6 +17,10 @@ func Connect(ctx context.Context, config *types.Config) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("parse database url: %w", err)
 	}
 
+	if _, ok := poolConfig.ConnConfig.RuntimeParams["search_path"]; !ok {
+		poolConfig.ConnConfig.RuntimeParams["search_path"] = "christjesus"
+	}
+
 	poolConfig.MaxConnIdleTime = 15 * time.Minute
 	poolConfig.MaxConnLifetime = 45 * time.Minute
 
