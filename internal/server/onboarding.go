@@ -415,7 +415,7 @@ func (s *Service) handleGetOnboardingNeedDocuments(w http.ResponseWriter, r *htt
 	needID := r.PathValue("needID")
 
 	// Get existing documents
-	documents, err := s.documentRepo.GetDocumentsByNeedID(ctx, needID)
+	documents, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch documents")
 		s.internalServerError(w)
@@ -508,15 +508,10 @@ func (s *Service) handleFile(ctx context.Context, needID, userID string, fileHea
 	defer file.Close()
 
 	ext := filepath.Ext(fileHeader.Filename)
-	if !isAllowedDocumentType(ext) {
-		return utils.ErrorWrapOrNil(fmt.Errorf("file type not allowed"), "unsupported file type")
-	}
 
 	docID := utils.NanoID()
 	storageKey := fmt.Sprintf("needs/%s/%s.%s", needID, docID, ext)
 	contentType := fileHeader.Header.Get("Content-Type")
-
-	// Upload File
 
 	doc := &types.NeedDocument{
 		ID:            docID,
@@ -662,35 +657,71 @@ func (s *Service) redirectDocsWithNotice(w http.ResponseWriter, r *http.Request,
 func (s *Service) handlePostOnboardingNeedDocumentMetadata(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	needID := r.PathValue("needID")
-	documentID := r.PathValue("documentID")
 
-	fileName := strings.TrimSpace(r.FormValue("file_name"))
-	documentType := strings.TrimSpace(r.FormValue("document_type"))
-
-	query := url.Values{}
-
-	if fileName == "" {
-		query.Set("error", "Document name is required.")
-		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/documents?%s", needID, query.Encode()), http.StatusSeeOther)
-		return
-	}
-
-	if !isAllowedDocumentType(documentType) {
-		query.Set("error", "Please choose a valid document type.")
-		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/documents?%s", needID, query.Encode()), http.StatusSeeOther)
-		return
-	}
-
-	err := s.documentRepo.UpdateDocumentMetadata(ctx, needID, documentID, fileName, documentType)
+	err := r.ParseForm()
 	if err != nil {
-		s.logger.WithError(err).Error("failed to update document metadata")
-		query.Set("error", "Unable to update document right now.")
-		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/documents?%s", needID, query.Encode()), http.StatusSeeOther)
+		s.logger.WithError(err).Error("failed to parse form")
+		s.internalServerError(w)
 		return
 	}
 
-	query.Set("notice", "Document details updated.")
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/documents?%s", needID, query.Encode()), http.StatusSeeOther)
+	documentIDs := r.Form["document_id"]
+	fileNames := r.Form["file_name"]
+	documentTypes := r.Form["document_type"]
+
+	if len(documentIDs) == 0 {
+		s.logger.Error("no document IDs provided in form")
+		s.redirectDocsWithError(w, r, needID, "No documents submitted for update")
+		return
+	}
+
+	if len(documentIDs) != len(fileNames) || len(documentIDs) != len(documentTypes) {
+		s.logger.Error("mismatched form data lengths")
+		s.redirectDocsWithError(w, r, needID, "Form submission error. Please try again.")
+		return
+	}
+
+	for i := range documentIDs {
+		id := strings.TrimSpace(documentIDs[i])
+		name := strings.TrimSpace(fileNames[i])
+		dtype := strings.TrimSpace(documentTypes[i])
+
+		if id == "" || name == "" || dtype == "" {
+			s.redirectDocsWithError(w, r, needID, "Document ID, Name, and Type are required")
+			return
+		}
+
+		if !isAllowedDocumentType(dtype) {
+			s.redirectDocsWithError(w, r, needID, fmt.Sprintf("Document type '%s' is not allowed", dtype))
+			return
+		}
+
+		doc, err := s.documentRepo.DocumentByNeedIDAndID(ctx, needID, id)
+		if err != nil {
+			s.logger.WithError(err).
+				WithField("need_id", needID).
+				WithField("document_id", id).
+				Error("failed to fetch document for metadata update")
+			s.redirectDocsWithError(w, r, needID, "Document not found. Please try again.")
+			return
+		}
+
+		doc.FileName = name
+		doc.DocumentType = dtype
+
+		err = s.documentRepo.UpdateDocument(ctx, doc)
+		if err != nil {
+			s.logger.WithError(err).
+				WithField("need_id", needID).
+				WithField("document_id", id).
+				Error("failed to update document metadata")
+			s.redirectDocsWithError(w, r, needID, "Failed to update document metadata. Please try again.")
+			return
+		}
+	}
+
+	s.redirectDocsWithNotice(w, r, needID, "Document Metadata Updated.")
+
 }
 
 func allowedDocumentTypes() []string {

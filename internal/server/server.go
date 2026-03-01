@@ -148,7 +148,7 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc("/onboarding/need/:needID/documents", s.handleGetOnboardingNeedDocuments, http.MethodGet)
 		// r.HandleFunc("/onboarding/need/:needID/documents", s.handlePostOnboardingNeedDocuments, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/documents/upload", s.handlePostOnboardingNeedDocumentsUpload, http.MethodPost)
-		// r.HandleFunc("/onboarding/need/:needID/documents/metadata", s.handlePostOnboardingNeedDocumentMetadata, http.MethodPost)
+		r.HandleFunc("/onboarding/need/:needID/documents/metadata", s.handlePostOnboardingNeedDocumentMetadata, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/review", s.handleGetOnboardingNeedReview, http.MethodGet)
 		r.HandleFunc("/onboarding/need/:needID/review", s.handlePostOnboardingNeedReview, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/confirmation", s.handleGetOnboardingNeedConfirmation, http.MethodGet)
