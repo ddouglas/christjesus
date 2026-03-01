@@ -2,13 +2,22 @@ package server
 
 import (
 	"christjesus/internal"
+	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 )
+
+type LoginPageData struct {
+	Title   string
+	Message string
+	Error   string
+	Email   string
+}
 
 func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 
@@ -19,7 +28,16 @@ func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.login", nil)
+	data := LoginPageData{
+		Title: "Login",
+	}
+
+	// Check if user was redirected here after confirming their email
+	if r.URL.Query().Get("confirmed") == "true" || r.URL.Query().Get("confirmed") == "1" {
+		data.Message = "Your account has been confirmed! You can now log in."
+	}
+
+	err = s.templates.ExecuteTemplate(w, "page.login", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render login page")
 		s.internalServerError(w)
@@ -30,8 +48,23 @@ func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
-	email := r.FormValue("email")
+	email := strings.TrimSpace(r.FormValue("email"))
 	password := r.FormValue("password")
+
+	data := LoginPageData{
+		Title: "Login",
+		Email: email,
+	}
+
+	if email == "" || password == "" {
+		data.Error = "Email and password are required."
+		err := s.templates.ExecuteTemplate(w, "page.login", data)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to render login page with validation errors")
+			s.internalServerError(w)
+		}
+		return
+	}
 
 	input := &cognitoidentityprovider.InitiateAuthInput{
 		AuthFlow: types.AuthFlowTypeUserPasswordAuth,
@@ -44,17 +77,44 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := s.cognitoClient.InitiateAuth(r.Context(), input)
 	if err != nil {
-		// NotAuthorizedException, UserNotConfirmedException, etc.
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		var notAuthorized *types.NotAuthorizedException
+		var userNotFound *types.UserNotFoundException
+		var userNotConfirmed *types.UserNotConfirmedException
+
+		switch {
+		case errors.As(err, &userNotConfirmed):
+			data.Error = "Your account is not confirmed yet. Enter the verification code to continue."
+			data.Message = "Check your email for a verification code."
+			if renderErr := s.templates.ExecuteTemplate(w, "page.login", data); renderErr != nil {
+				s.logger.WithError(renderErr).Error("failed to render login page with unconfirmed-user error")
+				s.internalServerError(w)
+			}
+			return
+		case errors.As(err, &notAuthorized), errors.As(err, &userNotFound):
+			data.Error = "Invalid email or password."
+		default:
+			s.logger.WithError(err).Error("failed to login user")
+			data.Error = "Unable to log in right now. Please try again."
+		}
+
+		if renderErr := s.templates.ExecuteTemplate(w, "page.login", data); renderErr != nil {
+			s.logger.WithError(renderErr).Error("failed to render login page with auth errors")
+			s.internalServerError(w)
+		}
 		return
 	}
 
-	if resp.AuthenticationResult == nil || resp.AuthenticationResult.AccessToken == nil {
-		http.Error(w, "Login failed", http.StatusUnauthorized)
+	if resp.AuthenticationResult == nil || resp.AuthenticationResult.IdToken == nil {
+		data.Error = "Login failed. Please try again."
+		err := s.templates.ExecuteTemplate(w, "page.login", data)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to render login page with missing authentication result")
+			s.internalServerError(w)
+		}
 		return
 	}
 
-	accessToken := aws.ToString(resp.AuthenticationResult.AccessToken)
+	idToken := aws.ToString(resp.AuthenticationResult.IdToken)
 	expiresIn := int(resp.AuthenticationResult.ExpiresIn)
 
 	// // Sign in with Supabase
@@ -69,10 +129,15 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 	// // Success! resp contains User and Session with AccessToken
 	// s.logger.WithField("user_id", resp.User.ID).Info("user logged in")
 
-	encryptedToken, err := s.cookie.Encode(internal.COOKIE_ACCESS_TOKEN_NAME, accessToken)
+	encryptedToken, err := s.cookie.Encode(internal.COOKIE_ACCESS_TOKEN_NAME, idToken)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to encrypt access token")
-		http.Error(w, "Login failed: "+err.Error(), http.StatusUnauthorized)
+		s.logger.WithError(err).Error("failed to encrypt id token")
+		data.Error = "Login failed. Please try again."
+		err = s.templates.ExecuteTemplate(w, "page.login", data)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to render login page after token encryption failure")
+			s.internalServerError(w)
+		}
 		return
 	}
 

@@ -121,7 +121,7 @@ func (s *Service) buildRouter(r *flow.Mux) {
 	r.HandleFunc("/register", s.handleGetRegister, http.MethodGet)
 	r.HandleFunc("/register", s.handlePostRegister, http.MethodPost)
 	r.HandleFunc("/register/confirm", s.handleGetRegisterConfirm, http.MethodGet)
-	r.HandleFunc("/register/confirm", s.handleGetRegisterConfirm, http.MethodPost)
+	r.HandleFunc("/register/confirm", s.handlePostRegisterConfirm, http.MethodPost)
 	r.HandleFunc("/login", s.handleGetLogin, http.MethodGet)
 	r.HandleFunc("/login", s.handlePostLogin, http.MethodPost)
 

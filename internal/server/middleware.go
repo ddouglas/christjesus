@@ -112,6 +112,11 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			s.redirectToLogin(w, r)
 			return
 		}
+		if tokenUse != "id" {
+			s.logger.WithField("token_use", tokenUse).Warn("unexpected token_use claim in JWT")
+			s.redirectToLogin(w, r)
+			return
+		}
 
 		var groups []string
 		if err := token.Get("cognito:groups", &groups); err != nil {

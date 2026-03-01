@@ -84,6 +84,11 @@ func (s *Service) handleCreateNeed(ctx context.Context, w http.ResponseWriter, r
 	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/welcome", need.ID), http.StatusSeeOther)
 }
 
+type needWelcomeTemplateData struct {
+	Title string
+	Need  *types.Need
+}
+
 func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 
@@ -96,7 +101,12 @@ func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.
 		return
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.welcome", need)
+	data := &needWelcomeTemplateData{
+		Title: "Need Onboarding",
+		Need:  need,
+	}
+
+	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.welcome", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need welcome page")
 		s.internalServerError(w)

@@ -3,8 +3,10 @@ package server
 import (
 	"christjesus/internal"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -76,8 +78,6 @@ func (s *Service) handlePostRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// // givenName, familyName := splitName(name)
-
 	input := &cognitoidentityprovider.SignUpInput{
 		ClientId: aws.String(s.config.CognitoClientID),
 		Username: aws.String(email), // use email as username
@@ -102,28 +102,32 @@ func (s *Service) handlePostRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// resp, err := s.supauth.Signup(types.SignupRequest{
-	// 	Email:    email,
-	// 	Password: password,
-	// })
-	// if err != nil {
-	// 	s.logger.WithError(err).Error("failed to signup user")
-	// 	s.internalServerError(w)
-	// 	return
-	// }
-
-	// Success! resp contains User and Session
-	// s.logger.WithField("user_id", resp.User.ID).Info("user registered")
+	v := url.Values{}
+	v.Set("email", email)
 
 	// Redirect to onboarding
-	http.Redirect(w, r, "/register/confirm", http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/register/confirm?%s", v.Encode()), http.StatusSeeOther)
 
+}
+
+type ConfirmRegisterPageData struct {
+	Title   string
+	Email   string
+	Error   string
+	Message string
 }
 
 func (s *Service) handleGetRegisterConfirm(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
-	err := s.templates.ExecuteTemplate(w, "page.register.confirm", nil)
+	email := strings.TrimSpace(r.URL.Query().Get("email"))
+
+	data := ConfirmRegisterPageData{
+		Title: "Confirm Your Account",
+		Email: email,
+	}
+
+	err := s.templates.ExecuteTemplate(w, "page.register.confirm", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render register page")
 		s.internalServerError(w)
@@ -135,6 +139,41 @@ func (s *Service) handleGetRegisterConfirm(w http.ResponseWriter, r *http.Reques
 func (s *Service) handlePostRegisterConfirm(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
+	email := strings.TrimSpace(r.FormValue("email"))
+	code := strings.TrimSpace(r.FormValue("code"))
+
+	data := ConfirmRegisterPageData{
+		Title: "Confirm Your Account",
+		Email: email,
+	}
+
+	input := &cognitoidentityprovider.ConfirmSignUpInput{
+		ClientId:         aws.String(s.config.CognitoClientID),
+		Username:         aws.String(email),
+		ConfirmationCode: aws.String(code),
+	}
+
+	_, err := s.cognitoClient.ConfirmSignUp(r.Context(), input)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to confirm user signup")
+
+		var codeMismatch *ctypes.CodeMismatchException
+		if errors.As(err, &codeMismatch) {
+			data.Error = "Invalid confirmation code. Please check the code and try again."
+		} else {
+			data.Error = "Unable to confirm account. Please try again."
+		}
+
+		err := s.templates.ExecuteTemplate(w, "page.register.confirm", data)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to render register confirm page with error")
+			s.internalServerError(w)
+		}
+		return
+	}
+
+	// Redirect to login after successful confirmation
+	http.Redirect(w, r, "/login?confirmed=true", http.StatusSeeOther)
 }
 
 var (

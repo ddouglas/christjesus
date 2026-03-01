@@ -7,13 +7,25 @@
     <p class="text-muted-foreground">Log in to your ChristJesus.app account</p>
   </div>
 
+  {{if .Message}}
+  <div class="mt-6 rounded-md border border-[color:var(--cj-accent)]/30 bg-[color:var(--cj-accent)]/10 px-4 py-3 text-sm text-foreground">
+    {{.Message}}
+  </div>
+  {{end}}
+
+  {{if .Error}}
+  <div class="mt-6 rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-4 py-3 text-sm font-semibold text-[color:var(--cj-error)]" role="alert" aria-live="polite">
+    {{.Error}}
+  </div>
+  {{end}}
+
   <form method="POST" action="/login" class="mt-8 space-y-6">
     <!-- Email Field -->
     <div class="space-y-2">
       <label for="email" class="text-sm font-medium text-foreground">
         Email
       </label>
-      <input type="email" id="email" name="email" required
+      <input type="email" id="email" name="email" required value="{{.Email}}"
         class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         placeholder="Enter your email" />
     </div>

@@ -20,12 +20,13 @@
   {{end}}
 
   <form method="POST" action="/register/confirm" class="mt-8 space-y-6">
-    <div class="space-y-2">
-      <label for="email" class="text-sm font-medium text-foreground">Email</label>
-      <input type="email" id="email" name="email" required value="{{.Email}}"
-        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        placeholder="Enter your email" />
+
+    {{if .Email}}
+    <input type="hidden" name="email" value="{{.Email}}" />
+    <div class="rounded-md border border-input bg-muted px-4 py-3 text-sm text-foreground">
+      Confirming email: <span class="font-medium">{{.Email}}</span>
     </div>
+    {{end}}
 
     <div class="space-y-2">
       <label for="code" class="text-sm font-medium text-foreground">Verification Code</label>

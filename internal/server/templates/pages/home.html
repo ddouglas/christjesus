@@ -39,7 +39,13 @@
           <p class="text-2xl font-semibold text-foreground">Personally verified needs ready for support.</p>
         </div>
         <div class="p-6">
+          {{if .FeaturedNeed}}
           {{template "component.need.card" .FeaturedNeed}}
+          {{else}}
+            <div class="rounded-xl border border-border bg-card px-6 py-8 text-center text-card-foreground shadow-sm">
+              <p class="text-sm text-muted-foreground">Featured need coming soon.</p>
+            </div>
+            {{end}}
         </div>
       </div>
     </div>
