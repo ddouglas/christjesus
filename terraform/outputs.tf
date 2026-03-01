@@ -9,3 +9,7 @@ output "client_id" {
 output "issuer_url" {
   value = "https://cognito-idp.${data.aws_region.current.region}.amazonaws.com/${aws_cognito_user_pool.user_pool.id}"
 }
+
+output "documents_bucket" {
+  value = aws_s3_bucket.documents.bucket
+}

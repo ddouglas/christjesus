@@ -37,7 +37,7 @@
     <div class="space-y-3 px-6">
       <p class="text-sm font-semibold text-foreground">Uploaded documents</p>
 
-      <form action="/onboarding/need/{{.ID}}/documents/metadata" method="post" class="space-y-4">
+      <form id="documents-metadata-form" action="/onboarding/need/{{.ID}}/documents/metadata" method="post" class="space-y-4">
         <div class="overflow-x-auto rounded-lg border border-border bg-slate-50">
           <table class="min-w-full divide-y divide-border">
             <thead class="bg-muted/50">
@@ -73,11 +73,12 @@
           </table>
         </div>
 
-        <div class="flex items-center justify-end">
-          <button type="submit"
+        <div class="flex flex-col items-center justify-center gap-2">
+          <button id="metadata-submit-button" type="submit"
             class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">
             Update Document Metadata
           </button>
+          <p id="metadata-feedback" class="hidden text-sm font-medium text-[color:var(--cj-accent)]" aria-live="polite">Updating document metadata...</p>
         </div>
       </form>
     </div>
@@ -100,6 +101,14 @@
         </div>
       </div>
 
+
+      <div class="flex flex-col items-center justify-center gap-2">
+        <button id="upload-submit-button" type="submit"
+          class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">
+          Upload
+        </button>
+        <p id="upload-feedback" class="hidden text-sm font-medium text-[color:var(--cj-accent)]" aria-live="polite">Uploading documents...</p>
+      </div>
       <div class="rounded-xl border border-border bg-slate-50 p-4 text-sm text-muted-foreground">
         <p class="font-semibold text-foreground">What to upload</p>
         <ul class="mt-2 list-disc space-y-1 pl-4">
@@ -110,12 +119,6 @@
         </ul>
       </div>
 
-      <div class="flex items-center justify-end">
-        <button type="submit"
-          class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">
-          Upload
-        </button>
-      </div>
     </form>
   </div>
 
@@ -137,11 +140,17 @@
 <script>
   (function () {
     var fileInput = document.getElementById('file-upload')
+    var uploadForm = document.getElementById('documents-upload-form')
+    var uploadSubmitButton = document.getElementById('upload-submit-button')
+    var uploadFeedback = document.getElementById('upload-feedback')
+    var metadataForm = document.getElementById('documents-metadata-form')
+    var metadataSubmitButton = document.getElementById('metadata-submit-button')
+    var metadataFeedback = document.getElementById('metadata-feedback')
     var selectedFilesContainer = document.getElementById('selected-files')
     var selectedFilesCount = document.getElementById('selected-files-count')
     var selectedFilesList = document.getElementById('selected-files-list')
 
-    if (!fileInput || !selectedFilesContainer || !selectedFilesCount || !selectedFilesList) return
+    if (!fileInput || !uploadForm || !uploadSubmitButton || !uploadFeedback || !selectedFilesContainer || !selectedFilesCount || !selectedFilesList) return
 
     fileInput.addEventListener('change', function () {
       var files = fileInput.files
@@ -164,6 +173,22 @@
         selectedFilesList.appendChild(item)
       }
     })
+
+    uploadForm.addEventListener('submit', function () {
+      uploadSubmitButton.disabled = true
+      uploadSubmitButton.classList.add('opacity-60', 'cursor-not-allowed')
+      uploadSubmitButton.textContent = 'Uploading...'
+      uploadFeedback.classList.remove('hidden')
+    })
+
+    if (metadataForm && metadataSubmitButton && metadataFeedback) {
+      metadataForm.addEventListener('submit', function () {
+        metadataSubmitButton.disabled = true
+        metadataSubmitButton.classList.add('opacity-60', 'cursor-not-allowed')
+        metadataSubmitButton.textContent = 'Updating...'
+        metadataFeedback.classList.remove('hidden')
+      })
+    }
   })()
 </script>
 

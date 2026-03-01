@@ -33,6 +33,3 @@ cognito-delete-user USERNAME:
 
 dev:
 	air 
-
-terraform-env:
-    bash .scripts/terraform-env.sh

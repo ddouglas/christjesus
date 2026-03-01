@@ -11,6 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3t "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
@@ -510,9 +514,21 @@ func (s *Service) handleFile(ctx context.Context, needID, userID string, fileHea
 	ext := filepath.Ext(fileHeader.Filename)
 
 	docID := utils.NanoID()
-	storageKey := fmt.Sprintf("needs/%s/%s.%s", needID, docID, ext)
+	storageKey := fmt.Sprintf("needs/%s/%s%s", needID, docID, ext)
 	contentType := fileHeader.Header.Get("Content-Type")
 
+	_, err = s.s3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:       aws.String(s.config.S3BucketName),
+		Key:          aws.String(storageKey),
+		Body:         file,
+		ContentType:  aws.String(contentType),
+		StorageClass: s3t.StorageClassIntelligentTiering,
+	})
+	if err != nil {
+		return utils.ErrorWrapOrNil(err, "failed to upload file to S3")
+	}
+
+	// Create document record in database
 	doc := &types.NeedDocument{
 		ID:            docID,
 		NeedID:        needID,

@@ -37,7 +37,6 @@ resource "aws_cognito_user_pool" "user_pool" {
 
 }
 
-
 resource "aws_cognito_user_pool_client" "pool_client" {
   user_pool_id = aws_cognito_user_pool.user_pool.id
   name         = "ChristJesus App ${title(var.workspace)}"
@@ -61,18 +60,3 @@ resource "aws_cognito_user_pool_client" "pool_client" {
 
 }
 
-# resource "aws_cognito_resource_server" "prolog_api" {
-#   user_pool_id = aws_cognito_user_pool.user_pool.id
-#   identifier   = "prolog-api-${var.workspace}"
-#   name         = "Prolog API"
-
-#   scope {
-#     scope_name        = "read:all"
-#     scope_description = "Read all data"
-#   }
-#   scope {
-#     scope_name        = "write:all"
-#     scope_description = "Write all data"
-#   }
-
-# }

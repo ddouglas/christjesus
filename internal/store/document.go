@@ -54,7 +54,7 @@ func (r *DocumentRepository) DocumentByNeedIDAndID(ctx context.Context, needID, 
 	query, args, _ := psql().
 		Select(documentTableColumns...).
 		From(documentTableName).
-		Where(squirrel.Eq{"id": documentID, "needID": needID}).
+		Where(squirrel.Eq{"id": documentID, "need_id": needID}).
 		ToSql()
 
 	var doc = new(types.NeedDocument)
