@@ -40,6 +40,7 @@ type Service struct {
 	needCategoryAssignmentsRepo *store.AssignmentRepository
 	storyRepo                   *store.StoryRepository
 	documentRepo                *store.DocumentRepository
+	userAddressRepo             *store.UserAddressRepository
 
 	cookie    *securecookie.SecureCookie
 	jwksCache *jwk.Cache
@@ -62,6 +63,7 @@ func New(
 	needCategoryAssignmentsRepo *store.AssignmentRepository,
 	storyRepo *store.StoryRepository,
 	documentRepo *store.DocumentRepository,
+	userAddressRepo *store.UserAddressRepository,
 
 	jwkCache *jwk.Cache,
 	jwksURL string,
@@ -84,6 +86,7 @@ func New(
 		categoryRepo:                categoryRepo,
 		needCategoryAssignmentsRepo: needCategoryAssignmentsRepo,
 		documentRepo:                documentRepo,
+		userAddressRepo:             userAddressRepo,
 
 		cookie:    securecookie.New(hashKey, blockKey),
 		jwksCache: jwkCache,

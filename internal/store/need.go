@@ -10,7 +10,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/k0kubun/pp"
 )
 
 const needTableName = "christjesus.needs"
@@ -45,11 +44,6 @@ func (r *NeedRepository) Need(ctx context.Context, needID string) (*types.Need, 
 		return nil, types.ErrNeedNotFound
 	}
 
-	// Initialize NeedLocation if nil (pgxscan won't create pointer when fields are NULL)
-	if need.NeedLocation == nil {
-		need.NeedLocation = &types.NeedLocation{}
-	}
-
 	return need, nil
 
 }
@@ -72,13 +66,6 @@ func (r *NeedRepository) NeedsByUser(ctx context.Context, userID string) ([]*typ
 
 	if err != nil {
 		return nil, types.ErrNeedNotFound
-	}
-
-	// Initialize NeedLocation for each need if nil
-	for _, need := range needs {
-		if need.NeedLocation == nil {
-			need.NeedLocation = &types.NeedLocation{}
-		}
 	}
 
 	return needs, nil
@@ -104,13 +91,6 @@ func (r *NeedRepository) NeedsByStatus(ctx context.Context, userID string) ([]*t
 		return nil, types.ErrNeedNotFound
 	}
 
-	// Initialize NeedLocation for each need if nil
-	for _, need := range needs {
-		if need.NeedLocation == nil {
-			need.NeedLocation = &types.NeedLocation{}
-		}
-	}
-
 	return needs, nil
 }
 
@@ -133,11 +113,6 @@ func (r *NeedRepository) DraftNeedsByUser(ctx context.Context, userID string) (*
 
 	if err != nil {
 		return nil, types.ErrNeedNotFound
-	}
-
-	// Initialize NeedLocation if nil
-	if need.NeedLocation == nil {
-		need.NeedLocation = &types.NeedLocation{}
 	}
 
 	return need, nil
@@ -169,8 +144,6 @@ func (r *NeedRepository) UpdateNeed(ctx context.Context, needID string, need *ty
 	need.UpdatedAt = now
 
 	needMap := utils.StructToMap(need)
-
-	pp.Print(needMap)
 
 	query, args, err := psql().Update(needTableName).SetMap(needMap).Where(sq.Eq{"id": needID}).ToSql()
 	if err != nil {

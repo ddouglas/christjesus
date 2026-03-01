@@ -13,54 +13,17 @@ table "needs" {
     comment = "References auth.users(id) from Supabase - no FK due to different schema"
   }
 
-  # Location (Step 2)
-  column "address" {
+  column "user_address_id" {
     type    = text
     null    = true
-    comment = "Street address. Required when status = submitted"
+    comment = "References christjesus.user_addresses(id) for selected address on this need"
   }
 
-  column "address_ext" {
-    type    = text
-    null    = true
-    comment = "Apartment, suite, unit number (optional)"
-  }
-
-  column "city" {
-    type    = text
-    null    = true
-    comment = "Required when status = submitted"
-  }
-
-  column "state" {
-    type    = text
-    null    = true
-    comment = "Required when status = submitted"
-  }
-
-  column "zip_code" {
-    type    = text
-    null    = true
-    comment = "Required when status = submitted"
-  }
-
-  column "privacy_display" {
-    type    = text
-    null    = true
-    default = "neighborhood"
-    comment = "What to show publicly: neighborhood, zip, or city"
-  }
-
-  column "contact_methods" {
-    type    = jsonb
-    null    = true
-    comment = "Array of preferred contact methods: phone, text, email"
-  }
-
-  column "preferred_contact_time" {
-    type    = text
-    null    = true
-    comment = "Preferred time to contact: morning, afternoon, evening, anytime"
+  column "uses_non_primary_address" {
+    type    = boolean
+    null    = false
+    default = false
+    comment = "True when need references a non-primary user address"
   }
 
   # Details (Step 4)
@@ -158,8 +121,19 @@ table "needs" {
     columns = [column.id]
   }
 
+  foreign_key "fk_needs_user_address" {
+    columns     = [column.user_address_id]
+    ref_columns = [table.user_addresses.column.id]
+    on_delete   = SET_NULL
+  }
+
   index "idx_needs_user_id" {
     columns = [column.user_id]
+  }
+
+  index "idx_needs_user_address_id" {
+    columns = [column.user_address_id]
+    where   = "user_address_id IS NOT NULL"
   }
 
   index "idx_needs_status" {
@@ -174,11 +148,6 @@ table "needs" {
   index "idx_needs_is_featured" {
     columns = [column.is_featured]
     where   = "is_featured = true"
-  }
-
-  index "idx_needs_city_state" {
-    columns = [column.city, column.state]
-    where   = "(status = ANY (ARRAY['active'::text, 'funded'::text]))"
   }
 
   index "idx_needs_user_status" {

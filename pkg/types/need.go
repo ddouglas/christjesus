@@ -41,8 +41,8 @@ var NeedStepOrder = []NeedStep{
 type Need struct {
 	ID     string `db:"id"`
 	UserID string `db:"user_id"`
-
-	*NeedLocation
+	UserAddressID          *string `db:"user_address_id"`
+	UsesNonPrimaryAddress  bool    `db:"uses_non_primary_address"`
 
 	AmountNeededCents int        `db:"amount_needed_cents"`
 	AmountRaisedCents int        `db:"amount_raised_cents"`
@@ -59,15 +59,20 @@ type Need struct {
 	UpdatedAt         time.Time  `db:"updated_at"`
 }
 
-type NeedLocation struct {
-	Address              *string  `db:"address" form:"address"`
-	AddressExt           *string  `db:"address_ext" form:"address_ext"`
-	City                 *string  `db:"city" form:"city"`
-	State                *string  `db:"state" form:"state"`
-	ZipCode              *string  `db:"zip_code" form:"zip_code"`
-	PrivacyDisplay       *string  `db:"privacy_display" form:"privacy_display"`
-	ContactMethods       []string `db:"contact_methods" form:"contact_methods"`
-	PreferredContactTime *string  `db:"preferred_contact_time" form:"preferred_contact_time"`
+type UserAddress struct {
+	ID                   string    `db:"id"`
+	UserID               string    `db:"user_id"`
+	Address              *string   `db:"address"`
+	AddressExt           *string   `db:"address_ext"`
+	City                 *string   `db:"city"`
+	State                *string   `db:"state"`
+	ZipCode              *string   `db:"zip_code"`
+	PrivacyDisplay       *string   `db:"privacy_display"`
+	ContactMethods       []string  `db:"contact_methods"`
+	PreferredContactTime *string   `db:"preferred_contact_time"`
+	IsPrimary            bool      `db:"is_primary"`
+	CreatedAt            time.Time `db:"created_at"`
+	UpdatedAt            time.Time `db:"updated_at"`
 }
 
 type NeedProgressEvent struct {

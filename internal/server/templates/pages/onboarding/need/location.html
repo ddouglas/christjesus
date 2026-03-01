@@ -21,75 +21,132 @@
 
   <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
     <form id="location-form" action="/onboarding/need/{{.ID}}/location" method="post" class="space-y-6 px-6">
-      <div class="grid gap-4 md:grid-cols-2">
-        <div>
-          <input type="text" name="address" placeholder="Street address" value="{{deref .Address}}" required
-            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-        </div>
-        <input type="text" name="address_ext" placeholder="Apartment / Unit (optional)" value="{{deref .AddressExt}}"
-          class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-        <div>
-          <input type="text" name="city" placeholder="City (Charlotte)" value="{{deref .City}}" required
-            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-        </div>
-        <div>
-          <input type="text" name="state" placeholder="State (NC)" value="{{deref .State}}" required
-            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-        </div>
-        <div>
-          <input type="text" name="zip_code" placeholder="ZIP code" value="{{deref .ZipCode}}" required
-            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-        </div>
-      </div>
+      {{if .HasAddresses}}
+      <div class="space-y-3">
+        <p class="text-sm font-semibold text-foreground">Saved addresses</p>
+        <p class="text-sm text-muted-foreground">Select an address for this need or add a new one.</p>
 
-      <div class="space-y-2">
-        <p class="text-sm font-semibold text-foreground">What should we show publicly?</p>
-        <div class="space-y-2 text-sm text-muted-foreground">
-          <label class="flex items-center gap-2">
-            <input type="radio" name="privacy_display" value="neighborhood" {{if eq (derefOr .PrivacyDisplay "neighborhood") "neighborhood"}}checked{{end}} class="h-4 w-4 border-border" />
-            Neighborhood only
+        <div class="space-y-3" id="saved-addresses">
+          {{range .Addresses}}
+          <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-muted/50">
+            <input type="radio" name="address_selection" value="{{.ID}}" {{if eq $.SelectedAddressID .ID}}checked{{end}} data-address-option="saved"
+              data-is-primary="{{if .IsPrimary}}true{{else}}false{{end}}" class="mt-0.5 h-4 w-4 border-border" />
+            <div class="space-y-1 text-sm">
+              <p class="font-medium text-foreground">
+                {{deref .Address}}{{if .AddressExt}}, {{deref .AddressExt}}{{end}}
+                {{if .IsPrimary}}
+                <span class="ml-2 rounded-full border border-[color:var(--cj-accent)]/30 bg-[color:var(--cj-accent)]/10 px-2 py-0.5 text-xs font-semibold text-[color:var(--cj-accent)]">Primary</span>
+                {{end}}
+              </p>
+              <p class="text-muted-foreground">{{deref .City}}, {{deref .State}} {{deref .ZipCode}}</p>
+            </div>
           </label>
-          <label class="flex items-center gap-2">
-            <input type="radio" name="privacy_display" value="zip" {{if eq (derefOr .PrivacyDisplay "neighborhood") "zip"}}checked{{end}} class="h-4 w-4 border-border" />
-            ZIP code only
-          </label>
-          <label class="flex items-center gap-2">
-            <input type="radio" name="privacy_display" value="city" {{if eq (derefOr .PrivacyDisplay "neighborhood") "city"}}checked{{end}} class="h-4 w-4 border-border" />
-            City only
+          {{end}}
+
+          <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-muted/50">
+            <input type="radio" name="address_selection" value="new" {{if eq .SelectedAddressID "new"}}checked{{end}} data-address-option="new" class="mt-0.5 h-4 w-4 border-border" />
+            <div class="space-y-1 text-sm">
+              <p class="font-medium text-foreground">Add a new address</p>
+              <p class="text-muted-foreground">Create a different address for this need.</p>
+            </div>
           </label>
         </div>
-      </div>
 
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="space-y-2">
-          <p class="text-sm font-semibold text-foreground">Best way to reach you</p>
-          <div class="space-y-2 text-sm text-muted-foreground">
-            <label class="flex items-center gap-2">
-              <input type="checkbox" name="contact_methods" value="phone" {{range .ContactMethods}}{{if eq . "phone"}}checked{{end}}{{end}} class="h-4 w-4 rounded border-border" />
-              Phone call
-            </label>
-            <label class="flex items-center gap-2">
-              <input type="checkbox" name="contact_methods" value="text" {{range .ContactMethods}}{{if eq . "text"}}checked{{end}}{{end}} class="h-4 w-4 rounded border-border" />
-              Text message
-            </label>
-            <label class="flex items-center gap-2">
-              <input type="checkbox" name="contact_methods" value="email" {{range .ContactMethods}}{{if eq . "email"}}checked{{end}}{{end}} class="h-4 w-4 rounded border-border" />
-              Email
-            </label>
+        <label id="set-selected-primary-row" class="{{if .ShowSetPrimary}}flex{{else}}hidden{{end}} cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+          <input type="checkbox" name="set_selected_as_primary" class="h-4 w-4 rounded border-border" />
+          Set selected address as my primary address
+        </label>
+      </div>
+      {{else}}
+        <input type="hidden" name="address_selection" value="new" />
+        <div class="rounded-md border border-[color:var(--cj-accent)]/30 bg-[color:var(--cj-accent)]/10 px-4 py-3 text-sm text-foreground">
+          Add your first address to continue.
+        </div>
+        {{end}}
+
+        <div id="new-address-fields" class="space-y-6 {{if and .HasAddresses (ne .SelectedAddressID "new")}}hidden{{end}}">
+          <div class="grid gap-4 md:grid-cols-2">
+            <div>
+              <input type="text" name="address" placeholder="Street address" value="{{deref .NewAddress.Address}}" {{if or (not .HasAddresses) (eq .SelectedAddressID "new")}}required{{end}}
+                data-new-required="true"
+                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+            </div>
+            <input type="text" name="address_ext" placeholder="Apartment / Unit (optional)" value="{{deref .NewAddress.AddressExt}}"
+              class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+            <div>
+              <input type="text" name="city" placeholder="City (Charlotte)" value="{{deref .NewAddress.City}}" {{if or (not .HasAddresses) (eq .SelectedAddressID "new")}}required{{end}}
+                data-new-required="true"
+                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+            </div>
+            <div>
+              <input type="text" name="state" placeholder="State (NC)" value="{{deref .NewAddress.State}}" {{if or (not .HasAddresses) (eq .SelectedAddressID "new")}}required{{end}}
+                data-new-required="true"
+                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+            </div>
+            <div>
+              <input type="text" name="zip_code" placeholder="ZIP code" value="{{deref .NewAddress.ZipCode}}" {{if or (not .HasAddresses) (eq .SelectedAddressID "new")}}required{{end}}
+                data-new-required="true"
+                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+            </div>
           </div>
+
+          <div class="space-y-2">
+            <p class="text-sm font-semibold text-foreground">What should we show publicly?</p>
+            <div class="space-y-2 text-sm text-muted-foreground">
+              <label class="flex items-center gap-2">
+                <input type="radio" name="privacy_display" value="neighborhood" {{if eq (derefOr .NewAddress.PrivacyDisplay "neighborhood") "neighborhood"}}checked{{end}}
+                  class="h-4 w-4 border-border" />
+                Neighborhood only
+              </label>
+              <label class="flex items-center gap-2">
+                <input type="radio" name="privacy_display" value="zip" {{if eq (derefOr .NewAddress.PrivacyDisplay "neighborhood") "zip"}}checked{{end}} class="h-4 w-4 border-border" />
+                ZIP code only
+              </label>
+              <label class="flex items-center gap-2">
+                <input type="radio" name="privacy_display" value="city" {{if eq (derefOr .NewAddress.PrivacyDisplay "neighborhood") "city"}}checked{{end}} class="h-4 w-4 border-border" />
+                City only
+              </label>
+            </div>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+              <p class="text-sm font-semibold text-foreground">Best way to reach you</p>
+              <div class="space-y-2 text-sm text-muted-foreground">
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" name="contact_methods" value="phone" {{range .NewAddress.ContactMethods}}{{if eq . "phone"}}checked{{end}}{{end}} class="h-4 w-4 rounded border-border" />
+                  Phone call
+                </label>
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" name="contact_methods" value="text" {{range .NewAddress.ContactMethods}}{{if eq . "text"}}checked{{end}}{{end}} class="h-4 w-4 rounded border-border" />
+                  Text message
+                </label>
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" name="contact_methods" value="email" {{range .NewAddress.ContactMethods}}{{if eq . "email"}}checked{{end}}{{end}} class="h-4 w-4 rounded border-border" />
+                  Email
+                </label>
+              </div>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-foreground">Preferred time</p>
+              <select name="preferred_contact_time"
+                class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                <option value="">Select time of day</option>
+                <option value="morning" {{if eq (deref .NewAddress.PreferredContactTime) "morning"}}selected{{end}}>Morning</option>
+                <option value="afternoon" {{if eq (deref .NewAddress.PreferredContactTime) "afternoon"}}selected{{end}}>Afternoon</option>
+                <option value="evening" {{if eq (deref .NewAddress.PreferredContactTime) "evening"}}selected{{end}}>Evening</option>
+                <option value="anytime" {{if eq (deref .NewAddress.PreferredContactTime) "anytime"}}selected{{end}}>Anytime</option>
+              </select>
+            </div>
+          </div>
+
+          {{if .HasAddresses}}
+          <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <input type="checkbox" name="set_new_as_primary" class="h-4 w-4 rounded border-border" />
+            Set this new address as my primary address
+          </label>
+          {{end}}
         </div>
-        <div>
-          <p class="text-sm font-semibold text-foreground">Preferred time</p>
-          <select name="preferred_contact_time"
-            class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-            <option value="">Select time of day</option>
-            <option value="morning" {{if eq (deref .PreferredContactTime) "morning"}}selected{{end}}>Morning</option>
-            <option value="afternoon" {{if eq (deref .PreferredContactTime) "afternoon"}}selected{{end}}>Afternoon</option>
-            <option value="evening" {{if eq (deref .PreferredContactTime) "evening"}}selected{{end}}>Evening</option>
-            <option value="anytime" {{if eq (deref .PreferredContactTime) "anytime"}}selected{{end}}>Anytime</option>
-          </select>
-        </div>
-      </div>
     </form>
   </div>
 
@@ -104,6 +161,54 @@
     </button>
   </div>
 </div>
+
+<script>
+  (function () {
+    var addressOptions = document.querySelectorAll('[name="address_selection"]')
+    var newAddressFields = document.getElementById('new-address-fields')
+    var setSelectedPrimaryRow = document.getElementById('set-selected-primary-row')
+    var newRequiredFields = document.querySelectorAll('[data-new-required="true"]')
+
+    function selectedOption() {
+      for (var i = 0; i < addressOptions.length; i++) {
+        if (addressOptions[i].checked) return addressOptions[i]
+      }
+      return null
+    }
+
+    function syncAddressSelectionState() {
+      if (!addressOptions || addressOptions.length === 0) return
+
+      var current = selectedOption()
+      if (!current) return
+
+      var isNew = current.value === 'new'
+      if (newAddressFields) {
+        newAddressFields.classList.toggle('hidden', !isNew)
+      }
+
+      if (newRequiredFields && newRequiredFields.length > 0) {
+        for (var i = 0; i < newRequiredFields.length; i++) {
+          newRequiredFields[i].required = isNew
+        }
+      }
+
+      if (!setSelectedPrimaryRow) return
+
+      var isSaved = current.dataset.addressOption === 'saved'
+      var isPrimary = current.dataset.isPrimary === 'true'
+      var showSetPrimary = isSaved && !isPrimary
+      setSelectedPrimaryRow.classList.toggle('hidden', !showSetPrimary)
+      setSelectedPrimaryRow.classList.toggle('flex', showSetPrimary)
+    }
+
+    for (var i = 0; i < addressOptions.length; i++) {
+      addressOptions[i].addEventListener('change', syncAddressSelectionState)
+    }
+
+    syncAddressSelectionState()
+  })()
+</script>
 
 {{template "footer" .}}
 {{end}}

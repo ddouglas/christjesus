@@ -159,12 +159,45 @@ func (s *Service) handleGetOnboardingNeedLocation(w http.ResponseWriter, r *http
 		return
 	}
 
-	data := struct {
-		Title string
-		*types.Need
-	}{
-		Title: "Need Location",
-		Need:  need,
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("user id not found in context")
+		s.internalServerError(w)
+		return
+	}
+
+	addresses, err := s.userAddressRepo.AddressesByUserID(ctx, userID)
+	if err != nil {
+		s.logger.WithError(err).WithField("user_id", userID).Error("failed to fetch user addresses")
+		s.internalServerError(w)
+		return
+	}
+
+	selectedAddressID := ""
+	if need.UserAddressID != nil && *need.UserAddressID != "" {
+		selectedAddressID = *need.UserAddressID
+	} else if len(addresses) > 0 {
+		selectedAddressID = addresses[0].ID
+	} else {
+		selectedAddressID = "new"
+	}
+
+	showSetSelectedPrimary := false
+	for _, address := range addresses {
+		if address.ID == selectedAddressID {
+			showSetSelectedPrimary = !address.IsPrimary
+			break
+		}
+	}
+
+	data := &locationTemplateData{
+		Title:             "Need Location",
+		ID:                needID,
+		Addresses:         addresses,
+		HasAddresses:      len(addresses) > 0,
+		SelectedAddressID: selectedAddressID,
+		ShowSetPrimary:    showSetSelectedPrimary,
+		NewAddress:        &userAddressForm{},
 	}
 
 	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.location", data)
@@ -180,6 +213,13 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 	var ctx = r.Context()
 
 	needID := r.PathValue("needID")
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("user id not found in context")
+		s.internalServerError(w)
+		return
+	}
+
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch need from datastore")
@@ -193,16 +233,104 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 		return
 	}
 
-	var location = new(types.NeedLocation)
-	err = decoder.Decode(location, r.Form)
+	addresses, err := s.userAddressRepo.AddressesByUserID(ctx, userID)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to decode form onto location form")
+		s.logger.WithError(err).WithField("user_id", userID).Error("failed to fetch user addresses")
 		s.internalServerError(w)
 		return
 	}
 
+	selection := strings.TrimSpace(r.FormValue("address_selection"))
+	if selection == "" && len(addresses) > 0 {
+		selection = addresses[0].ID
+	}
+	if selection == "" && len(addresses) == 0 {
+		selection = "new"
+	}
+
+	var selectedAddress *types.UserAddress
+	usesNonPrimaryAddress := false
+
+	if selection != "new" {
+		addressID := selection
+		if addressID == "" {
+			s.logger.Error("missing selected address id")
+			s.internalServerError(w)
+			return
+		}
+
+		selectedAddress, err = s.userAddressRepo.ByIDAndUserID(ctx, addressID, userID)
+		if err != nil {
+			s.logger.WithError(err).WithField("address_id", addressID).Error("failed to fetch selected user address")
+			s.internalServerError(w)
+			return
+		}
+
+		if selectedAddress == nil {
+			s.logger.WithField("address_id", addressID).Error("selected user address not found")
+			s.internalServerError(w)
+			return
+		}
+
+		setSelectedAsPrimary := r.FormValue("set_selected_as_primary") == "on"
+		if setSelectedAsPrimary && !selectedAddress.IsPrimary {
+			err = s.userAddressRepo.SetPrimaryByID(ctx, userID, selectedAddress.ID)
+			if err != nil {
+				s.logger.WithError(err).WithField("address_id", selectedAddress.ID).Error("failed to promote selected address to primary")
+				s.internalServerError(w)
+				return
+			}
+			selectedAddress.IsPrimary = true
+		}
+
+		usesNonPrimaryAddress = !selectedAddress.IsPrimary
+	} else {
+		location := new(userAddressForm)
+		err = decoder.Decode(location, r.Form)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to decode form onto location form")
+			s.internalServerError(w)
+			return
+		}
+
+		if location.Address == nil || strings.TrimSpace(*location.Address) == "" ||
+			location.City == nil || strings.TrimSpace(*location.City) == "" ||
+			location.State == nil || strings.TrimSpace(*location.State) == "" ||
+			location.ZipCode == nil || strings.TrimSpace(*location.ZipCode) == "" {
+			s.logger.Error("new address submission missing required fields")
+			s.internalServerError(w)
+			return
+		}
+
+		setNewAsPrimary := len(addresses) == 0 || r.FormValue("set_new_as_primary") == "on"
+
+		selectedAddress = &types.UserAddress{
+			ID:                   utils.NanoID(),
+			UserID:               userID,
+			Address:              location.Address,
+			AddressExt:           location.AddressExt,
+			City:                 location.City,
+			State:                location.State,
+			ZipCode:              location.ZipCode,
+			PrivacyDisplay:       location.PrivacyDisplay,
+			ContactMethods:       location.ContactMethods,
+			PreferredContactTime: location.PreferredContactTime,
+			IsPrimary:            setNewAsPrimary,
+		}
+
+		err = s.userAddressRepo.Create(ctx, selectedAddress)
+		if err != nil {
+			s.logger.WithError(err).WithField("user_id", userID).Error("failed to create user address")
+			s.internalServerError(w)
+			return
+		}
+
+		usesNonPrimaryAddress = !setNewAsPrimary
+	}
+
 	need.CurrentStep = types.NeedStepLocation
-	need.NeedLocation = location
+	need.UserAddressID = &selectedAddress.ID
+	need.UsesNonPrimaryAddress = usesNonPrimaryAddress
 
 	err = s.needsRepo.UpdateNeed(ctx, needID, need)
 	if err != nil {
@@ -756,6 +884,7 @@ type needReviewTemplateData struct {
 	Title               string
 	ID                  string
 	Need                *types.Need
+	SelectedAddress     *types.UserAddress
 	Story               *types.NeedStory
 	PrimaryCategory     *types.NeedCategory
 	SecondaryCategories []*types.NeedCategory
@@ -883,6 +1012,25 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 		secondaryCategories = append(secondaryCategories, category)
 	}
 
+	var selectedAddress *types.UserAddress
+	if need.UserAddressID != nil && *need.UserAddressID != "" {
+		selectedAddress, err = s.userAddressRepo.ByIDAndUserID(ctx, *need.UserAddressID, need.UserID)
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch selected address for review")
+			s.internalServerError(w)
+			return
+		}
+	}
+
+	if selectedAddress == nil {
+		selectedAddress, err = s.userAddressRepo.PrimaryByUserID(ctx, need.UserID)
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch primary address for review")
+			s.internalServerError(w)
+			return
+		}
+	}
+
 	docs, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
 	if err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch documents")
@@ -905,6 +1053,7 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 		Title:               "Review Need",
 		ID:                  needID,
 		Need:                need,
+		SelectedAddress:     selectedAddress,
 		Story:               story,
 		PrimaryCategory:     primaryCategory,
 		SecondaryCategories: secondaryCategories,
@@ -919,6 +1068,27 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 		s.internalServerError(w)
 		return
 	}
+}
+
+type locationTemplateData struct {
+	Title             string
+	ID                string
+	Addresses         []*types.UserAddress
+	HasAddresses      bool
+	SelectedAddressID string
+	ShowSetPrimary    bool
+	NewAddress        *userAddressForm
+}
+
+type userAddressForm struct {
+	Address              *string  `form:"address"`
+	AddressExt           *string  `form:"address_ext"`
+	City                 *string  `form:"city"`
+	State                *string  `form:"state"`
+	ZipCode              *string  `form:"zip_code"`
+	PrivacyDisplay       *string  `form:"privacy_display"`
+	ContactMethods       []string `form:"contact_methods"`
+	PreferredContactTime *string  `form:"preferred_contact_time"`
 }
 
 func (s *Service) handleGetOnboardingNeedConfirmation(w http.ResponseWriter, r *http.Request) {

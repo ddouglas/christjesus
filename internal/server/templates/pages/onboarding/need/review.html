@@ -43,24 +43,25 @@
         </div>
         <div class="mt-4 space-y-3 border-t border-border px-5 pt-4 text-sm">
           <div>
-            <p class="text-xs uppercase tracking-wide text-muted-foreground">City / State</p>
-            <p class="text-foreground">
-              {{if .Need.City}}{{.Need.City}}
-              {{else}}City not provided{{end}},
-                {{if .Need.State}}{{.Need.State}}
-                {{else}}State not provided{{end}}
-                  {{if .Need.ZipCode}} {{.Need.ZipCode}}{{end}}
-            </p>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">Address</p>
+            {{if .SelectedAddress}}
+            <p class="text-foreground">{{deref .SelectedAddress.Address}}{{if .SelectedAddress.AddressExt}}, {{deref .SelectedAddress.AddressExt}}{{end}}</p>
+            <p class="text-muted-foreground">{{deref .SelectedAddress.City}}, {{deref .SelectedAddress.State}} {{deref .SelectedAddress.ZipCode}}</p>
+            {{else}}
+              <p class="text-muted-foreground">Address not selected</p>
+              {{end}}
           </div>
           <div>
             <p class="text-xs uppercase tracking-wide text-muted-foreground">Public display</p>
-            <p class="text-foreground">{{derefOr .Need.PrivacyDisplay "neighborhood"}}</p>
+            <p class="text-foreground">{{if .SelectedAddress}}{{derefOr .SelectedAddress.PrivacyDisplay "neighborhood"}}
+              {{else}}neighborhood{{end}}
+            </p>
           </div>
           <div>
             <p class="text-xs uppercase tracking-wide text-muted-foreground">Contact methods</p>
-            {{if .Need.ContactMethods}}
+            {{if and .SelectedAddress .SelectedAddress.ContactMethods}}
             <div class="mt-1 flex flex-wrap gap-2">
-              {{range .Need.ContactMethods}}
+              {{range .SelectedAddress.ContactMethods}}
               <span class="inline-flex rounded-full border border-border bg-slate-50 px-2.5 py-1 text-xs text-foreground">{{.}}</span>
               {{end}}
             </div>
@@ -70,7 +71,17 @@
           </div>
           <div>
             <p class="text-xs uppercase tracking-wide text-muted-foreground">Preferred time</p>
-            <p class="text-foreground">{{derefOr .Need.PreferredContactTime "Not specified"}}</p>
+            <p class="text-foreground">{{if .SelectedAddress}}{{derefOr .SelectedAddress.PreferredContactTime "Not specified"}}
+              {{else}}Not specified{{end}}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">Address reference</p>
+            {{if .Need.UsesNonPrimaryAddress}}
+            <p class="text-foreground">Non-primary address used for this need</p>
+            {{else}}
+              <p class="text-foreground">Primary address used for this need</p>
+              {{end}}
           </div>
         </div>
       </section>
