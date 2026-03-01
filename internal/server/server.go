@@ -146,9 +146,10 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc("/onboarding/need/:needID/story", s.handleGetOnboardingNeedStory, http.MethodGet)
 		r.HandleFunc("/onboarding/need/:needID/story", s.handlePostOnboardingNeedStory, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/documents", s.handleGetOnboardingNeedDocuments, http.MethodGet)
-		// r.HandleFunc("/onboarding/need/:needID/documents", s.handlePostOnboardingNeedDocuments, http.MethodPost)
+		r.HandleFunc("/onboarding/need/:needID/documents", s.handlePostOnboardingNeedDocuments, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/documents/upload", s.handlePostOnboardingNeedDocumentsUpload, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/documents/metadata", s.handlePostOnboardingNeedDocumentMetadata, http.MethodPost)
+		r.HandleFunc("/onboarding/need/:needID/documents/:documentID/delete", s.handlePostOnboardingNeedDocumentDelete, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/review", s.handleGetOnboardingNeedReview, http.MethodGet)
 		r.HandleFunc("/onboarding/need/:needID/review", s.handlePostOnboardingNeedReview, http.MethodPost)
 		r.HandleFunc("/onboarding/need/:needID/confirmation", s.handleGetOnboardingNeedConfirmation, http.MethodGet)
@@ -178,15 +179,47 @@ func (s *Service) buildRouter(r *flow.Mux) {
 }
 
 func loadTemplates() (*template.Template, error) {
-	funcMap := template.FuncMap{
-		"div": func(a, b int64) int64 {
-			if b == 0 {
+	toInt64 := func(value any) int64 {
+		switch v := value.(type) {
+		case int:
+			return int64(v)
+		case int8:
+			return int64(v)
+		case int16:
+			return int64(v)
+		case int32:
+			return int64(v)
+		case int64:
+			return v
+		case uint:
+			return int64(v)
+		case uint8:
+			return int64(v)
+		case uint16:
+			return int64(v)
+		case uint32:
+			return int64(v)
+		case uint64:
+			if v > ^uint64(0)>>1 {
 				return 0
 			}
-			return a / b
+			return int64(v)
+		default:
+			return 0
+		}
+	}
+
+	funcMap := template.FuncMap{
+		"div": func(a, b any) int64 {
+			a64 := toInt64(a)
+			b64 := toInt64(b)
+			if b64 == 0 {
+				return 0
+			}
+			return a64 / b64
 		},
-		"mul": func(a, b int64) int64 {
-			return a * b
+		"mul": func(a, b any) int64 {
+			return toInt64(a) * toInt64(b)
 		},
 		"deref": func(s *string) string {
 			if s == nil {

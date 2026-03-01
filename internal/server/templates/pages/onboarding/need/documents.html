@@ -45,6 +45,7 @@
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">File Name</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Document Type</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border bg-background">
@@ -59,13 +60,19 @@
                 <td class="px-4 py-3 align-top">
                   <select name="document_type"
                     class="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-                    {{range $.DocumentTypes}}
-                    <option value="{{.}}" {{if eq . $doc.DocumentType}}selected{{end}}>{{.}}</option>
+                    {{range $.DocumentTypeOptions}}
+                    <option value="{{.Value}}" {{if eq .Value $doc.DocumentType}}selected{{end}}>{{.Label}}</option>
                     {{end}}
                   </select>
                 </td>
                 <td class="px-4 py-3 align-top text-sm text-muted-foreground">
                   {{div .FileSizeBytes 1024}} KB
+                </td>
+                <td class="px-4 py-3 align-top">
+                  <button type="submit" formaction="/onboarding/need/{{$.ID}}/documents/{{$doc.ID}}/delete" formmethod="post" formnovalidate
+                    class="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md border border-[color:var(--cj-error)]/30 bg-[color:var(--cj-error)]/10 px-3 py-2 text-xs font-medium text-[color:var(--cj-error)] transition-all hover:bg-[color:var(--cj-error)]/20">
+                    Remove
+                  </button>
                 </td>
               </tr>
               {{end}}
@@ -128,9 +135,15 @@
       Back
     </a>
 
-    <form action="/onboarding/need/{{.ID}}/documents" method="post">
-      <button type="submit"
-        class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+    <form id="documents-continue-form" action="/onboarding/need/{{.ID}}/documents" method="post" class="flex items-center gap-3">
+      {{if not .HasDocuments}}
+      <label for="skip-documents-checkbox" class="inline-flex items-center gap-2 text-sm text-muted-foreground">
+        <input id="skip-documents-checkbox" name="skipDocuments" type="checkbox" class="h-4 w-4 rounded border-border text-[color:var(--cj-primary)] focus:ring-[color:var(--cj-primary)]" />
+        Continue without documents for now
+      </label>
+      {{end}}
+      <button id="continue-button" type="submit" {{if not .HasDocuments}}disabled{{end}}
+        class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90 {{if not .HasDocuments}}cursor-not-allowed opacity-60{{end}}">
         Continue
       </button>
     </form>
@@ -146,43 +159,62 @@
     var metadataForm = document.getElementById('documents-metadata-form')
     var metadataSubmitButton = document.getElementById('metadata-submit-button')
     var metadataFeedback = document.getElementById('metadata-feedback')
+    var continueButton = document.getElementById('continue-button')
+    var skipDocumentsCheckbox = document.getElementById('skip-documents-checkbox')
     var selectedFilesContainer = document.getElementById('selected-files')
     var selectedFilesCount = document.getElementById('selected-files-count')
     var selectedFilesList = document.getElementById('selected-files-list')
 
-    if (!fileInput || !uploadForm || !uploadSubmitButton || !uploadFeedback || !selectedFilesContainer || !selectedFilesCount || !selectedFilesList) return
+    if (fileInput && uploadForm && uploadSubmitButton && uploadFeedback && selectedFilesContainer && selectedFilesCount && selectedFilesList) {
+      fileInput.addEventListener('change', function () {
+        var files = fileInput.files
+        if (!files || files.length === 0) {
+          selectedFilesContainer.classList.add('hidden')
+          selectedFilesList.innerHTML = ''
+          selectedFilesCount.textContent = ''
+          return
+        }
 
-    fileInput.addEventListener('change', function () {
-      var files = fileInput.files
-      if (!files || files.length === 0) {
-        selectedFilesContainer.classList.add('hidden')
+        selectedFilesContainer.classList.remove('hidden')
+        selectedFilesCount.textContent = files.length + (files.length === 1 ? ' file selected' : ' files selected')
         selectedFilesList.innerHTML = ''
-        selectedFilesCount.textContent = ''
-        return
-      }
 
-      selectedFilesContainer.classList.remove('hidden')
-      selectedFilesCount.textContent = files.length + (files.length === 1 ? ' file selected' : ' files selected')
-      selectedFilesList.innerHTML = ''
+        for (var i = 0; i < files.length; i++) {
+          var file = files[i]
+          var item = document.createElement('li')
+          var sizeKb = Math.max(1, Math.round(file.size / 1024))
+          item.textContent = file.name + ' (' + sizeKb + ' KB)'
+          selectedFilesList.appendChild(item)
+        }
+      })
 
-      for (var i = 0; i < files.length; i++) {
-        var file = files[i]
-        var item = document.createElement('li')
-        var sizeKb = Math.max(1, Math.round(file.size / 1024))
-        item.textContent = file.name + ' (' + sizeKb + ' KB)'
-        selectedFilesList.appendChild(item)
-      }
-    })
+      uploadForm.addEventListener('submit', function () {
+        uploadSubmitButton.disabled = true
+        uploadSubmitButton.classList.add('opacity-60', 'cursor-not-allowed')
+        uploadSubmitButton.textContent = 'Uploading...'
+        uploadFeedback.classList.remove('hidden')
+      })
+    }
 
-    uploadForm.addEventListener('submit', function () {
-      uploadSubmitButton.disabled = true
-      uploadSubmitButton.classList.add('opacity-60', 'cursor-not-allowed')
-      uploadSubmitButton.textContent = 'Uploading...'
-      uploadFeedback.classList.remove('hidden')
-    })
+    if (continueButton && skipDocumentsCheckbox) {
+      skipDocumentsCheckbox.addEventListener('change', function () {
+        var enabled = skipDocumentsCheckbox.checked
+        continueButton.disabled = !enabled
+        continueButton.classList.toggle('opacity-60', !enabled)
+        continueButton.classList.toggle('cursor-not-allowed', !enabled)
+      })
+    }
 
     if (metadataForm && metadataSubmitButton && metadataFeedback) {
-      metadataForm.addEventListener('submit', function () {
+      metadataForm.addEventListener('submit', function (event) {
+        var submitter = event.submitter
+        if (submitter && submitter.getAttribute('formaction') && submitter.getAttribute('formaction').indexOf('/delete') !== -1) {
+          submitter.disabled = true
+          submitter.classList.add('opacity-60', 'cursor-not-allowed')
+          submitter.textContent = 'Removing...'
+          return
+        }
+
         metadataSubmitButton.disabled = true
         metadataSubmitButton.classList.add('opacity-60', 'cursor-not-allowed')
         metadataSubmitButton.textContent = 'Updating...'

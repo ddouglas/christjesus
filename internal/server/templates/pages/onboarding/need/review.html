@@ -19,54 +19,199 @@
     </div>
   </div>
 
-  <div class="space-y-4">
-    <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
-      <div class="space-y-4 px-6">
-        <div>
-          <p class="text-sm font-semibold text-foreground">Location</p>
-          <p class="text-sm text-muted-foreground">Charlotte, NC 28202</p>
-          <a href="/onboarding/need/{{.ID}}/location" class="mt-1 text-xs text-[color:var(--cj-accent)] hover:underline">Edit</a>
+  {{if .Notice}}
+  <div class="mb-4 rounded-md border border-[color:var(--cj-accent)]/30 bg-[color:var(--cj-accent)]/10 px-4 py-3 text-sm text-foreground">
+    {{.Notice}}
+  </div>
+  {{end}}
+
+  {{if .Error}}
+  <div class="mb-4 rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-4 py-3 text-sm font-semibold text-[color:var(--cj-error)]" role="alert">
+    {{.Error}}
+  </div>
+  {{end}}
+
+  <div class="space-y-6">
+    <div class="grid gap-4 md:grid-cols-2">
+      <section class="flex flex-col rounded-xl border py-5 shadow-sm">
+        <div class="flex items-start justify-between gap-3 px-5">
+          <div>
+            <p class="text-sm font-semibold text-foreground">Location</p>
+            <p class="text-xs text-muted-foreground">How your location and contact preferences appear</p>
+          </div>
+          <a href="/onboarding/need/{{.ID}}/location" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
         </div>
-        <div>
-          <p class="text-sm font-semibold text-foreground">Categories</p>
-          <p class="text-sm text-muted-foreground">Housing & Shelter</p>
-          <a href="/onboarding/need/{{.ID}}/categories" class="mt-1 text-xs text-[color:var(--cj-accent)] hover:underline">Edit</a>
+        <div class="mt-4 space-y-3 border-t border-border px-5 pt-4 text-sm">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">City / State</p>
+            <p class="text-foreground">
+              {{if .Need.City}}{{.Need.City}}
+              {{else}}City not provided{{end}},
+                {{if .Need.State}}{{.Need.State}}
+                {{else}}State not provided{{end}}
+                  {{if .Need.ZipCode}} {{.Need.ZipCode}}{{end}}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">Public display</p>
+            <p class="text-foreground">{{derefOr .Need.PrivacyDisplay "neighborhood"}}</p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">Contact methods</p>
+            {{if .Need.ContactMethods}}
+            <div class="mt-1 flex flex-wrap gap-2">
+              {{range .Need.ContactMethods}}
+              <span class="inline-flex rounded-full border border-border bg-slate-50 px-2.5 py-1 text-xs text-foreground">{{.}}</span>
+              {{end}}
+            </div>
+            {{else}}
+              <p class="text-muted-foreground">Not specified</p>
+              {{end}}
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">Preferred time</p>
+            <p class="text-foreground">{{derefOr .Need.PreferredContactTime "Not specified"}}</p>
+          </div>
         </div>
-        <div>
-          <p class="text-sm font-semibold text-foreground">Amount & Story</p>
-          <p class="text-sm text-muted-foreground">$1,200 requested</p>
-          <a href="/onboarding/need/{{.ID}}/story" class="mt-1 text-xs text-[color:var(--cj-accent)] hover:underline">Edit</a>
+      </section>
+
+      <section class="flex flex-col rounded-xl border py-5 shadow-sm">
+        <div class="flex items-start justify-between gap-3 px-5">
+          <div>
+            <p class="text-sm font-semibold text-foreground">Categories</p>
+            <p class="text-xs text-muted-foreground">Primary and secondary need categories</p>
+          </div>
+          <a href="/onboarding/need/{{.ID}}/categories" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
         </div>
-      </div>
+        <div class="mt-4 space-y-3 border-t border-border px-5 pt-4 text-sm">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">Primary</p>
+            {{if .PrimaryCategory}}
+            <p class="text-foreground">{{.PrimaryCategory.Name}}</p>
+            {{else}}
+              <p class="text-muted-foreground">Primary category not selected</p>
+              {{end}}
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">Secondary</p>
+            {{if .SecondaryCategories}}
+            <div class="mt-1 flex flex-wrap gap-2">
+              {{range .SecondaryCategories}}
+              <span class="inline-flex rounded-full border border-border bg-slate-50 px-2.5 py-1 text-xs text-foreground">{{.Name}}</span>
+              {{end}}
+            </div>
+            {{else}}
+              <p class="text-muted-foreground">No secondary categories selected</p>
+              {{end}}
+          </div>
+        </div>
+      </section>
     </div>
 
-    <form action="/onboarding/need/review" method="post">
+    <section class="flex flex-col rounded-xl border py-5 shadow-sm">
+      <div class="flex items-start justify-between gap-3 px-5">
+        <div>
+          <p class="text-sm font-semibold text-foreground">Amount & Story</p>
+          <p class="text-xs text-muted-foreground">The request amount and personal context shared</p>
+        </div>
+        <a href="/onboarding/need/{{.ID}}/story" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
+      </div>
+      <div class="mt-4 grid gap-4 border-t border-border px-5 pt-4 md:grid-cols-3">
+        <div class="rounded-lg border border-border bg-slate-50 p-4 md:col-span-1">
+          <p class="text-xs uppercase tracking-wide text-muted-foreground">Amount requested</p>
+          <p class="mt-1 text-2xl font-semibold text-foreground">${{div .Need.AmountNeededCents 100}}</p>
+        </div>
+        <div class="space-y-3 md:col-span-2">
+          {{if .Story}}
+          <div>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">Current situation</p>
+            <p class="text-sm text-foreground">{{deref .Story.Current}}</p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">Specific need</p>
+            <p class="text-sm text-foreground">{{deref .Story.Need}}</p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-wide text-muted-foreground">Expected outcome</p>
+            <p class="text-sm text-foreground">{{deref .Story.Outcome}}</p>
+          </div>
+          {{else}}
+            <p class="text-sm text-muted-foreground">Story details not provided yet.</p>
+            {{end}}
+        </div>
+      </div>
+    </section>
+
+    <section class="flex flex-col rounded-xl border py-5 shadow-sm">
+      <div class="flex items-start justify-between gap-3 px-5">
+        <div>
+          <p class="text-sm font-semibold text-foreground">Documents</p>
+          <p class="text-xs text-muted-foreground">Supporting files uploaded for review</p>
+        </div>
+        <a href="/onboarding/need/{{.ID}}/documents" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
+      </div>
+      <div class="mt-4 border-t border-border px-5 pt-4">
+        {{if .Documents}}
+        <p class="mb-3 text-sm text-muted-foreground">{{len .Documents}} document(s) uploaded</p>
+        <div class="overflow-x-auto rounded-md border border-border">
+          <table class="min-w-full divide-y divide-border text-sm">
+            <thead class="bg-muted/50">
+              <tr>
+                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">File</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Type</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Size</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border bg-background">
+              {{range .Documents}}
+              <tr>
+                <td class="px-3 py-2 text-foreground">{{.FileName}}</td>
+                <td class="px-3 py-2 text-muted-foreground">{{.TypeLabel}}</td>
+                <td class="px-3 py-2 text-muted-foreground">{{div .SizeBytes 1024}} KB</td>
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+        {{else}}
+          <div class="rounded-md border border-border bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
+            No documents uploaded.
+          </div>
+          {{end}}
+      </div>
+    </section>
+
+    <form id="review-form" action="/onboarding/need/{{.ID}}/review" method="post">
       <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
         <div class="space-y-4 px-6">
-          <div class="flex items-start gap-2">
-            <input type="checkbox" name="agreeTerms" required class="mt-0.5 h-4 w-4 rounded border-border" />
-            <span class="text-sm text-muted-foreground">
-              I agree to the <a href="/terms" class="text-[color:var(--cj-accent)] hover:underline">Terms of Service</a> and <a href="/privacy"
-                class="text-[color:var(--cj-accent)] hover:underline">Privacy Policy</a>
-            </span>
-          </div>
-          <div class="flex items-start gap-2">
-            <input type="checkbox" name="agreeVerification" required class="mt-0.5 h-4 w-4 rounded border-border" />
-            <span class="text-sm text-muted-foreground">
-              I understand that my need may be reviewed by a trusted validator
-            </span>
-          </div>
+          <p class="text-sm font-semibold text-foreground">Final acknowledgements</p>
+          <p class="text-xs text-muted-foreground">
+            Review these before submitting:
+            <a href="/terms" class="text-[color:var(--cj-accent)] hover:underline">Terms of Service</a>
+            and
+            <a href="/privacy" class="text-[color:var(--cj-accent)] hover:underline">Privacy Policy</a>
+          </p>
+
+          <label class="flex w-full cursor-pointer items-start gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-muted/50">
+            <input type="checkbox" name="agreeTerms" required class="mt-0.5 h-4 w-4 shrink-0 rounded border-border" />
+            <span class="text-sm text-foreground">I agree to the Terms of Service and Privacy Policy</span>
+          </label>
+
+          <label class="flex w-full cursor-pointer items-start gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-muted/50">
+            <input type="checkbox" name="agreeVerification" required class="mt-0.5 h-4 w-4 shrink-0 rounded border-border" />
+            <span class="text-sm text-foreground">I understand that my need may be reviewed by a trusted validator</span>
+          </label>
         </div>
       </div>
     </form>
   </div>
 
   <div class="mt-6 flex items-center justify-between">
-    <a href="/onboarding/need/documents"
+    <a href="/onboarding/need/{{.ID}}/documents"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
       Back
     </a>
-    <button type="submit" onclick="document.querySelector('form').submit()"
+    <button type="submit" form="review-form"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
       Submit Profile
     </button>

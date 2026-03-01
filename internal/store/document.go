@@ -4,7 +4,6 @@ import (
 	"christjesus/internal/utils"
 	"christjesus/pkg/types"
 	"context"
-	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -106,14 +105,7 @@ func (r *DocumentRepository) CreateDocument(ctx context.Context, doc *types.Need
 
 // UpdateDocument updates an existing need document row scoped by both
 // document ID and need ID.
-//
-// It refreshes document.UploadedAt to the current server time before
-// persisting fields via StructToMap and executes a SQL UPDATE
 func (r *DocumentRepository) UpdateDocument(ctx context.Context, document *types.NeedDocument) error {
-
-	now := time.Now()
-	document.UploadedAt = now
-
 	query, args, _ := psql().
 		Update(documentTableName).
 		SetMap(utils.StructToMap(document)).
@@ -123,6 +115,17 @@ func (r *DocumentRepository) UpdateDocument(ctx context.Context, document *types
 	_, err := r.pool.Exec(ctx, query, args...)
 	return err
 
+}
+
+// DeleteDocumentByNeedIDAndID removes a document scoped to a need.
+func (r *DocumentRepository) DeleteDocumentByNeedIDAndID(ctx context.Context, needID, id string) error {
+	query, args, _ := psql().
+		Delete(documentTableName).
+		Where(squirrel.Eq{"id": id, "need_id": needID}).
+		ToSql()
+
+	_, err := r.pool.Exec(ctx, query, args...)
+	return err
 }
 
 // DeleteDocument removes a document record

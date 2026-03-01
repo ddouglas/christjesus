@@ -427,12 +427,13 @@ func (s *Service) handleGetOnboardingNeedDocuments(w http.ResponseWriter, r *htt
 	}
 
 	data := map[string]interface{}{
-		"Title":         "Upload Documents",
-		"ID":            needID,
-		"Documents":     documents,
-		"Notice":        r.URL.Query().Get("notice"),
-		"Error":         r.URL.Query().Get("error"),
-		"DocumentTypes": allowedDocumentTypes(),
+		"Title":               "Upload Documents",
+		"ID":                  needID,
+		"Documents":           documents,
+		"HasDocuments":        len(documents) > 0,
+		"Notice":              r.URL.Query().Get("notice"),
+		"Error":               r.URL.Query().Get("error"),
+		"DocumentTypeOptions": documentTypeOptions(),
 	}
 
 	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.documents", data)
@@ -472,12 +473,14 @@ func (s *Service) handlePostOnboardingNeedDocumentsUpload(w http.ResponseWriter,
 
 	uploadedCount := 0
 	failedCount := 0
+	failedFiles := make([]string, 0)
 
 	for _, fileHeader := range files {
 		err = s.handleFile(ctx, needID, userID, fileHeader)
 		if err != nil {
 			s.logger.WithError(err).Error("failed to handle uploaded file")
 			failedCount++
+			failedFiles = append(failedFiles, fileHeader.Filename)
 		} else {
 			uploadedCount++
 		}
@@ -489,9 +492,22 @@ func (s *Service) handlePostOnboardingNeedDocumentsUpload(w http.ResponseWriter,
 	}
 
 	if failedCount > 0 {
-		s.redirectDocsWithNotice(w, r, needID, fmt.Sprintf("Uploaded %d files, but failed to process %d files.", uploadedCount, failedCount))
+		summary := fmt.Sprintf("Uploaded %d file(s). %d file(s) could not be uploaded", uploadedCount, failedCount)
+		if len(failedFiles) > 0 {
+			preview := failedFiles
+			if len(preview) > 3 {
+				preview = preview[:3]
+				summary = fmt.Sprintf("%s (%s, +%d more).", summary, strings.Join(preview, ", "), len(failedFiles)-3)
+			} else {
+				summary = fmt.Sprintf("%s (%s).", summary, strings.Join(preview, ", "))
+			}
+		} else {
+			summary = fmt.Sprintf("%s.", summary)
+		}
+
+		s.redirectDocsWithNotice(w, r, needID, summary)
 	} else {
-		s.redirectDocsWithNotice(w, r, needID, fmt.Sprintf("Successfully uploaded %d files.", uploadedCount))
+		s.redirectDocsWithNotice(w, r, needID, fmt.Sprintf("Successfully uploaded %d file(s).", uploadedCount))
 	}
 
 }
@@ -501,7 +517,7 @@ func (s *Service) handleFile(ctx context.Context, needID, userID string, fileHea
 		return utils.ErrorWrapOrNil(fmt.Errorf("file size is zero"), "")
 	}
 	if fileHeader.Size > maxUploadSizeBytes {
-		return utils.ErrorWrapOrNil(fmt.Errorf("file to large"), "")
+		return utils.ErrorWrapOrNil(fmt.Errorf("file too large"), "")
 	}
 
 	file, err := fileHeader.Open()
@@ -543,6 +559,14 @@ func (s *Service) handleFile(ctx context.Context, needID, userID string, fileHea
 
 	err = s.documentRepo.CreateDocument(ctx, doc)
 	if err != nil {
+		_, deleteErr := s.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket: aws.String(s.config.S3BucketName),
+			Key:    aws.String(storageKey),
+		})
+		if deleteErr != nil {
+			s.logger.WithError(deleteErr).WithField("storage_key", storageKey).Warn("failed to clean up uploaded file after DB error")
+		}
+
 		return utils.ErrorWrapOrNil(err, "failed to create document record")
 	}
 
@@ -562,113 +586,48 @@ func (s *Service) redirectDocsWithNotice(w http.ResponseWriter, r *http.Request,
 	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/documents?%s", needID, q.Encode()), http.StatusSeeOther)
 }
 
-// func (s *Service) handlePostOnboardingNeedDocuments(w http.ResponseWriter, r *http.Request) {
-// 	ctx := r.Context()
-// 	needID := r.PathValue("needID")
-// 	userID := ctx.Value(contextKeyUserID).(string)
+func (s *Service) handlePostOnboardingNeedDocuments(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	needID := r.PathValue("needID")
 
-// 	// Parse multipart form (10MB max per file)
-// 	err := r.ParseMultipartForm(10 << 20)
-// 	if err != nil {
-// 		s.logger.WithError(err).Error("failed to parse multipart form")
-// 		s.internalServerError(w)
-// 		return
-// 	}
+	if err := r.ParseForm(); err != nil {
+		s.logger.WithError(err).Error("failed to parse documents continue form")
+		s.redirectDocsWithError(w, r, needID, "Invalid form submission.")
+		return
+	}
 
-// 	// Check if user wants to skip documents
-// 	if r.FormValue("skipDocuments") == "on" {
-// 		// Update current step and redirect to review
-// 		need, err := s.needsRepo.Need(ctx, needID)
-// 		if err != nil {
-// 			s.logger.WithError(err).Error("failed to fetch need")
-// 			s.internalServerError(w)
-// 			return
-// 		}
+	skipDocuments := r.FormValue("skipDocuments") == "on"
 
-// 		need.CurrentStep = types.NeedStepDocuments
-// 		err = s.needsRepo.UpdateNeed(ctx, need.ID, need)
-// 		if err != nil {
-// 			s.logger.WithError(err).Error("failed to update need step")
-// 			s.internalServerError(w)
-// 			return
-// 		}
+	documents, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch documents")
+		s.internalServerError(w)
+		return
+	}
 
-// 		s.recordNeedProgress(ctx, need.ID, types.NeedStepDocuments)
-// 		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/review", needID), http.StatusSeeOther)
-// 		return
-// 	}
+	if len(documents) == 0 && !skipDocuments {
+		s.redirectDocsWithError(w, r, needID, "Upload at least one document or confirm you want to continue without documents.")
+		return
+	}
 
-// 	// Get uploaded files
-// 	files := r.MultipartForm.File["documents"]
-// 	if len(files) == 0 {
-// 		// No files uploaded and not skipping - just continue
-// 		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/review", needID), http.StatusSeeOther)
-// 		return
-// 	}
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need")
+		s.internalServerError(w)
+		return
+	}
 
-// 	// Process each file
-// 	for _, fileHeader := range files {
-// 		file, err := fileHeader.Open()
-// 		if err != nil {
-// 			s.logger.WithError(err).Error("failed to open uploaded file")
-// 			continue
-// 		}
-// 		defer file.Close()
+	need.CurrentStep = types.NeedStepDocuments
+	err = s.needsRepo.UpdateNeed(ctx, need.ID, need)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to update need step")
+		s.internalServerError(w)
+		return
+	}
 
-// 		// Generate unique storage key: needs/{needID}/{docID}-{filename}
-// 		docID := utils.NanoID()
-// 		storageKey := fmt.Sprintf("needs/%s/%s-%s", needID, docID, fileHeader.Filename)
-
-// 		// Upload to Supabase Storage
-// 		_, err = s.storageClient.UploadFile(ctx, storageKey, file, fileHeader.Header.Get("Content-Type"))
-// 		if err != nil {
-// 			s.logger.WithError(err).Error("failed to upload file to storage")
-// 			continue
-// 		}
-
-// 		// Create document record
-// 		doc := &types.NeedDocument{
-// 			ID:            docID,
-// 			NeedID:        needID,
-// 			UserID:        userID,
-// 			DocumentType:  types.DocTypeOther, // Could be enhanced to detect type from filename/form
-// 			FileName:      fileHeader.Filename,
-// 			FileSizeBytes: int(fileHeader.Size),
-// 			MimeType:      fileHeader.Header.Get("Content-Type"),
-// 			StorageKey:    storageKey,
-// 			UploadedAt:    time.Now(),
-// 		}
-
-// 		err = s.documentRepo.CreateDocument(ctx, doc)
-// 		if err != nil {
-// 			s.logger.WithError(err).Error("failed to create document record")
-// 			// Try to clean up storage file
-// 			_ = s.storageClient.DeleteFile(ctx, storageKey)
-// 			continue
-// 		}
-// 	}
-
-// 	// Update current step
-// 	need, err := s.needsRepo.Need(ctx, needID)
-// 	if err != nil {
-// 		s.logger.WithError(err).Error("failed to fetch need")
-// 		s.internalServerError(w)
-// 		return
-// 	}
-
-// 	need.CurrentStep = types.NeedStepDocuments
-// 	err = s.needsRepo.UpdateNeed(ctx, need.ID, need)
-// 	if err != nil {
-// 		s.logger.WithError(err).Error("failed to update need step")
-// 		s.internalServerError(w)
-// 		return
-// 	}
-
-// 	// Record progress
-// 	s.recordNeedProgress(ctx, need.ID, types.NeedStepDocuments)
-
-// 	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/review", needID), http.StatusSeeOther)
-// }
+	s.recordNeedProgress(ctx, need.ID, types.NeedStepDocuments)
+	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/review", needID), http.StatusSeeOther)
+}
 
 func (s *Service) handlePostOnboardingNeedDocumentMetadata(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -736,8 +695,92 @@ func (s *Service) handlePostOnboardingNeedDocumentMetadata(w http.ResponseWriter
 		}
 	}
 
-	s.redirectDocsWithNotice(w, r, needID, "Document Metadata Updated.")
+	s.redirectDocsWithNotice(w, r, needID, "Document metadata updated just now.")
 
+}
+
+func (s *Service) handlePostOnboardingNeedDocumentDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	needID := r.PathValue("needID")
+	documentID := r.PathValue("documentID")
+
+	if documentID == "" {
+		s.redirectDocsWithError(w, r, needID, "Invalid document request.")
+		return
+	}
+
+	doc, err := s.documentRepo.DocumentByNeedIDAndID(ctx, needID, documentID)
+	if err != nil {
+		s.logger.WithError(err).
+			WithField("need_id", needID).
+			WithField("document_id", documentID).
+			Error("failed to fetch document for delete")
+		s.redirectDocsWithError(w, r, needID, "Document not found.")
+		return
+	}
+
+	_, err = s.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(s.config.S3BucketName),
+		Key:    aws.String(doc.StorageKey),
+	})
+	if err != nil {
+		s.logger.WithError(err).
+			WithField("need_id", needID).
+			WithField("document_id", documentID).
+			WithField("storage_key", doc.StorageKey).
+			Error("failed to delete document from S3")
+		s.redirectDocsWithError(w, r, needID, "Could not delete file from storage. Please try again.")
+		return
+	}
+
+	err = s.documentRepo.DeleteDocumentByNeedIDAndID(ctx, needID, documentID)
+	if err != nil {
+		s.logger.WithError(err).
+			WithField("need_id", needID).
+			WithField("document_id", documentID).
+			Error("failed to delete document record")
+		s.redirectDocsWithError(w, r, needID, "Could not delete document metadata. Please try again.")
+		return
+	}
+
+	s.redirectDocsWithNotice(w, r, needID, "Document removed.")
+
+}
+
+type documentTypeOption struct {
+	Value string
+	Label string
+}
+
+type needReviewTemplateData struct {
+	Title               string
+	ID                  string
+	Need                *types.Need
+	Story               *types.NeedStory
+	PrimaryCategory     *types.NeedCategory
+	SecondaryCategories []*types.NeedCategory
+	Documents           []reviewDocument
+	Notice              string
+	Error               string
+}
+
+type reviewDocument struct {
+	ID         string
+	FileName   string
+	TypeLabel  string
+	SizeBytes  int64
+	UploadedAt time.Time
+}
+
+func documentTypeOptions() []documentTypeOption {
+	return []documentTypeOption{
+		{Value: types.DocTypeID, Label: "ID"},
+		{Value: types.DocTypeUtilityBill, Label: "Utility Bill"},
+		{Value: types.DocTypeMedicalRecord, Label: "Medical Record"},
+		{Value: types.DocTypeIncomeVerification, Label: "Income Verification"},
+		{Value: types.DocTypeEvictionNotice, Label: "Eviction Notice"},
+		{Value: types.DocTypeOther, Label: "Other"},
+	}
 }
 
 func allowedDocumentTypes() []string {
@@ -761,18 +804,116 @@ func isAllowedDocumentType(value string) bool {
 	return false
 }
 
+func documentTypeLabel(value string) string {
+	switch value {
+	case types.DocTypeID:
+		return "ID"
+	case types.DocTypeUtilityBill:
+		return "Utility Bill"
+	case types.DocTypeMedicalRecord:
+		return "Medical Record"
+	case types.DocTypeIncomeVerification:
+		return "Income Verification"
+	case types.DocTypeEvictionNotice:
+		return "Eviction Notice"
+	case types.DocTypeOther:
+		return "Other"
+	default:
+		return value
+	}
+}
+
 func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	needID := r.PathValue("needID")
 
-	data := struct {
-		Title string
-		ID    string
-	}{
-		Title: "Review Need",
-		ID:    needID,
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need")
+		s.internalServerError(w)
+		return
 	}
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.review", data)
+	story, err := s.storyRepo.GetStoryByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch story")
+		s.internalServerError(w)
+		return
+	}
+
+	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch category assignments")
+		s.internalServerError(w)
+		return
+	}
+
+	ids := make([]string, 0, len(assignments))
+	for _, assignment := range assignments {
+		ids = append(ids, assignment.CategoryID)
+	}
+
+	categoryByID := make(map[string]*types.NeedCategory)
+	if len(ids) > 0 {
+		categories, err := s.categoryRepo.CategoriesByIDs(ctx, ids)
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch categories")
+			s.internalServerError(w)
+			return
+		}
+
+		for _, category := range categories {
+			categoryByID[category.ID] = category
+		}
+	}
+
+	var primaryCategory *types.NeedCategory
+	secondaryCategories := make([]*types.NeedCategory, 0)
+	for _, assignment := range assignments {
+		category, ok := categoryByID[assignment.CategoryID]
+		if !ok {
+			continue
+		}
+
+		if assignment.IsPrimary {
+			primaryCategory = category
+			continue
+		}
+
+		secondaryCategories = append(secondaryCategories, category)
+	}
+
+	docs, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch documents")
+		s.internalServerError(w)
+		return
+	}
+
+	reviewDocs := make([]reviewDocument, 0, len(docs))
+	for _, doc := range docs {
+		reviewDocs = append(reviewDocs, reviewDocument{
+			ID:         doc.ID,
+			FileName:   doc.FileName,
+			TypeLabel:  documentTypeLabel(doc.DocumentType),
+			SizeBytes:  doc.FileSizeBytes,
+			UploadedAt: doc.UploadedAt,
+		})
+	}
+
+	data := &needReviewTemplateData{
+		Title:               "Review Need",
+		ID:                  needID,
+		Need:                need,
+		Story:               story,
+		PrimaryCategory:     primaryCategory,
+		SecondaryCategories: secondaryCategories,
+		Documents:           reviewDocs,
+		Notice:              r.URL.Query().Get("notice"),
+		Error:               r.URL.Query().Get("error"),
+	}
+
+	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.review", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need review page")
 		s.internalServerError(w)
@@ -869,7 +1010,43 @@ func (s *Service) handlePostOnboardingNeedStory(w http.ResponseWriter, r *http.R
 }
 
 func (s *Service) handlePostOnboardingNeedReview(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/onboarding/need/confirmation", http.StatusSeeOther)
+	ctx := r.Context()
+	needID := r.PathValue("needID")
+
+	if err := r.ParseForm(); err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to parse review form")
+		s.internalServerError(w)
+		return
+	}
+
+	if r.FormValue("agreeTerms") != "on" || r.FormValue("agreeVerification") != "on" {
+		q := url.Values{}
+		q.Set("error", "Please agree to the terms and verification statements before submitting.")
+		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/review?%s", needID, q.Encode()), http.StatusSeeOther)
+		return
+	}
+
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need for review submit")
+		s.internalServerError(w)
+		return
+	}
+
+	now := time.Now()
+	need.CurrentStep = types.NeedStepReview
+	need.Status = types.NeedStatusSubmitted
+	need.SubmittedAt = &now
+
+	err = s.needsRepo.UpdateNeed(ctx, need.ID, need)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to update need status on submit")
+		s.internalServerError(w)
+		return
+	}
+
+	s.recordNeedProgress(ctx, need.ID, types.NeedStepReview)
+	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/confirmation", needID), http.StatusSeeOther)
 }
 
 // Donor onboarding handlers
