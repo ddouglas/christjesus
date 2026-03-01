@@ -8,36 +8,15 @@ import (
 	"christjesus/pkg/types"
 )
 
-type HomePageData struct {
-	Title        string
-	Notice       string
-	Error        string
-	FeaturedNeed *types.Need
-	Needs        []*types.Need
-	Categories   []types.CategoryData
-	Stats        types.StatsData
-	Steps        []types.StepData
-}
-
-type BrowsePageData struct {
-	Title string
-	Needs []*types.Need
-}
-
-type NeedDetailPageData struct {
-	Title string
-	Need  *types.Need
-}
-
 func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
 	_ = sampleNeeds()
 
-	data := HomePageData{
-		Title:  "",
-		Notice: r.URL.Query().Get("notice"),
-		Error:  r.URL.Query().Get("error"),
+	data := &types.HomePageData{
+		BasePageData: types.BasePageData{Title: ""},
+		Notice:       r.URL.Query().Get("notice"),
+		Error:        r.URL.Query().Get("error"),
 		// FeaturedNeed: needs[0], // First need is featured
 		// Needs:        needs[1:], // Rest are in the grid
 		Categories: sampleCategories(),
@@ -46,7 +25,7 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.templates.ExecuteTemplate(w, "page.home", data); err != nil {
+	if err := s.renderTemplate(w, r, "page.home", data); err != nil {
 		s.logger.WithError(err).Error("failed to render home page")
 		s.internalServerError(w)
 		return
@@ -79,13 +58,13 @@ func (s *Service) internalServerError(w http.ResponseWriter) {
 }
 
 func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
-	data := BrowsePageData{
-		Title: "Browse Needs",
-		Needs: sampleNeeds(),
+	data := &types.BrowsePageData{
+		BasePageData: types.BasePageData{Title: "Browse Needs"},
+		Needs:        sampleNeeds(),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.templates.ExecuteTemplate(w, "page.browse", data); err != nil {
+	if err := s.renderTemplate(w, r, "page.browse", data); err != nil {
 		s.logger.WithError(err).Error("failed to render browse page")
 		s.internalServerError(w)
 		return
@@ -108,13 +87,14 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := NeedDetailPageData{
+	data := &types.NeedDetailPageData{
+		BasePageData: types.BasePageData{},
 		// Title: need.Name + " - Need Details",
 		Need: need,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.templates.ExecuteTemplate(w, "page.need-detail", data); err != nil {
+	if err := s.renderTemplate(w, r, "page.need-detail", data); err != nil {
 		s.logger.WithError(err).Error("failed to render need detail page")
 		s.internalServerError(w)
 		return

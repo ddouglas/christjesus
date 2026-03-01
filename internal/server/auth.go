@@ -2,6 +2,7 @@ package server
 
 import (
 	"christjesus/internal"
+	"christjesus/pkg/types"
 	"errors"
 	"net/http"
 	"strings"
@@ -9,15 +10,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
-	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
+	ctypes "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 )
-
-type LoginPageData struct {
-	Title   string
-	Message string
-	Error   string
-	Email   string
-}
 
 func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 
@@ -28,8 +22,8 @@ func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := LoginPageData{
-		Title: "Login",
+	data := &types.LoginPageData{
+		BasePageData: types.BasePageData{Title: "Login"},
 	}
 
 	// Check if user was redirected here after confirming their email
@@ -37,7 +31,7 @@ func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 		data.Message = "Your account has been confirmed! You can now log in."
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.login", data)
+	err = s.renderTemplate(w, r, "page.login", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render login page")
 		s.internalServerError(w)
@@ -51,14 +45,14 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.FormValue("email"))
 	password := r.FormValue("password")
 
-	data := LoginPageData{
-		Title: "Login",
-		Email: email,
+	data := &types.LoginPageData{
+		BasePageData: types.BasePageData{Title: "Login"},
+		Email:        email,
 	}
 
 	if email == "" || password == "" {
 		data.Error = "Email and password are required."
-		err := s.templates.ExecuteTemplate(w, "page.login", data)
+		err := s.renderTemplate(w, r, "page.login", data)
 		if err != nil {
 			s.logger.WithError(err).Error("failed to render login page with validation errors")
 			s.internalServerError(w)
@@ -67,7 +61,7 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input := &cognitoidentityprovider.InitiateAuthInput{
-		AuthFlow: types.AuthFlowTypeUserPasswordAuth,
+		AuthFlow: ctypes.AuthFlowTypeUserPasswordAuth,
 		ClientId: aws.String(s.config.CognitoClientID),
 		AuthParameters: map[string]string{
 			"USERNAME": email,
@@ -77,15 +71,15 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := s.cognitoClient.InitiateAuth(r.Context(), input)
 	if err != nil {
-		var notAuthorized *types.NotAuthorizedException
-		var userNotFound *types.UserNotFoundException
-		var userNotConfirmed *types.UserNotConfirmedException
+		var notAuthorized *ctypes.NotAuthorizedException
+		var userNotFound *ctypes.UserNotFoundException
+		var userNotConfirmed *ctypes.UserNotConfirmedException
 
 		switch {
 		case errors.As(err, &userNotConfirmed):
 			data.Error = "Your account is not confirmed yet. Enter the verification code to continue."
 			data.Message = "Check your email for a verification code."
-			if renderErr := s.templates.ExecuteTemplate(w, "page.login", data); renderErr != nil {
+			if renderErr := s.renderTemplate(w, r, "page.login", data); renderErr != nil {
 				s.logger.WithError(renderErr).Error("failed to render login page with unconfirmed-user error")
 				s.internalServerError(w)
 			}
@@ -97,7 +91,7 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 			data.Error = "Unable to log in right now. Please try again."
 		}
 
-		if renderErr := s.templates.ExecuteTemplate(w, "page.login", data); renderErr != nil {
+		if renderErr := s.renderTemplate(w, r, "page.login", data); renderErr != nil {
 			s.logger.WithError(renderErr).Error("failed to render login page with auth errors")
 			s.internalServerError(w)
 		}
@@ -106,7 +100,7 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 
 	if resp.AuthenticationResult == nil || resp.AuthenticationResult.IdToken == nil {
 		data.Error = "Login failed. Please try again."
-		err := s.templates.ExecuteTemplate(w, "page.login", data)
+		err := s.renderTemplate(w, r, "page.login", data)
 		if err != nil {
 			s.logger.WithError(err).Error("failed to render login page with missing authentication result")
 			s.internalServerError(w)
@@ -133,7 +127,7 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.logger.WithError(err).Error("failed to encrypt id token")
 		data.Error = "Login failed. Please try again."
-		err = s.templates.ExecuteTemplate(w, "page.login", data)
+		err = s.renderTemplate(w, r, "page.login", data)
 		if err != nil {
 			s.logger.WithError(err).Error("failed to render login page after token encryption failure")
 			s.internalServerError(w)
@@ -188,4 +182,22 @@ func (s *Service) clearRedirectCookie(w http.ResponseWriter) {
 		Path:     "/",
 		MaxAge:   -1,
 	})
+}
+
+func (s *Service) clearAccessTokenCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     internal.COOKIE_ACCESS_TOKEN_NAME,
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   -1,
+	})
+}
+
+func (s *Service) handlePostLogout(w http.ResponseWriter, r *http.Request) {
+	s.clearAccessTokenCookie(w)
+	s.clearRedirectCookie(w)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

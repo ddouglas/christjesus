@@ -124,6 +124,7 @@ func (s *Service) Stop(ctx context.Context) error {
 func (s *Service) buildRouter(r *flow.Mux) {
 	r.Use(s.StripTrailingSlash)
 	r.Use(s.LoggingMiddleware)
+	r.Use(s.AttachAuthContext)
 
 	r.HandleFunc("/", s.handleHome, http.MethodGet)
 
@@ -133,6 +134,7 @@ func (s *Service) buildRouter(r *flow.Mux) {
 	r.HandleFunc("/register/confirm", s.handlePostRegisterConfirm, http.MethodPost)
 	r.HandleFunc("/login", s.handleGetLogin, http.MethodGet)
 	r.HandleFunc("/login", s.handlePostLogin, http.MethodPost)
+	r.HandleFunc("/logout", s.handlePostLogout, http.MethodPost)
 
 	r.Group(func(r *flow.Mux) {
 		r.Use(s.RequireAuth)

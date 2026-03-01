@@ -21,13 +21,9 @@ func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
 
 	var _ = r.Context()
 
-	data := struct {
-		Title string
-	}{
-		Title: "Onboarding",
-	}
+	data := &types.OnboardingPageData{BasePageData: types.BasePageData{Title: "Onboarding"}}
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding", data)
+	err := s.renderTemplate(w, r, "page.onboarding", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need welcome page")
 		s.internalServerError(w)
@@ -63,13 +59,9 @@ func (s *Service) handlePostOnboarding(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := struct {
-		Title string
-	}{
-		Title: "Onboarding",
-	}
+	data := &types.OnboardingPageData{BasePageData: types.BasePageData{Title: "Onboarding"}}
 
-	err = s.templates.ExecuteTemplate(w, "page.onboarding", data)
+	err = s.renderTemplate(w, r, "page.onboarding", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need welcome page")
 		s.internalServerError(w)
@@ -102,11 +94,6 @@ func (s *Service) handleCreateNeed(ctx context.Context, w http.ResponseWriter, r
 	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/welcome", need.ID), http.StatusSeeOther)
 }
 
-type needWelcomeTemplateData struct {
-	Title string
-	Need  *types.Need
-}
-
 func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 
@@ -119,12 +106,12 @@ func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.
 		return
 	}
 
-	data := &needWelcomeTemplateData{
-		Title: "Need Onboarding",
-		Need:  need,
+	data := &types.NeedWelcomePageData{
+		BasePageData: types.BasePageData{Title: "Need Onboarding"},
+		Need:         need,
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.welcome", data)
+	err = s.renderTemplate(w, r, "page.onboarding.need.welcome", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need welcome page")
 		s.internalServerError(w)
@@ -190,17 +177,17 @@ func (s *Service) handleGetOnboardingNeedLocation(w http.ResponseWriter, r *http
 		}
 	}
 
-	data := &locationTemplateData{
-		Title:             "Need Location",
+	data := &types.NeedLocationPageData{
+		BasePageData:      types.BasePageData{Title: "Need Location"},
 		ID:                needID,
 		Addresses:         addresses,
 		HasAddresses:      len(addresses) > 0,
 		SelectedAddressID: selectedAddressID,
 		ShowSetPrimary:    showSetSelectedPrimary,
-		NewAddress:        &userAddressForm{},
+		NewAddress:        &types.UserAddressForm{},
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.location", data)
+	err = s.renderTemplate(w, r, "page.onboarding.need.location", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need location page")
 		s.internalServerError(w)
@@ -285,7 +272,7 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 
 		usesNonPrimaryAddress = !selectedAddress.IsPrimary
 	} else {
-		location := new(userAddressForm)
+		location := new(types.UserAddressForm)
 		err = decoder.Decode(location, r.Form)
 		if err != nil {
 			s.logger.WithError(err).Error("failed to decode form onto location form")
@@ -344,12 +331,6 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/categories", need.ID), http.StatusSeeOther)
 }
 
-type needCategoriesTemplateData struct {
-	Title      string
-	Need       *types.Need
-	Categories []*types.NeedCategory
-}
-
 func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -372,13 +353,13 @@ func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *ht
 		s.logger.Warn("no categories found in database - run 'just seed' to populate categories")
 	}
 
-	data := &needCategoriesTemplateData{
-		Title:      "Select Categories",
-		Need:       need,
-		Categories: categories,
+	data := &types.NeedCategoriesPageData{
+		BasePageData: types.BasePageData{Title: "Select Categories"},
+		Need:         need,
+		Categories:   categories,
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.categories", data)
+	err = s.renderTemplate(w, r, "page.onboarding.need.categories", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need categories page")
 		s.internalServerError(w)
@@ -526,15 +507,15 @@ func (s *Service) handleGetOnboardingNeedStory(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	data := map[string]interface{}{
-		"Title":             "Share Your Story",
-		"ID":                needID,
-		"AmountNeededCents": need.AmountNeededCents,
-		"PrimaryCategory":   primaryCategory,
-		"Story":             story,
+	data := &types.NeedStoryPageData{
+		BasePageData:      types.BasePageData{Title: "Share Your Story"},
+		ID:                needID,
+		AmountNeededCents: need.AmountNeededCents,
+		PrimaryCategory:   primaryCategory,
+		Story:             story,
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.story", data)
+	err = s.renderTemplate(w, r, "page.onboarding.need.story", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need story page")
 		s.internalServerError(w)
@@ -554,17 +535,23 @@ func (s *Service) handleGetOnboardingNeedDocuments(w http.ResponseWriter, r *htt
 		return
 	}
 
-	data := map[string]interface{}{
-		"Title":               "Upload Documents",
-		"ID":                  needID,
-		"Documents":           documents,
-		"HasDocuments":        len(documents) > 0,
-		"Notice":              r.URL.Query().Get("notice"),
-		"Error":               r.URL.Query().Get("error"),
-		"DocumentTypeOptions": documentTypeOptions(),
+	options := documentTypeOptions()
+	optionViews := make([]any, len(options))
+	for i, option := range options {
+		optionViews[i] = option
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.documents", data)
+	data := &types.NeedDocumentsPageData{
+		BasePageData:        types.BasePageData{Title: "Upload Documents"},
+		ID:                  needID,
+		Documents:           documents,
+		HasDocuments:        len(documents) > 0,
+		Notice:              r.URL.Query().Get("notice"),
+		Error:               r.URL.Query().Get("error"),
+		DocumentTypeOptions: optionViews,
+	}
+
+	err = s.renderTemplate(w, r, "page.onboarding.need.documents", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need documents page")
 		s.internalServerError(w)
@@ -880,27 +867,6 @@ type documentTypeOption struct {
 	Label string
 }
 
-type needReviewTemplateData struct {
-	Title               string
-	ID                  string
-	Need                *types.Need
-	SelectedAddress     *types.UserAddress
-	Story               *types.NeedStory
-	PrimaryCategory     *types.NeedCategory
-	SecondaryCategories []*types.NeedCategory
-	Documents           []reviewDocument
-	Notice              string
-	Error               string
-}
-
-type reviewDocument struct {
-	ID         string
-	FileName   string
-	TypeLabel  string
-	SizeBytes  int64
-	UploadedAt time.Time
-}
-
 func documentTypeOptions() []documentTypeOption {
 	return []documentTypeOption{
 		{Value: types.DocTypeID, Label: "ID"},
@@ -1038,9 +1004,9 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	reviewDocs := make([]reviewDocument, 0, len(docs))
+	reviewDocs := make([]types.ReviewDocument, 0, len(docs))
 	for _, doc := range docs {
-		reviewDocs = append(reviewDocs, reviewDocument{
+		reviewDocs = append(reviewDocs, types.ReviewDocument{
 			ID:         doc.ID,
 			FileName:   doc.FileName,
 			TypeLabel:  documentTypeLabel(doc.DocumentType),
@@ -1049,8 +1015,8 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 		})
 	}
 
-	data := &needReviewTemplateData{
-		Title:               "Review Need",
+	data := &types.NeedReviewPageData{
+		BasePageData:        types.BasePageData{Title: "Review Need"},
 		ID:                  needID,
 		Need:                need,
 		SelectedAddress:     selectedAddress,
@@ -1062,7 +1028,7 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 		Error:               r.URL.Query().Get("error"),
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.review", data)
+	err = s.renderTemplate(w, r, "page.onboarding.need.review", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need review page")
 		s.internalServerError(w)
@@ -1070,39 +1036,15 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 	}
 }
 
-type locationTemplateData struct {
-	Title             string
-	ID                string
-	Addresses         []*types.UserAddress
-	HasAddresses      bool
-	SelectedAddressID string
-	ShowSetPrimary    bool
-	NewAddress        *userAddressForm
-}
-
-type userAddressForm struct {
-	Address              *string  `form:"address"`
-	AddressExt           *string  `form:"address_ext"`
-	City                 *string  `form:"city"`
-	State                *string  `form:"state"`
-	ZipCode              *string  `form:"zip_code"`
-	PrivacyDisplay       *string  `form:"privacy_display"`
-	ContactMethods       []string `form:"contact_methods"`
-	PreferredContactTime *string  `form:"preferred_contact_time"`
-}
-
 func (s *Service) handleGetOnboardingNeedConfirmation(w http.ResponseWriter, r *http.Request) {
 	needID := r.PathValue("needID")
 
-	data := struct {
-		Title string
-		ID    string
-	}{
-		Title: "Need Submitted",
-		ID:    needID,
+	data := &types.NeedSubmittedPageData{
+		BasePageData: types.BasePageData{Title: "Need Submitted"},
+		ID:           needID,
 	}
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.confirmation", data)
+	err := s.renderTemplate(w, r, "page.onboarding.need.confirmation", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need confirmation page")
 		s.internalServerError(w)
@@ -1223,13 +1165,9 @@ func (s *Service) handlePostOnboardingNeedReview(w http.ResponseWriter, r *http.
 func (s *Service) handleGetOnboardingDonorWelcome(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
-	data := struct {
-		Title string
-	}{
-		Title: "Donor Onboarding",
-	}
+	data := &types.DonorWelcomePageData{BasePageData: types.BasePageData{Title: "Donor Onboarding"}}
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.donor.welcome", data)
+	err := s.renderTemplate(w, r, "page.onboarding.donor.welcome", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render donor welcome page")
 		s.internalServerError(w)
@@ -1240,11 +1178,8 @@ func (s *Service) handleGetOnboardingDonorWelcome(w http.ResponseWriter, r *http
 func (s *Service) handleGetOnboardingDonorPreferences(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
-	data := struct {
-		Title      string
-		Categories []any
-	}{
-		Title: "Donor Preferences",
+	data := &types.DonorPreferencesPageData{
+		BasePageData: types.BasePageData{Title: "Donor Preferences"},
 		Categories: func() []any {
 			cats := sampleCategories()
 			result := make([]any, len(cats))
@@ -1255,7 +1190,7 @@ func (s *Service) handleGetOnboardingDonorPreferences(w http.ResponseWriter, r *
 		}(),
 	}
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.donor.preferences", data)
+	err := s.renderTemplate(w, r, "page.onboarding.donor.preferences", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render donor preferences page")
 		s.internalServerError(w)

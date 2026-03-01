@@ -46,98 +46,96 @@ func (s *Service) LoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// RequireAuth middleware checks for valid access token and adds user to context
-func (s *Service) RequireAuth(next http.Handler) http.Handler {
+func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 1. Get the cookie
-		cookie, err := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
-		if err != nil {
-			s.logger.WithError(err).Debug("no access token cookie found")
-
-			s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
-
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+		userID, email, ok := s.authClaimsFromRequest(r)
+		if !ok {
+			next.ServeHTTP(w, r)
 			return
 		}
 
-		// 2. Decrypt the token
-		var accessToken string
-		err = s.cookie.Decode(internal.COOKIE_ACCESS_TOKEN_NAME, cookie.Value, &accessToken)
-		if err != nil {
-			s.logger.WithError(err).Error("failed to decrypt access token")
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		// 3. Fetch JWK and verify JWT
-		set, err := s.jwksCache.Lookup(r.Context(), s.jwksURL)
-		if err != nil {
-			s.logger.WithError(err).Error("failed to fetch JWKS")
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		token, err := jwt.Parse(
-			[]byte(accessToken),
-			jwt.WithKeySet(set),
-			jwt.WithValidate(true),
-			jwt.WithIssuer(s.config.CognitoIssuerURL),
-			jwt.WithAudience(s.config.CognitoClientID),
-		)
-		if err != nil {
-			s.logger.WithError(err).Error("failed to parse JWT")
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		// 4. Extract user info from claims
-		// Use Subject() for the standard "sub" claim
-		userID, ok := token.Subject()
-		if !ok || userID == "" {
-			s.logger.Error("no user ID in JWT subject claim")
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		// Use Get() for private/custom claims like "email"
-		var email string
-		if err := token.Get("email", &email); err != nil {
-			s.logger.WithError(err).Warn("no email claim in JWT")
-			// email is optional, so we don't redirect
-		}
-
-		var tokenUse string
-		if err := token.Get("token_use", &tokenUse); err != nil {
-			s.logger.WithError(err).Warn("no token_use claim in JWT")
-			s.redirectToLogin(w, r)
-			return
-		}
-		if tokenUse != "id" {
-			s.logger.WithField("token_use", tokenUse).Warn("unexpected token_use claim in JWT")
-			s.redirectToLogin(w, r)
-			return
-		}
-
-		var groups []string
-		if err := token.Get("cognito:groups", &groups); err != nil {
-			s.logger.WithError(err).Debug("no cognito:groups claim in JWT")
-			// groups is optional, so we don't redirect
-		}
-
-		// 5. Add user info to context
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, contextKeyUserID, userID)
 		if email != "" {
 			ctx = context.WithValue(ctx, contextKeyEmail, email)
 		}
 
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, bool) {
+	// 1. Get cookie
+	cookie, err := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
+	if err != nil {
+		return "", "", false
+	}
+
+	// 2. Decrypt token
+	var accessToken string
+	err = s.cookie.Decode(internal.COOKIE_ACCESS_TOKEN_NAME, cookie.Value, &accessToken)
+	if err != nil {
+		s.logger.WithError(err).Debug("failed to decrypt access token")
+		return "", "", false
+	}
+
+	// 3. Validate token
+	set, err := s.jwksCache.Lookup(r.Context(), s.jwksURL)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to fetch JWKS")
+		return "", "", false
+	}
+
+	token, err := jwt.Parse(
+		[]byte(accessToken),
+		jwt.WithKeySet(set),
+		jwt.WithValidate(true),
+		jwt.WithIssuer(s.config.CognitoIssuerURL),
+		jwt.WithAudience(s.config.CognitoClientID),
+	)
+	if err != nil {
+		s.logger.WithError(err).Debug("failed to parse JWT")
+		return "", "", false
+	}
+
+	userID, ok := token.Subject()
+	if !ok || userID == "" {
+		return "", "", false
+	}
+
+	var tokenUse string
+	if err := token.Get("token_use", &tokenUse); err != nil || tokenUse != "id" {
+		return "", "", false
+	}
+
+	var email string
+	if err := token.Get("email", &email); err != nil {
+		email = ""
+	}
+
+	return userID, email, true
+}
+
+// RequireAuth middleware checks for valid access token and adds user to context
+func (s *Service) RequireAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := r.Context().Value(contextKeyUserID).(string)
+		if !ok || userID == "" {
+			s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		email, _ := r.Context().Value(contextKeyEmail).(string)
+
+		// 5. Add user info to context
 		s.logger.WithFields(logrus.Fields{
 			"user_id": userID,
 			"email":   email,
 		}).Debug("authenticated user")
 
-		// Continue to the next handler with updated context
-		next.ServeHTTP(w, r.WithContext(ctx))
+		// Continue to the next handler
+		next.ServeHTTP(w, r)
 
 	})
 }

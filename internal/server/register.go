@@ -2,6 +2,7 @@ package server
 
 import (
 	"christjesus/internal"
+	"christjesus/pkg/types"
 	"errors"
 	"fmt"
 	"net/http"
@@ -16,15 +17,6 @@ import (
 	// "github.com/supabase-community/auth-go/types"
 )
 
-type RegisterPageData struct {
-	Title       string
-	GivenName   string
-	FamilyName  string
-	Email       string
-	Error       string
-	FieldErrors map[string]string
-}
-
 func (s *Service) handleGetRegister(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
@@ -35,11 +27,11 @@ func (s *Service) handleGetRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := RegisterPageData{
-		Title: "Register",
+	data := &types.RegisterPageData{
+		BasePageData: types.BasePageData{Title: "Register"},
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.register", data)
+	err = s.renderTemplate(w, r, "page.register", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render register page")
 		s.internalServerError(w)
@@ -57,11 +49,11 @@ func (s *Service) handlePostRegister(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	confirmPassword := r.FormValue("confirm_password")
 
-	data := RegisterPageData{
-		Title:      "Create Account",
-		GivenName:  givenName,
-		FamilyName: familyName,
-		Email:      email,
+	data := &types.RegisterPageData{
+		BasePageData: types.BasePageData{Title: "Create Account"},
+		GivenName:    givenName,
+		FamilyName:   familyName,
+		Email:        email,
 	}
 
 	data.FieldErrors = validateRegisterInput(givenName, familyName, email, password, confirmPassword)
@@ -69,7 +61,7 @@ func (s *Service) handlePostRegister(w http.ResponseWriter, r *http.Request) {
 		s.logger.WithField("field_errors", data.FieldErrors).Info("validation errors during registration")
 
 		data.Error = "Please fix the highlighted fields."
-		err := s.templates.ExecuteTemplate(w, "page.register", data)
+		err := s.renderTemplate(w, r, "page.register", data)
 		if err != nil {
 			s.logger.WithError(err).Error("failed to render register page with validation errors")
 			s.internalServerError(w)
@@ -94,7 +86,7 @@ func (s *Service) handlePostRegister(w http.ResponseWriter, r *http.Request) {
 		s.logger.WithError(err).Error("failed to signup user")
 
 		data.Error, data.FieldErrors = s.mapCognitoSignUpError(err)
-		renderErr := s.templates.ExecuteTemplate(w, "page.register", data)
+		renderErr := s.renderTemplate(w, r, "page.register", data)
 		if renderErr != nil {
 			s.logger.WithError(renderErr).Error("failed to render register page with cognito errors")
 			s.internalServerError(w)
@@ -110,24 +102,17 @@ func (s *Service) handlePostRegister(w http.ResponseWriter, r *http.Request) {
 
 }
 
-type ConfirmRegisterPageData struct {
-	Title   string
-	Email   string
-	Error   string
-	Message string
-}
-
 func (s *Service) handleGetRegisterConfirm(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
 	email := strings.TrimSpace(r.URL.Query().Get("email"))
 
-	data := ConfirmRegisterPageData{
-		Title: "Confirm Your Account",
-		Email: email,
+	data := &types.ConfirmRegisterPageData{
+		BasePageData: types.BasePageData{Title: "Confirm Your Account"},
+		Email:        email,
 	}
 
-	err := s.templates.ExecuteTemplate(w, "page.register.confirm", data)
+	err := s.renderTemplate(w, r, "page.register.confirm", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render register page")
 		s.internalServerError(w)
@@ -142,9 +127,9 @@ func (s *Service) handlePostRegisterConfirm(w http.ResponseWriter, r *http.Reque
 	email := strings.TrimSpace(r.FormValue("email"))
 	code := strings.TrimSpace(r.FormValue("code"))
 
-	data := ConfirmRegisterPageData{
-		Title: "Confirm Your Account",
-		Email: email,
+	data := &types.ConfirmRegisterPageData{
+		BasePageData: types.BasePageData{Title: "Confirm Your Account"},
+		Email:        email,
 	}
 
 	input := &cognitoidentityprovider.ConfirmSignUpInput{
@@ -164,7 +149,7 @@ func (s *Service) handlePostRegisterConfirm(w http.ResponseWriter, r *http.Reque
 			data.Error = "Unable to confirm account. Please try again."
 		}
 
-		err := s.templates.ExecuteTemplate(w, "page.register.confirm", data)
+		err := s.renderTemplate(w, r, "page.register.confirm", data)
 		if err != nil {
 			s.logger.WithError(err).Error("failed to render register confirm page with error")
 			s.internalServerError(w)

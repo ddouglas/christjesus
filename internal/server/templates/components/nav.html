@@ -11,10 +11,25 @@
       <a href="/guidelines" class="transition-colors hover:text-foreground">Guidelines</a>
     </nav>
     <div class="flex items-center gap-3">
-      <a href="/login" class="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex">Sign In</a>
+      {{if .Navbar.IsAuthenticated}}
+      <div class="hidden items-center gap-3 md:inline-flex">
+        {{if .Navbar.UserEmail}}
+        <span class="text-sm text-muted-foreground">{{.Navbar.UserEmail}}</span>
+        {{end}}
+        <form method="POST" action="/logout" class="inline">
+          <button type="submit" class="inline-flex h-9 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">Log
+            Out</button>
+        </form>
+      </div>
+      {{else}}
+        <a href="/login" class="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex">Sign In</a>
+        {{end}}
+
+        <!--
       <a href="/share"
         class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">Share
         Your Story</a>
+      -->
     </div>
   </div>
 </header>
