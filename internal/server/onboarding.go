@@ -7,15 +7,19 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/k0kubun/pp"
 )
 
 func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
 
 	var _ = r.Context()
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding", nil)
+	data := struct {
+		Title string
+	}{
+		Title: "Onboarding",
+	}
+
+	err := s.templates.ExecuteTemplate(w, "page.onboarding", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need welcome page")
 		s.internalServerError(w)
@@ -51,7 +55,13 @@ func (s *Service) handlePostOnboarding(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.templates.ExecuteTemplate(w, "page.onboarding", nil)
+	data := struct {
+		Title string
+	}{
+		Title: "Onboarding",
+	}
+
+	err = s.templates.ExecuteTemplate(w, "page.onboarding", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need welcome page")
 		s.internalServerError(w)
@@ -141,9 +151,15 @@ func (s *Service) handleGetOnboardingNeedLocation(w http.ResponseWriter, r *http
 		return
 	}
 
-	pp.Print(need)
+	data := struct {
+		Title string
+		*types.Need
+	}{
+		Title: "Need Location",
+		Need:  need,
+	}
 
-	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.location", need)
+	err = s.templates.ExecuteTemplate(w, "page.onboarding.need.location", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need location page")
 		s.internalServerError(w)
@@ -417,9 +433,17 @@ func (s *Service) handleGetOnboardingNeedDocuments(w http.ResponseWriter, r *htt
 }
 
 func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+	needID := r.PathValue("needID")
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.review", nil)
+	data := struct {
+		Title string
+		ID    string
+	}{
+		Title: "Review Need",
+		ID:    needID,
+	}
+
+	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.review", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need review page")
 		s.internalServerError(w)
@@ -428,9 +452,17 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 }
 
 func (s *Service) handleGetOnboardingNeedConfirmation(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+	needID := r.PathValue("needID")
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.confirmation", nil)
+	data := struct {
+		Title string
+		ID    string
+	}{
+		Title: "Need Submitted",
+		ID:    needID,
+	}
+
+	err := s.templates.ExecuteTemplate(w, "page.onboarding.need.confirmation", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need confirmation page")
 		s.internalServerError(w)
@@ -623,7 +655,13 @@ func (s *Service) handlePostOnboardingNeedReview(w http.ResponseWriter, r *http.
 func (s *Service) handleGetOnboardingDonorWelcome(w http.ResponseWriter, r *http.Request) {
 	var _ = r.Context()
 
-	err := s.templates.ExecuteTemplate(w, "page.onboarding.donor.welcome", nil)
+	data := struct {
+		Title string
+	}{
+		Title: "Donor Onboarding",
+	}
+
+	err := s.templates.ExecuteTemplate(w, "page.onboarding.donor.welcome", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render donor welcome page")
 		s.internalServerError(w)

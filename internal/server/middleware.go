@@ -120,7 +120,7 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 
 		var groups []string
 		if err := token.Get("cognito:groups", &groups); err != nil {
-			s.logger.WithError(err).Warn("no cognito:groups claim in JWT")
+			s.logger.WithError(err).Debug("no cognito:groups claim in JWT")
 			// groups is optional, so we don't redirect
 		}
 
