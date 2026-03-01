@@ -8,7 +8,6 @@ import (
 
 	"christjesus/internal"
 
-	"github.com/k0kubun/pp"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/sirupsen/logrus"
 )
@@ -82,6 +81,8 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			[]byte(accessToken),
 			jwt.WithKeySet(set),
 			jwt.WithValidate(true),
+			jwt.WithIssuer(s.config.CognitoIssuerURL),
+			jwt.WithAudience(s.config.CognitoClientID),
 		)
 		if err != nil {
 			s.logger.WithError(err).Error("failed to parse JWT")
@@ -105,14 +106,25 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			// email is optional, so we don't redirect
 		}
 
+		var tokenUse string
+		if err := token.Get("token_use", &tokenUse); err != nil {
+			s.logger.WithError(err).Warn("no token_use claim in JWT")
+			s.redirectToLogin(w, r)
+			return
+		}
+
+		var groups []string
+		if err := token.Get("cognito:groups", &groups); err != nil {
+			s.logger.WithError(err).Warn("no cognito:groups claim in JWT")
+			// groups is optional, so we don't redirect
+		}
+
 		// 5. Add user info to context
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, contextKeyUserID, userID)
 		if email != "" {
 			ctx = context.WithValue(ctx, contextKeyEmail, email)
 		}
-
-		pp.Println(userID, email)
 
 		s.logger.WithFields(logrus.Fields{
 			"user_id": userID,
@@ -121,6 +133,7 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 
 		// Continue to the next handler with updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
+
 	})
 }
 

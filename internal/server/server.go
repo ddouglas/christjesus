@@ -16,11 +16,11 @@ import (
 	"christjesus/pkg/types"
 
 	"github.com/alexedwards/flow"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/go-playground/form/v4"
 	"github.com/gorilla/securecookie"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/sirupsen/logrus"
-	supauth "github.com/supabase-community/auth-go"
 )
 
 //go:embed templates static
@@ -38,8 +38,8 @@ type Service struct {
 	documentRepo                *store.DocumentRepository
 	storageClient               *storage.SupabaseStorage
 
-	supauth supauth.Client
-	cookie  *securecookie.SecureCookie
+	cognitoClient *cognitoidentityprovider.Client
+	cookie        *securecookie.SecureCookie
 
 	jwksCache *jwk.Cache
 	jwksURL   string
@@ -51,7 +51,7 @@ type Service struct {
 func New(
 	config *types.Config,
 	logger *logrus.Logger,
-	supauth supauth.Client,
+	cognitoClient *cognitoidentityprovider.Client,
 	needsRepo *store.NeedRepository,
 	progressRepo *store.NeedProgressRepository,
 	categoryRepo *store.CategoryRepository,
@@ -68,10 +68,10 @@ func New(
 	blockKey, _ := base64.StdEncoding.DecodeString(config.CookieBlockKey)
 
 	s := &Service{
-		logger:  logger,
-		config:  config,
-		supauth: supauth,
-		cookie:  securecookie.New(hashKey, blockKey),
+		logger:        logger,
+		config:        config,
+		cognitoClient: cognitoClient,
+		cookie:        securecookie.New(hashKey, blockKey),
 
 		needsRepo:                   needsRepo,
 		progressRepo:                progressRepo,
@@ -120,6 +120,8 @@ func (s *Service) buildRouter(r *flow.Mux) {
 
 	r.HandleFunc("/register", s.handleGetRegister, http.MethodGet)
 	r.HandleFunc("/register", s.handlePostRegister, http.MethodPost)
+	r.HandleFunc("/register/confirm", s.handleGetRegisterConfirm, http.MethodGet)
+	r.HandleFunc("/register/confirm", s.handleGetRegisterConfirm, http.MethodPost)
 	r.HandleFunc("/login", s.handleGetLogin, http.MethodGet)
 	r.HandleFunc("/login", s.handlePostLogin, http.MethodPost)
 

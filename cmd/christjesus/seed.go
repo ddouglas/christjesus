@@ -15,7 +15,7 @@ var seedCommand = &cli.Command{
 	Name:  "seed",
 	Usage: "Seed the database with initial data",
 	Action: func(c *cli.Context) error {
-		cfg, err := loadConfig(c.String("env-prefix"))
+		cfg, err := loadConfig()
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}

@@ -7,39 +7,96 @@
     <p class="text-muted-foreground">Join the ChristJesus.app community</p>
   </div>
 
+  {{if .}}
+  {{if .Error}}
+  <div class="mt-6 rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-4 py-3 text-sm font-semibold text-[color:var(--cj-error)]" role="alert" aria-live="polite">
+    {{.Error}}
+  </div>
+  {{end}}
+  {{end}}
+
   <form method="POST" action="/register" class="mt-8 space-y-6">
-    <!-- Name Field -->
     <div class="space-y-2">
-      <label for="name" class="text-sm font-medium text-foreground">
-        Full Name
+      <label for="given_name" class="text-sm font-medium text-foreground">
+        First Name
       </label>
-      <input type="text" id="name" name="name" required
+      <input type="text" id="given_name" name="given_name" required value="{{if .}}{{.GivenName}}{{end}}"
         class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        placeholder="Enter your full name" />
+        placeholder="Enter your first name" />
+      {{if .}}
+      {{with .FieldErrors}}
+      {{with index . "given_name"}}
+      <p class="rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-2 py-1 text-xs font-semibold text-[color:var(--cj-error)]" role="alert">{{.}}</p>
+      {{end}}
+      {{end}}
+      {{end}}
     </div>
 
-    <!-- Email Field -->
+    <div class="space-y-2">
+      <label for="family_name" class="text-sm font-medium text-foreground">
+        Last Name
+      </label>
+      <input type="text" id="family_name" name="family_name" required value="{{if .}}{{.FamilyName}}{{end}}"
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        placeholder="Enter your last name" />
+      {{if .}}
+      {{with .FieldErrors}}
+      {{with index . "family_name"}}
+      <p class="rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-2 py-1 text-xs font-semibold text-[color:var(--cj-error)]" role="alert">{{.}}</p>
+      {{end}}
+      {{end}}
+      {{end}}
+    </div>
+
     <div class="space-y-2">
       <label for="email" class="text-sm font-medium text-foreground">
         Email
       </label>
-      <input type="email" id="email" name="email" required
+      <input type="email" id="email" name="email" required value="{{if .}}{{.Email}}{{end}}"
         class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         placeholder="Enter your email" />
+      {{if .}}
+      {{with .FieldErrors}}
+      {{with index . "email"}}
+      <p class="rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-2 py-1 text-xs font-semibold text-[color:var(--cj-error)]" role="alert">{{.}}</p>
+      {{end}}
+      {{end}}
+      {{end}}
     </div>
 
-    <!-- Password Field -->
     <div class="space-y-2">
       <label for="password" class="text-sm font-medium text-foreground">
         Password
       </label>
-      <input type="password" id="password" name="password" required minlength="6"
+      <input type="password" id="password" name="password" required minlength="12"
         class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        placeholder="Create a password (min 6 characters)" />
-      <p class="text-xs text-muted-foreground">Must be at least 6 characters</p>
+        placeholder="Create a password" />
+      <p class="text-xs text-muted-foreground">Must be at least 12 characters with uppercase, lowercase, number, and symbol</p>
+      {{if .}}
+      {{with .FieldErrors}}
+      {{with index . "password"}}
+      <p class="rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-2 py-1 text-xs font-semibold text-[color:var(--cj-error)]" role="alert">{{.}}</p>
+      {{end}}
+      {{end}}
+      {{end}}
     </div>
 
-    <!-- Submit Button -->
+    <div class="space-y-2">
+      <label for="confirm_password" class="text-sm font-medium text-foreground">
+        Confirm Password
+      </label>
+      <input type="password" id="confirm_password" name="confirm_password" required minlength="12"
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        placeholder="Re-enter your password" />
+      {{if .}}
+      {{with .FieldErrors}}
+      {{with index . "confirm_password"}}
+      <p class="rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-2 py-1 text-xs font-semibold text-[color:var(--cj-error)]" role="alert">{{.}}</p>
+      {{end}}
+      {{end}}
+      {{end}}
+    </div>
+
     <button type="submit"
       class="inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
       Create Account

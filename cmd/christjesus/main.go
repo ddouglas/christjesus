@@ -11,14 +11,6 @@ func main() {
 	app := &cli.App{
 		Name:  "christjesus",
 		Usage: "Server-side rendered Go web app",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "env-prefix",
-				Aliases: []string{"p"},
-				Usage:   "Environment variable prefix",
-				Value:   "APP",
-			},
-		},
 		Commands: []*cli.Command{
 			serveCommand,
 			seedCommand,

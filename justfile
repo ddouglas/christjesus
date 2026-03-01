@@ -29,3 +29,6 @@ seed:
 
 dev:
 	air 
+
+terraform-env:
+    bash .scripts/terraform-env.sh

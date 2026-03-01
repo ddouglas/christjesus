@@ -7,13 +7,16 @@ type Config struct {
 	ReadTimeoutSec  uint   `envconfig:"READ_TIMEOUT_SEC" default:"10"`
 	WriteTimeoutSec uint   `envconfig:"WRITE_TIMEOUT_SEC" default:"15"`
 
+	// Cognito Auth
+	CognitoUserPoolID string `envconfig:"COGNITO_USER_POOL_ID"`
+	CognitoClientID   string `envconfig:"COGNITO_CLIENT_ID"`
+	CognitoIssuerURL  string `envconfig:"COGNITO_ISSUER_URL"`
+
 	// Supabase Auth
-	SupabaseProjectID string `envconfig:"SUPABASE_PROJECT_ID"`
-	SupabaseAPIKey    string `envconfig:"SUPABASE_API_KEY"`
 	// SupabaseJWTSecret string `envconfig:"SUPABASE_JWT_SECRET"`
 
 	// Supabase Storage
-	StorageBucketName string `envconfig:"STORAGE_BUCKET_NAME" default:"need-documents"`
+	// StorageBucketName string `envconfig:"STORAGE_BUCKET_NAME" default:"need-documents"`
 
 	// Auth Configuration
 	CookieName       string `envconfig:"SESSION_COOKIE_NAME" default:"session_id"`

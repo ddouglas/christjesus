@@ -12,13 +12,12 @@ import (
 
 	"christjesus/internal/db"
 	"christjesus/internal/server"
-	"christjesus/internal/storage"
 	"christjesus/internal/store"
 
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/lestrrat-go/httprc/v3"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/sirupsen/logrus"
-	supaauth "github.com/supabase-community/auth-go"
 	"github.com/urfave/cli/v2"
 )
 
@@ -35,12 +34,17 @@ func serve(cCtx *cli.Context) error {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{})
 
-	config, err := loadConfig(cCtx.String("env-prefix"))
+	config, err := loadConfig()
 	if err != nil {
 		return err
 	}
 
-	supabaseAuthClient := supaauth.New(config.SupabaseProjectID, config.SupabaseAPIKey)
+	awsConfig, err := loadAWSConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	cognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 
 	pool, err := db.Connect(ctx, config)
 	if err != nil {
@@ -56,20 +60,20 @@ func serve(cCtx *cli.Context) error {
 	documentRepo := store.NewDocumentRepository(pool)
 
 	// Initialize storage client
-	storageClient := storage.NewSupabaseStorage(
-		config.SupabaseProjectID,
-		config.SupabaseAPIKey,
-		config.StorageBucketName,
-	)
+	// storageClient := storage.NewSupabaseStorage(
+	// 	config.SupabaseProjectID,
+	// 	config.SupabaseAPIKey,
+	// 	config.StorageBucketName,
+	// )
 
 	jwkCache, err := jwk.NewCache(context.Background(), httprc.NewClient())
 	if err != nil {
 		return fmt.Errorf("failed to initilaize jwk cache: %w", err)
 	}
 
-	supabaseJWKUrl := fmt.Sprintf("https://%s.supabase.co/auth/v1/.well-known/jwks.json", config.SupabaseProjectID)
+	jwksURL := fmt.Sprintf("%s/.well-known/jwks.json", config.CognitoIssuerURL)
 
-	err = jwkCache.Register(context.Background(), supabaseJWKUrl)
+	err = jwkCache.Register(context.Background(), jwksURL)
 	if err != nil {
 		return fmt.Errorf("failed to register supabase jwk with cache: %w", err)
 	}
@@ -77,23 +81,23 @@ func serve(cCtx *cli.Context) error {
 	srv, err := server.New(
 		config,
 		logger,
-		supabaseAuthClient,
+		cognitoClient,
 		needsRepo,
 		progressRepo,
 		categoryRepo,
 		needCategoryAssignmentsRepo,
 		storyRepo,
 		documentRepo,
-		storageClient,
+		nil,
 		jwkCache,
-		supabaseJWKUrl,
+		jwksURL,
 	)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		logger.WithField("port", config.ServerPort).Info("server starting")
+		logger.WithField("port", config.ServerPort).Infof("server starting http://localhost:%d", config.ServerPort)
 		if err := srv.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.WithError(err).Fatal("server failed")
 		}
