@@ -70,6 +70,52 @@ func (r *UserAddressRepository) ByIDAndUserID(ctx context.Context, id, userID st
 	return &address, nil
 }
 
+func (r *UserAddressRepository) ByIDs(ctx context.Context, ids []string) ([]*types.UserAddress, error) {
+	if len(ids) == 0 {
+		return []*types.UserAddress{}, nil
+	}
+
+	query, args, err := psql().
+		Select(userAddressColumns...).
+		From(userAddressTableName).
+		Where(sq.Eq{"id": ids}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate user addresses by ids query: %w", err)
+	}
+
+	var addresses []*types.UserAddress
+	err = pgxscan.Select(ctx, r.pool, &addresses, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user addresses by ids: %w", err)
+	}
+
+	return addresses, nil
+}
+
+func (r *UserAddressRepository) PrimaryByUserIDs(ctx context.Context, userIDs []string) ([]*types.UserAddress, error) {
+	if len(userIDs) == 0 {
+		return []*types.UserAddress{}, nil
+	}
+
+	query, args, err := psql().
+		Select(userAddressColumns...).
+		From(userAddressTableName).
+		Where(sq.Eq{"user_id": userIDs, "is_primary": true}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate primary user addresses by user ids query: %w", err)
+	}
+
+	var addresses []*types.UserAddress
+	err = pgxscan.Select(ctx, r.pool, &addresses, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch primary user addresses by user ids: %w", err)
+	}
+
+	return addresses, nil
+}
+
 func (r *UserAddressRepository) AddressesByUserID(ctx context.Context, userID string) ([]*types.UserAddress, error) {
 	query, args, err := psql().
 		Select(userAddressColumns...).

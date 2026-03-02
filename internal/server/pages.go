@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -62,12 +63,59 @@ func (s *Service) internalServerError(w http.ResponseWriter) {
 
 func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	type categoryFilterOption struct {
-		ID   string
-		Name string
-	}
-	query := r.URL.Query()
+	filters := parseBrowseFilters(r.URL.Query())
 
+	if isHXRequest(r) {
+		data, err := s.buildBrowseResultsPageData(ctx, filters)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to build browse results")
+			s.internalServerError(w)
+			return
+		}
+
+		data.BasePageData = types.BasePageData{Title: "Browse Needs"}
+		data.LoadResultsOnRender = false
+		data.ShowResultsSkeletons = false
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := s.renderTemplate(w, r, "component.browse-results", data); err != nil {
+			s.logger.WithError(err).Error("failed to render browse results partial")
+			s.internalServerError(w)
+			return
+		}
+		return
+	}
+
+	categories, err := s.categoryRepo.Categories(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch category options for browse filters")
+		s.internalServerError(w)
+		return
+	}
+
+	cityOptions := []string{}
+	if filters.City != "" {
+		cityOptions = append(cityOptions, filters.City)
+	}
+
+	data := &types.BrowsePageData{
+		BasePageData:         types.BasePageData{Title: "Browse Needs"},
+		Categories:           categories,
+		Cities:               cityOptions,
+		Filters:              filters,
+		LoadResultsOnRender:  true,
+		ShowResultsSkeletons: true,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := s.renderTemplate(w, r, "page.browse", data); err != nil {
+		s.logger.WithError(err).Error("failed to render browse page")
+		s.internalServerError(w)
+		return
+	}
+}
+
+func parseBrowseFilters(query url.Values) types.BrowseFilters {
 	fundingMax := 100
 	if raw := strings.TrimSpace(query.Get("funding_max")); raw != "" {
 		if parsed, err := strconv.Atoi(raw); err == nil {
@@ -97,7 +145,7 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	filters := types.BrowseFilters{
+	return types.BrowseFilters{
 		Search:          strings.TrimSpace(query.Get("search")),
 		City:            strings.TrimSpace(query.Get("city")),
 		CategoryIDs:     selectedCategories,
@@ -105,21 +153,28 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		Urgency:         strings.TrimSpace(query.Get("urgency")),
 		FundingMax:      fundingMax,
 	}
+}
+
+func isHXRequest(r *http.Request) bool {
+	return strings.EqualFold(r.Header.Get("HX-Request"), "true")
+}
+
+func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.BrowseFilters) (*types.BrowsePageData, error) {
+	type categoryFilterOption struct {
+		ID   string
+		Name string
+	}
 
 	searchLower := strings.ToLower(filters.Search)
 
 	needs, err := s.needsRepo.BrowseNeeds(ctx)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to fetch browse needs")
-		s.internalServerError(w)
-		return
+		return nil, err
 	}
 
 	categories, err := s.categoryRepo.Categories(ctx)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to fetch category options for browse filters")
-		s.internalServerError(w)
-		return
+		return nil, err
 	}
 	s.logger.WithField("db_category_count", len(categories)).Info("browse: loaded category options from DB")
 
@@ -128,37 +183,124 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	categoryNameCache := make(map[string]string)
 	categoryOptionMap := make(map[string]categoryFilterOption)
 	cityOptionsSet := make(map[string]bool)
+	userIDs := make([]string, 0, len(needs))
+	needIDs := make([]string, 0, len(needs))
+	selectedAddressIDs := make([]string, 0)
+	seenUserIDs := make(map[string]bool)
+	seenNeedIDs := make(map[string]bool)
+	seenSelectedAddressIDs := make(map[string]bool)
+	for _, need := range needs {
+		if !seenUserIDs[need.UserID] {
+			seenUserIDs[need.UserID] = true
+			userIDs = append(userIDs, need.UserID)
+		}
+		if !seenNeedIDs[need.ID] {
+			seenNeedIDs[need.ID] = true
+			needIDs = append(needIDs, need.ID)
+		}
+		if need.UserAddressID != nil {
+			selectedAddressID := strings.TrimSpace(*need.UserAddressID)
+			if selectedAddressID != "" && !seenSelectedAddressIDs[selectedAddressID] {
+				seenSelectedAddressIDs[selectedAddressID] = true
+				selectedAddressIDs = append(selectedAddressIDs, selectedAddressID)
+			}
+		}
+	}
+
+	users, err := s.userRepo.UsersByIDs(ctx, userIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to batch fetch users for browse needs")
+		users = []*types.User{}
+	}
+	for _, user := range users {
+		if user == nil || strings.TrimSpace(user.ID) == "" {
+			continue
+		}
+		userNameCache[user.ID] = userDisplayName(user)
+	}
+
+	selectedAddressesByID := make(map[string]*types.UserAddress)
+	selectedAddresses, err := s.userAddressRepo.ByIDs(ctx, selectedAddressIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to batch fetch selected addresses for browse needs")
+		selectedAddresses = []*types.UserAddress{}
+	}
+	for _, address := range selectedAddresses {
+		if address == nil || strings.TrimSpace(address.ID) == "" {
+			continue
+		}
+		selectedAddressesByID[address.ID] = address
+	}
+
+	primaryAddressesByUserID := make(map[string]*types.UserAddress)
+	primaryAddresses, err := s.userAddressRepo.PrimaryByUserIDs(ctx, userIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to batch fetch primary addresses for browse needs")
+		primaryAddresses = []*types.UserAddress{}
+	}
+	for _, address := range primaryAddresses {
+		if address == nil || strings.TrimSpace(address.UserID) == "" {
+			continue
+		}
+		if _, exists := primaryAddressesByUserID[address.UserID]; !exists {
+			primaryAddressesByUserID[address.UserID] = address
+		}
+	}
+
+	assignmentsByNeedID := make(map[string][]*types.NeedCategoryAssignment)
+	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to batch fetch category assignments for browse needs")
+		assignments = []*types.NeedCategoryAssignment{}
+	}
+	primaryCategoryIDs := make([]string, 0)
+	seenPrimaryCategoryIDs := make(map[string]bool)
+	for _, assignment := range assignments {
+		if assignment == nil || strings.TrimSpace(assignment.NeedID) == "" {
+			continue
+		}
+		assignmentsByNeedID[assignment.NeedID] = append(assignmentsByNeedID[assignment.NeedID], assignment)
+		if assignment.IsPrimary {
+			categoryID := strings.TrimSpace(assignment.CategoryID)
+			if categoryID != "" && !seenPrimaryCategoryIDs[categoryID] {
+				seenPrimaryCategoryIDs[categoryID] = true
+				primaryCategoryIDs = append(primaryCategoryIDs, categoryID)
+			}
+		}
+	}
+
+	primaryCategories, err := s.categoryRepo.CategoriesByIDs(ctx, primaryCategoryIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to batch fetch primary categories for browse needs")
+		primaryCategories = []*types.NeedCategory{}
+	}
+	for _, category := range primaryCategories {
+		if category == nil || strings.TrimSpace(category.ID) == "" {
+			continue
+		}
+		categoryNameCache[category.ID] = category.Name
+	}
+
 	cards := make([]*types.BrowseNeedCard, 0, len(needs))
 	for _, need := range needs {
 		ownerName := "Anonymous"
-		if cached, ok := userNameCache[need.UserID]; ok {
+		if cached, ok := userNameCache[need.UserID]; ok && strings.TrimSpace(cached) != "" {
 			ownerName = cached
-		} else {
-			user, err := s.userRepo.User(ctx, need.UserID)
-			if err == nil {
-				ownerName = userDisplayName(user)
-			} else if !errors.Is(err, types.ErrUserNotFound) {
-				s.logger.WithError(err).WithField("user_id", need.UserID).Warn("failed to fetch user for browse need")
-			}
-			userNameCache[need.UserID] = ownerName
 		}
 
 		address := userAddressCache[need.UserID]
 		if address == nil {
 			if need.UserAddressID != nil && strings.TrimSpace(*need.UserAddressID) != "" {
-				selectedAddress, err := s.userAddressRepo.ByIDAndUserID(ctx, strings.TrimSpace(*need.UserAddressID), need.UserID)
-				if err != nil {
-					s.logger.WithError(err).WithField("need_id", need.ID).Warn("failed to fetch selected address for browse need")
-				} else {
-					address = selectedAddress
+				selectedAddressID := strings.TrimSpace(*need.UserAddressID)
+				if selectedAddress, ok := selectedAddressesByID[selectedAddressID]; ok && selectedAddress != nil {
+					if selectedAddress.UserID == need.UserID {
+						address = selectedAddress
+					}
 				}
 			}
 
 			if address == nil {
-				primaryAddress, err := s.userAddressRepo.PrimaryByUserID(ctx, need.UserID)
-				if err != nil {
-					s.logger.WithError(err).WithField("user_id", need.UserID).Warn("failed to fetch primary address for browse need")
-				} else {
+				if primaryAddress, ok := primaryAddressesByUserID[need.UserID]; ok {
 					address = primaryAddress
 				}
 			}
@@ -173,32 +315,16 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 
 		primaryCategory := "General Need"
 		primaryCategoryID := ""
-		assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, need.ID)
-		if err != nil {
-			s.logger.WithError(err).WithField("need_id", need.ID).Warn("failed to fetch need category assignments for browse card")
-		} else {
-			for _, assignment := range assignments {
-				if !assignment.IsPrimary {
-					continue
-				}
-				primaryCategoryID = assignment.CategoryID
-
-				if cachedName, ok := categoryNameCache[assignment.CategoryID]; ok {
-					primaryCategory = cachedName
-					break
-				}
-
-				category, err := s.categoryRepo.CategoryByID(ctx, assignment.CategoryID)
-				if err != nil {
-					s.logger.WithError(err).WithField("category_id", assignment.CategoryID).Warn("failed to fetch primary category for browse card")
-					break
-				}
-				if category != nil {
-					primaryCategory = category.Name
-					categoryNameCache[assignment.CategoryID] = category.Name
-				}
-				break
+		for _, assignment := range assignmentsByNeedID[need.ID] {
+			if !assignment.IsPrimary {
+				continue
 			}
+			primaryCategoryID = assignment.CategoryID
+
+			if cachedName, ok := categoryNameCache[assignment.CategoryID]; ok {
+				primaryCategory = cachedName
+			}
+			break
 		}
 		if primaryCategoryID == "" {
 			primaryCategoryID = strings.ToLower(strings.ReplaceAll(primaryCategory, " ", "-"))
@@ -327,20 +453,12 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		"final_category_count":   len(categoryOptions),
 	}).Info("browse: category options resolved")
 
-	data := &types.BrowsePageData{
-		BasePageData: types.BasePageData{Title: "Browse Needs"},
-		Needs:        cards,
-		Categories:   categoryOptions,
-		Cities:       cityOptions,
-		Filters:      filters,
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.renderTemplate(w, r, "page.browse", data); err != nil {
-		s.logger.WithError(err).Error("failed to render browse page")
-		s.internalServerError(w)
-		return
-	}
+	return &types.BrowsePageData{
+		Needs:      cards,
+		Categories: categoryOptions,
+		Cities:     cityOptions,
+		Filters:    filters,
+	}, nil
 }
 
 func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {

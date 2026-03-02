@@ -45,6 +45,30 @@ func (r *AssignmentRepository) GetAssignmentsByNeedID(ctx context.Context, needI
 	return assignments, nil
 }
 
+func (r *AssignmentRepository) GetAssignmentsByNeedIDs(ctx context.Context, needIDs []string) ([]*types.NeedCategoryAssignment, error) {
+	if len(needIDs) == 0 {
+		return []*types.NeedCategoryAssignment{}, nil
+	}
+
+	query, args, err := psql().
+		Select(assignmentColumns...).
+		From(assignmentTableName).
+		Where(sq.Eq{"need_id": needIDs}).
+		OrderBy("is_primary DESC", "created_at ASC").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate assignments-by-need-ids query: %w", err)
+	}
+
+	var assignments []*types.NeedCategoryAssignment
+	err = pgxscan.Select(ctx, r.pool, &assignments, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch assignments by need ids: %w", err)
+	}
+
+	return assignments, nil
+}
+
 // CreateAssignment creates a new category assignment
 func (r *AssignmentRepository) CreateAssignment(ctx context.Context, assignment *types.NeedCategoryAssignment) error {
 	now := time.Now()

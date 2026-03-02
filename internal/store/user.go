@@ -48,6 +48,29 @@ func (r *UserRepository) User(ctx context.Context, userID string) (*types.User, 
 	return &user, nil
 }
 
+func (r *UserRepository) UsersByIDs(ctx context.Context, userIDs []string) ([]*types.User, error) {
+	if len(userIDs) == 0 {
+		return []*types.User{}, nil
+	}
+
+	query, args, err := psql().
+		Select(userColumns...).
+		From(userTableName).
+		Where(sq.Eq{"id": userIDs}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate users-by-ids query: %w", err)
+	}
+
+	var users []*types.User
+	err = pgxscan.Select(ctx, r.pool, &users, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch users by ids: %w", err)
+	}
+
+	return users, nil
+}
+
 func (r *UserRepository) Create(ctx context.Context, user *types.User) error {
 	now := time.Now()
 	user.CreatedAt = now

@@ -36,10 +36,12 @@ type HomePageData struct {
 
 type BrowsePageData struct {
 	BasePageData
-	Needs      []*BrowseNeedCard
-	Categories []*NeedCategory
-	Cities     []string
-	Filters    BrowseFilters
+	Needs                []*BrowseNeedCard
+	Categories           []*NeedCategory
+	Cities               []string
+	Filters              BrowseFilters
+	LoadResultsOnRender  bool
+	ShowResultsSkeletons bool
 }
 
 type BrowseFilters struct {
