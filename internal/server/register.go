@@ -10,11 +10,11 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	ctypes "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
-	// "github.com/supabase-community/auth-go/types"
 )
 
 func (s *Service) handleGetRegister(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +96,7 @@ func (s *Service) handlePostRegister(w http.ResponseWriter, r *http.Request) {
 
 	v := url.Values{}
 	v.Set("email", email)
+	s.setRegisterConfirmCookie(w, email, 30*time.Minute)
 
 	// Redirect to onboarding
 	http.Redirect(w, r, fmt.Sprintf("/register/confirm?%s", v.Encode()), http.StatusSeeOther)
@@ -106,10 +107,27 @@ func (s *Service) handleGetRegisterConfirm(w http.ResponseWriter, r *http.Reques
 	var _ = r.Context()
 
 	email := strings.TrimSpace(r.URL.Query().Get("email"))
+	resent := strings.TrimSpace(r.URL.Query().Get("resent"))
+	if email == "" {
+		email = s.getRegisterConfirmEmail(r)
+	}
+
+	if email == "" {
+		v := url.Values{}
+		v.Set("confirm_required", "true")
+		http.Redirect(w, r, fmt.Sprintf("/login?%s", v.Encode()), http.StatusSeeOther)
+		return
+	}
+
+	s.setRegisterConfirmCookie(w, email, 30*time.Minute)
 
 	data := &types.ConfirmRegisterPageData{
 		BasePageData: types.BasePageData{Title: "Confirm Your Account"},
 		Email:        email,
+	}
+
+	if resent == "true" {
+		data.Message = "A new confirmation code has been sent to your email."
 	}
 
 	err := s.renderTemplate(w, r, "page.register.confirm", data)
@@ -126,6 +144,18 @@ func (s *Service) handlePostRegisterConfirm(w http.ResponseWriter, r *http.Reque
 
 	email := strings.TrimSpace(r.FormValue("email"))
 	code := strings.TrimSpace(r.FormValue("code"))
+	if email == "" {
+		email = s.getRegisterConfirmEmail(r)
+	}
+
+	if email == "" {
+		v := url.Values{}
+		v.Set("confirm_required", "true")
+		http.Redirect(w, r, fmt.Sprintf("/login?%s", v.Encode()), http.StatusSeeOther)
+		return
+	}
+
+	s.setRegisterConfirmCookie(w, email, 30*time.Minute)
 
 	data := &types.ConfirmRegisterPageData{
 		BasePageData: types.BasePageData{Title: "Confirm Your Account"},
@@ -158,7 +188,102 @@ func (s *Service) handlePostRegisterConfirm(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Redirect to login after successful confirmation
+	s.clearRegisterConfirmCookie(w)
 	http.Redirect(w, r, "/login?confirmed=true", http.StatusSeeOther)
+}
+
+func (s *Service) handlePostRegisterConfirmResend(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	email := strings.TrimSpace(r.FormValue("email"))
+	if email == "" {
+		email = s.getRegisterConfirmEmail(r)
+	}
+
+	data := &types.ConfirmRegisterPageData{
+		BasePageData: types.BasePageData{Title: "Confirm Your Account"},
+		Email:        email,
+	}
+
+	if email == "" {
+		v := url.Values{}
+		v.Set("confirm_required", "true")
+		http.Redirect(w, r, fmt.Sprintf("/login?%s", v.Encode()), http.StatusSeeOther)
+		return
+	}
+
+	s.setRegisterConfirmCookie(w, email, 30*time.Minute)
+
+	input := &cognitoidentityprovider.ResendConfirmationCodeInput{
+		ClientId: aws.String(s.config.CognitoClientID),
+		Username: aws.String(email),
+	}
+
+	_, err := s.cognitoClient.ResendConfirmationCode(ctx, input)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to resend confirmation code")
+
+		var userNotFound *ctypes.UserNotFoundException
+		var invalidParam *ctypes.InvalidParameterException
+		var limitExceeded *ctypes.LimitExceededException
+		var tooManyRequests *ctypes.TooManyRequestsException
+
+		switch {
+		case errors.As(err, &userNotFound):
+			data.Error = "No account found for this email. Please sign up first."
+		case errors.As(err, &invalidParam):
+			data.Error = "Unable to resend code for this account. Try logging in or signing up again."
+		case errors.As(err, &limitExceeded), errors.As(err, &tooManyRequests):
+			data.Error = "Too many attempts. Please wait a moment and try again."
+		default:
+			data.Error = "Unable to resend code right now. Please try again."
+		}
+
+		renderErr := s.renderTemplate(w, r, "page.register.confirm", data)
+		if renderErr != nil {
+			s.logger.WithError(renderErr).Error("failed to render register confirm page after resend failure")
+			s.internalServerError(w)
+		}
+		return
+	}
+
+	v := url.Values{}
+	v.Set("email", email)
+	v.Set("resent", "true")
+	http.Redirect(w, r, fmt.Sprintf("/register/confirm?%s", v.Encode()), http.StatusSeeOther)
+}
+
+func (s *Service) setRegisterConfirmCookie(w http.ResponseWriter, email string, age time.Duration) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     internal.COOKIE_REGISTER_CONFIRM,
+		Value:    email,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   int(age.Seconds()),
+	})
+}
+
+func (s *Service) clearRegisterConfirmCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     internal.COOKIE_REGISTER_CONFIRM,
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   -1,
+	})
+}
+
+func (s *Service) getRegisterConfirmEmail(r *http.Request) string {
+	cookie, err := r.Cookie(internal.COOKIE_REGISTER_CONFIRM)
+	if err != nil {
+		return ""
+	}
+
+	return strings.TrimSpace(cookie.Value)
 }
 
 var (

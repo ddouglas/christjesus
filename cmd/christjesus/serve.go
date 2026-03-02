@@ -61,6 +61,9 @@ func serve(cCtx *cli.Context) error {
 	storyRepo := store.NewStoryRepository(pool)
 	documentRepo := store.NewDocumentRepository(pool)
 	userAddressRepo := store.NewUserAddressRepository(pool)
+	userRepo := store.NewUserRepository(pool)
+	donorPreferenceRepo := store.NewDonorPreferenceRepository(pool)
+	donorPreferenceAssignRepo := store.NewDonorPreferenceAssignmentRepository(pool)
 
 	jwkCache, err := jwk.NewCache(context.Background(), httprc.NewClient())
 	if err != nil {
@@ -86,6 +89,9 @@ func serve(cCtx *cli.Context) error {
 		storyRepo,
 		documentRepo,
 		userAddressRepo,
+		userRepo,
+		donorPreferenceRepo,
+		donorPreferenceAssignRepo,
 		jwkCache,
 		jwksURL,
 	)

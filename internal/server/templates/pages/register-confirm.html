@@ -41,10 +41,15 @@
     </button>
   </form>
 
-  <p class="mt-6 text-center text-sm text-muted-foreground">
-    Didn’t get a code?
-    <a href="/register" class="font-medium text-[color:var(--cj-accent)] hover:underline">Sign up again</a>
-  </p>
+  <div class="mt-6 text-center text-sm text-muted-foreground">
+    <p>Didn’t get a code?</p>
+    <form method="POST" action="/register/confirm/resend" class="mt-2">
+      <input type="hidden" name="email" value="{{.Email}}" />
+      <button type="submit" class="font-medium text-[color:var(--cj-accent)] hover:underline">
+        Request a new code
+      </button>
+    </form>
+  </div>
 </div>
 
 {{template "footer" .}}

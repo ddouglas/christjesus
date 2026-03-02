@@ -10,23 +10,35 @@
     </div>
   </div>
 
+  {{if .Notice}}
+  <div class="mb-4 rounded-md border border-[color:var(--cj-accent)]/30 bg-[color:var(--cj-accent)]/10 px-4 py-3 text-sm text-foreground">
+    {{.Notice}}
+  </div>
+  {{end}}
+
+  {{if .Error}}
+  <div class="mb-4 rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-4 py-3 text-sm font-semibold text-[color:var(--cj-error)]" role="alert">
+    {{.Error}}
+  </div>
+  {{end}}
+
   <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
-    <form action="/onboarding/donor/preferences" method="post" class="space-y-6 px-6">
+    <form id="donor-preferences-form" action="/onboarding/donor/preferences" method="post" class="space-y-6 px-6">
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <p class="text-sm font-semibold text-foreground">Your location</p>
-          <input type="text" name="zipCode" placeholder="ZIP code (optional)"
+          <input type="text" name="zipCode" placeholder="ZIP code (optional)" value="{{.ZipCode}}"
             class="mt-2 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         </div>
         <div>
           <p class="text-sm font-semibold text-foreground">Radius</p>
           <select name="radius"
             class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-            <option value="">Select a radius</option>
-            <option value="5-miles">5 miles</option>
-            <option value="15-miles">15 miles</option>
-            <option value="25-miles">25 miles</option>
-            <option value="anywhere">Anywhere</option>
+            <option value="" {{if eq .Radius ""}}selected{{end}}>Select a radius</option>
+            <option value="5-miles" {{if eq .Radius "5-miles"}}selected{{end}}>5 miles</option>
+            <option value="15-miles" {{if eq .Radius "15-miles"}}selected{{end}}>15 miles</option>
+            <option value="25-miles" {{if eq .Radius "25-miles"}}selected{{end}}>25 miles</option>
+            <option value="anywhere" {{if eq .Radius "anywhere"}}selected{{end}}>Anywhere</option>
           </select>
         </div>
       </div>
@@ -36,7 +48,7 @@
         <div class="flex flex-wrap gap-2">
           {{range .Categories}}
           <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-accent">
-            <input type="checkbox" name="categories" value="{{.Slug}}" class="h-3.5 w-3.5 rounded border-border" />
+            <input type="checkbox" name="categories" value="{{.ID}}" class="h-3.5 w-3.5 rounded border-border" {{if index $.SelectedCategoryIDs .ID}}checked{{end}} />
             {{.Name}}
           </label>
           {{end}}
@@ -48,22 +60,22 @@
           <p class="text-sm font-semibold text-foreground">Donation range</p>
           <select name="donationRange"
             class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-            <option value="">Select a range</option>
-            <option value="under-50">Under $50</option>
-            <option value="50-100">$50 - $100</option>
-            <option value="100-500">$100 - $500</option>
-            <option value="500-plus">$500+</option>
+            <option value="" {{if eq .DonationRange ""}}selected{{end}}>Select a range</option>
+            <option value="under-50" {{if eq .DonationRange "under-50"}}selected{{end}}>Under $50</option>
+            <option value="50-100" {{if eq .DonationRange "50-100"}}selected{{end}}>$50 - $100</option>
+            <option value="100-500" {{if eq .DonationRange "100-500"}}selected{{end}}>$100 - $500</option>
+            <option value="500-plus" {{if eq .DonationRange "500-plus"}}selected{{end}}>$500+</option>
           </select>
         </div>
         <div>
           <p class="text-sm font-semibold text-foreground">Email notifications</p>
           <select name="notificationFrequency"
             class="mt-2 flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-            <option value="">Select frequency</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="never">Never</option>
+            <option value="" {{if eq .NotificationFrequency ""}}selected{{end}}>Select frequency</option>
+            <option value="daily" {{if eq .NotificationFrequency "daily"}}selected{{end}}>Daily</option>
+            <option value="weekly" {{if eq .NotificationFrequency "weekly"}}selected{{end}}>Weekly</option>
+            <option value="monthly" {{if eq .NotificationFrequency "monthly"}}selected{{end}}>Monthly</option>
+            <option value="never" {{if eq .NotificationFrequency "never"}}selected{{end}}>Never</option>
           </select>
         </div>
       </div>
@@ -75,7 +87,7 @@
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
       Back
     </a>
-    <button type="submit" onclick="document.querySelector('form').submit()"
+    <button type="submit" form="donor-preferences-form"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
       Complete Setup
     </button>

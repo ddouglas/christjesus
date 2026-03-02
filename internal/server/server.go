@@ -41,6 +41,9 @@ type Service struct {
 	storyRepo                   *store.StoryRepository
 	documentRepo                *store.DocumentRepository
 	userAddressRepo             *store.UserAddressRepository
+	userRepo                    *store.UserRepository
+	donorPreferenceRepo         *store.DonorPreferenceRepository
+	donorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
 
 	cookie    *securecookie.SecureCookie
 	jwksCache *jwk.Cache
@@ -64,6 +67,9 @@ func New(
 	storyRepo *store.StoryRepository,
 	documentRepo *store.DocumentRepository,
 	userAddressRepo *store.UserAddressRepository,
+	userRepo *store.UserRepository,
+	donorPreferenceRepo *store.DonorPreferenceRepository,
+	donorPreferenceAssignRepo *store.DonorPreferenceAssignmentRepository,
 
 	jwkCache *jwk.Cache,
 	jwksURL string,
@@ -87,6 +93,9 @@ func New(
 		needCategoryAssignmentsRepo: needCategoryAssignmentsRepo,
 		documentRepo:                documentRepo,
 		userAddressRepo:             userAddressRepo,
+		userRepo:                    userRepo,
+		donorPreferenceRepo:         donorPreferenceRepo,
+		donorPreferenceAssignRepo:   donorPreferenceAssignRepo,
 
 		cookie:    securecookie.New(hashKey, blockKey),
 		jwksCache: jwkCache,
@@ -132,12 +141,16 @@ func (s *Service) buildRouter(r *flow.Mux) {
 	r.HandleFunc("/register", s.handlePostRegister, http.MethodPost)
 	r.HandleFunc("/register/confirm", s.handleGetRegisterConfirm, http.MethodGet)
 	r.HandleFunc("/register/confirm", s.handlePostRegisterConfirm, http.MethodPost)
+	r.HandleFunc("/register/confirm/resend", s.handlePostRegisterConfirmResend, http.MethodPost)
 	r.HandleFunc("/login", s.handleGetLogin, http.MethodGet)
 	r.HandleFunc("/login", s.handlePostLogin, http.MethodPost)
 	r.HandleFunc("/logout", s.handlePostLogout, http.MethodPost)
 
 	r.Group(func(r *flow.Mux) {
 		r.Use(s.RequireAuth)
+
+		r.HandleFunc("/profile", s.handleGetProfile, http.MethodGet)
+		r.HandleFunc("/profile/needs/:needID/delete", s.handlePostProfileNeedDelete, http.MethodPost)
 
 		r.HandleFunc("/onboarding", s.handleGetOnboarding, http.MethodGet)
 		r.HandleFunc("/onboarding", s.handlePostOnboarding, http.MethodPost)
@@ -163,6 +176,7 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc("/onboarding/donor/welcome", s.handleGetOnboardingDonorWelcome, http.MethodGet)
 		r.HandleFunc("/onboarding/donor/preferences", s.handleGetOnboardingDonorPreferences, http.MethodGet)
 		r.HandleFunc("/onboarding/donor/preferences", s.handlePostOnboardingDonorPreferences, http.MethodPost)
+		r.HandleFunc("/onboarding/donor/confirmation", s.handleGetOnboardingDonorConfirmation, http.MethodGet)
 	})
 
 	// Sponsor onboarding flow

@@ -4,6 +4,7 @@ import (
 	"christjesus/internal/utils"
 	"christjesus/pkg/types"
 	"context"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -18,12 +19,36 @@ import (
 )
 
 func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	var _ = r.Context()
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("user id not found in context")
+		s.internalServerError(w)
+		return
+	}
+
+	user, err := s.userRepo.User(ctx, userID)
+	if err != nil {
+		if !errors.Is(err, types.ErrUserNotFound) {
+			s.logger.WithError(err).WithField("user_id", userID).Error("failed to load user from datastore")
+			s.internalServerError(w)
+			return
+		}
+	} else if user.UserType != nil {
+		switch *user.UserType {
+		case string(types.UserTypeNeed):
+			s.redirectNeedOnboarding(ctx, w, r, userID)
+			return
+		case string(types.UserTypeDonor):
+			http.Redirect(w, r, "/onboarding/donor/preferences", http.StatusSeeOther)
+			return
+		}
+	}
 
 	data := &types.OnboardingPageData{BasePageData: types.BasePageData{Title: "Onboarding"}}
 
-	err := s.renderTemplate(w, r, "page.onboarding", data)
+	err = s.renderTemplate(w, r, "page.onboarding", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need welcome page")
 		s.internalServerError(w)
@@ -55,7 +80,24 @@ func (s *Service) handlePostOnboarding(w http.ResponseWriter, r *http.Request) {
 
 	switch onboarding.Path {
 	case "need":
+		userType := string(types.UserTypeNeed)
+		err = s.setUserType(ctx, userType)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to set user type")
+			s.internalServerError(w)
+			return
+		}
 		s.handleCreateNeed(ctx, w, r)
+		return
+	case "donor":
+		userType := string(types.UserTypeDonor)
+		err = s.setUserType(ctx, userType)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to set user type")
+			s.internalServerError(w)
+			return
+		}
+		http.Redirect(w, r, "/onboarding/donor/welcome", http.StatusSeeOther)
 		return
 	}
 
@@ -92,6 +134,73 @@ func (s *Service) handleCreateNeed(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/welcome", need.ID), http.StatusSeeOther)
+}
+
+func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWriter, r *http.Request, userID string) {
+	need, err := s.needsRepo.DraftNeedsByUser(ctx, userID)
+	if err != nil {
+		if errors.Is(err, types.ErrNeedNotFound) {
+			s.handleCreateNeed(ctx, w, r)
+			return
+		}
+
+		s.logger.WithError(err).WithField("user_id", userID).Error("failed to load draft need")
+		s.internalServerError(w)
+		return
+	}
+
+	if need == nil {
+		s.handleCreateNeed(ctx, w, r)
+		return
+	}
+
+	if need.Status == types.NeedStatusSubmitted {
+		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/confirmation", need.ID), http.StatusSeeOther)
+		return
+	}
+
+	stepPath := "welcome"
+	switch need.CurrentStep {
+	case types.NeedStepWelcome:
+		stepPath = "welcome"
+	case types.NeedStepLocation:
+		stepPath = "location"
+	case types.NeedStepCategories:
+		stepPath = "categories"
+	case types.NeedStepStory:
+		stepPath = "story"
+	case types.NeedStepDocuments:
+		stepPath = "documents"
+	case types.NeedStepReview:
+		stepPath = "review"
+	case types.NeedStepComplete:
+		stepPath = "confirmation"
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/%s", need.ID, stepPath), http.StatusSeeOther)
+}
+
+func (s *Service) setUserType(ctx context.Context, userType string) error {
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	existingUser, err := s.userRepo.User(ctx, userID)
+	if err != nil {
+		if !errors.Is(err, types.ErrUserNotFound) {
+			return err
+		}
+
+		newUser := &types.User{
+			ID:       userID,
+			UserType: &userType,
+		}
+		return s.userRepo.Create(ctx, newUser)
+	}
+
+	existingUser.UserType = &userType
+	return s.userRepo.Update(ctx, userID, existingUser)
 }
 
 func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {
@@ -1176,21 +1285,64 @@ func (s *Service) handleGetOnboardingDonorWelcome(w http.ResponseWriter, r *http
 }
 
 func (s *Service) handleGetOnboardingDonorPreferences(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+	ctx := r.Context()
 
-	data := &types.DonorPreferencesPageData{
-		BasePageData: types.BasePageData{Title: "Donor Preferences"},
-		Categories: func() []any {
-			cats := sampleCategories()
-			result := make([]any, len(cats))
-			for i, c := range cats {
-				result[i] = c
-			}
-			return result
-		}(),
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("user id not found in context")
+		s.internalServerError(w)
+		return
 	}
 
-	err := s.renderTemplate(w, r, "page.onboarding.donor.preferences", data)
+	categories, err := s.categoryRepo.Categories(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to load categories for donor preferences")
+		s.internalServerError(w)
+		return
+	}
+
+	pref, err := s.donorPreferenceRepo.ByUserID(ctx, userID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to load donor preferences")
+		s.internalServerError(w)
+		return
+	}
+
+	assignments, err := s.donorPreferenceAssignRepo.AssignmentsByUserID(ctx, userID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to load donor preference category assignments")
+		s.internalServerError(w)
+		return
+	}
+
+	selectedCategoryIDs := make(map[string]bool)
+	for _, assignment := range assignments {
+		selectedCategoryIDs[assignment.CategoryID] = true
+	}
+
+	data := &types.DonorPreferencesPageData{
+		BasePageData:        types.BasePageData{Title: "Donor Preferences"},
+		Categories:          categories,
+		SelectedCategoryIDs: selectedCategoryIDs,
+		Notice:              r.URL.Query().Get("notice"),
+		Error:               r.URL.Query().Get("error"),
+	}
+	if pref != nil {
+		if pref.ZipCode != nil {
+			data.ZipCode = *pref.ZipCode
+		}
+		if pref.Radius != nil {
+			data.Radius = *pref.Radius
+		}
+		if pref.DonationRange != nil {
+			data.DonationRange = *pref.DonationRange
+		}
+		if pref.NotificationFrequency != nil {
+			data.NotificationFrequency = *pref.NotificationFrequency
+		}
+	}
+
+	err = s.renderTemplate(w, r, "page.onboarding.donor.preferences", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render donor preferences page")
 		s.internalServerError(w)
@@ -1199,7 +1351,120 @@ func (s *Service) handleGetOnboardingDonorPreferences(w http.ResponseWriter, r *
 }
 
 func (s *Service) handlePostOnboardingDonorPreferences(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/browse?onboarding=true", http.StatusSeeOther)
+	ctx := r.Context()
+
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("user id not found in context")
+		s.internalServerError(w)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		s.logger.WithError(err).Error("failed to parse donor preferences form")
+		s.internalServerError(w)
+		return
+	}
+
+	donorType := string(types.UserTypeDonor)
+	err = s.setUserType(ctx, donorType)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to set user type for donor preferences")
+		s.internalServerError(w)
+		return
+	}
+
+	cleanOptional := func(value string) *string {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return nil
+		}
+		return &trimmed
+	}
+
+	selectedCategoryIDs := make([]string, 0, len(r.Form["categories"]))
+	seen := make(map[string]bool)
+	for _, categoryID := range r.Form["categories"] {
+		categoryID = strings.TrimSpace(categoryID)
+		if categoryID == "" || seen[categoryID] {
+			continue
+		}
+		selectedCategoryIDs = append(selectedCategoryIDs, categoryID)
+		seen[categoryID] = true
+	}
+
+	if len(selectedCategoryIDs) > 0 {
+		validCategories, err := s.categoryRepo.CategoriesByIDs(ctx, selectedCategoryIDs)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to validate donor preference categories")
+			s.internalServerError(w)
+			return
+		}
+
+		if len(validCategories) != len(selectedCategoryIDs) {
+			s.logger.WithField("selected_count", len(selectedCategoryIDs)).
+				WithField("valid_count", len(validCategories)).
+				Warn("donor preferences contained invalid category ids")
+			s.internalServerError(w)
+			return
+		}
+	}
+
+	existingPref, err := s.donorPreferenceRepo.ByUserID(ctx, userID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch existing donor preferences")
+		s.internalServerError(w)
+		return
+	}
+
+	if existingPref == nil {
+		newPref := &types.DonorPreference{
+			UserID:                userID,
+			ZipCode:               cleanOptional(r.FormValue("zipCode")),
+			Radius:                cleanOptional(r.FormValue("radius")),
+			DonationRange:         cleanOptional(r.FormValue("donationRange")),
+			NotificationFrequency: cleanOptional(r.FormValue("notificationFrequency")),
+		}
+
+		err = s.donorPreferenceRepo.Create(ctx, newPref)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to create donor preferences")
+			s.internalServerError(w)
+			return
+		}
+	} else {
+		existingPref.ZipCode = cleanOptional(r.FormValue("zipCode"))
+		existingPref.Radius = cleanOptional(r.FormValue("radius"))
+		existingPref.DonationRange = cleanOptional(r.FormValue("donationRange"))
+		existingPref.NotificationFrequency = cleanOptional(r.FormValue("notificationFrequency"))
+
+		err = s.donorPreferenceRepo.Update(ctx, userID, existingPref)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to update donor preferences")
+			s.internalServerError(w)
+			return
+		}
+	}
+
+	err = s.donorPreferenceAssignRepo.ReplaceAssignments(ctx, userID, selectedCategoryIDs)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to replace donor preference category assignments")
+		s.internalServerError(w)
+		return
+	}
+
+	http.Redirect(w, r, "/onboarding/donor/confirmation", http.StatusSeeOther)
+}
+
+func (s *Service) handleGetOnboardingDonorConfirmation(w http.ResponseWriter, r *http.Request) {
+	data := &types.DonorConfirmationPageData{BasePageData: types.BasePageData{Title: "Donor Onboarding Complete"}}
+
+	err := s.renderTemplate(w, r, "page.onboarding.donor.confirmation", data)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to render donor confirmation page")
+		s.internalServerError(w)
+		return
+	}
 }
 
 // Sponsor onboarding handlers (placeholders)

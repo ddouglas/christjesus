@@ -22,7 +22,7 @@ migrate-plan:
 	cd migrations && atlas schema apply --env primary --dry-run
 
 migrate:
-	cd migrations && atlas schema apply --env primary --auto-approve
+	cd migrations && atlas schema apply --env primary
 
 seed:
 	go run ./cmd/christjesus seed

@@ -1,0 +1,42 @@
+{{define "page.onboarding.donor.confirmation"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-3xl px-4 py-10 md:px-6">
+  <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
+    <div class="space-y-6 px-6 text-center">
+      <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--cj-success)]/10">
+        <svg class="h-8 w-8 text-[color:var(--cj-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+
+      <div>
+        <h1 class="text-2xl font-semibold text-foreground">You're all set to give</h1>
+        <p class="mt-2 text-muted-foreground">Your donor preferences are saved and ready to personalize your browse experience.</p>
+      </div>
+
+      <div class="rounded-xl border border-border bg-slate-50 p-4 text-left text-sm text-muted-foreground">
+        <p class="font-semibold text-foreground">What happens next?</p>
+        <ul class="mt-2 space-y-2">
+          <li>• We'll prioritize needs matching your selected categories</li>
+          <li>• Your giving preferences can be updated anytime from onboarding</li>
+          <li>• Start browsing needs and support what matters most to you</li>
+        </ul>
+      </div>
+
+      <div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <a href="/browse?onboarding=true"
+          class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
+          Browse Needs
+        </a>
+        <a href="/onboarding/donor/preferences"
+          class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">
+          Edit Preferences
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}

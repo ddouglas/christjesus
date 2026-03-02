@@ -48,6 +48,27 @@ func (r *NeedRepository) Need(ctx context.Context, needID string) (*types.Need, 
 
 }
 
+func (r *NeedRepository) BrowseNeeds(ctx context.Context) ([]*types.Need, error) {
+	query, args, err := psql().Select(needColumns...).From(needTableName).
+		Where(sq.NotEq{"status": types.NeedStatusDraft}).
+		OrderBy("created_at desc").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate browse needs query: %w", err)
+	}
+
+	needs := make([]*types.Need, 0)
+	err = pgxscan.Select(ctx, r.pool, &needs, query, args...)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return needs, nil
+		}
+		return nil, fmt.Errorf("failed to fetch browse needs: %w", err)
+	}
+
+	return needs, nil
+}
+
 func (r *NeedRepository) NeedsByUser(ctx context.Context, userID string) ([]*types.Need, error) {
 
 	query, args, err := psql().Select(needColumns...).From(needTableName).
@@ -59,7 +80,7 @@ func (r *NeedRepository) NeedsByUser(ctx context.Context, userID string) ([]*typ
 	}
 
 	var needs = make([]*types.Need, 0)
-	err = pgxscan.Get(ctx, r.pool, &needs, query, args...)
+	err = pgxscan.Select(ctx, r.pool, &needs, query, args...)
 	if err != nil && !pgxscan.NotFound(err) {
 		return nil, err
 	}

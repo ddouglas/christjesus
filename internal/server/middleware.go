@@ -16,8 +16,9 @@ import (
 type contextKey string
 
 const (
-	contextKeyUserID contextKey = "user_id"
-	contextKeyEmail  contextKey = "email"
+	contextKeyUserID   contextKey = "user_id"
+	contextKeyEmail    contextKey = "email"
+	contextKeyUserName contextKey = "user_name"
 )
 
 type responseWriter struct {
@@ -48,10 +49,14 @@ func (s *Service) LoggingMiddleware(next http.Handler) http.Handler {
 
 func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID, email, ok := s.authClaimsFromRequest(r)
+		userID, email, givenName, familyName, ok := s.authClaimsFromRequest(r)
 		if !ok {
 			next.ServeHTTP(w, r)
 			return
+		}
+
+		if err := s.userRepo.UpsertIdentity(r.Context(), userID, email, givenName, familyName); err != nil {
+			s.logger.WithError(err).WithField("user_id", userID).Warn("failed to sync user identity from token")
 		}
 
 		ctx := r.Context()
@@ -59,16 +64,19 @@ func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 		if email != "" {
 			ctx = context.WithValue(ctx, contextKeyEmail, email)
 		}
+		if givenName != "" {
+			ctx = context.WithValue(ctx, contextKeyUserName, givenName)
+		}
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, bool) {
+func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, string, string, bool) {
 	// 1. Get cookie
 	cookie, err := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
 	if err != nil {
-		return "", "", false
+		return "", "", "", "", false
 	}
 
 	// 2. Decrypt token
@@ -76,14 +84,14 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, bool) 
 	err = s.cookie.Decode(internal.COOKIE_ACCESS_TOKEN_NAME, cookie.Value, &accessToken)
 	if err != nil {
 		s.logger.WithError(err).Debug("failed to decrypt access token")
-		return "", "", false
+		return "", "", "", "", false
 	}
 
 	// 3. Validate token
 	set, err := s.jwksCache.Lookup(r.Context(), s.jwksURL)
 	if err != nil {
 		s.logger.WithError(err).Warn("failed to fetch JWKS")
-		return "", "", false
+		return "", "", "", "", false
 	}
 
 	token, err := jwt.Parse(
@@ -95,17 +103,17 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, bool) 
 	)
 	if err != nil {
 		s.logger.WithError(err).Debug("failed to parse JWT")
-		return "", "", false
+		return "", "", "", "", false
 	}
 
 	userID, ok := token.Subject()
 	if !ok || userID == "" {
-		return "", "", false
+		return "", "", "", "", false
 	}
 
 	var tokenUse string
 	if err := token.Get("token_use", &tokenUse); err != nil || tokenUse != "id" {
-		return "", "", false
+		return "", "", "", "", false
 	}
 
 	var email string
@@ -113,7 +121,19 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, bool) 
 		email = ""
 	}
 
-	return userID, email, true
+	var givenName string
+	if err := token.Get("given_name", &givenName); err != nil {
+		givenName = ""
+	}
+	givenName = strings.TrimSpace(givenName)
+
+	var familyName string
+	if err := token.Get("family_name", &familyName); err != nil {
+		familyName = ""
+	}
+	familyName = strings.TrimSpace(familyName)
+
+	return userID, email, givenName, familyName, true
 }
 
 // RequireAuth middleware checks for valid access token and adds user to context

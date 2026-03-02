@@ -6,6 +6,8 @@ type NavbarData struct {
 	IsAuthenticated bool
 	UserID          string
 	UserEmail       string
+	UserName        string
+	AvatarURL       string
 }
 
 type NavbarDataSetter interface {
@@ -34,7 +36,21 @@ type HomePageData struct {
 
 type BrowsePageData struct {
 	BasePageData
-	Needs []*Need
+	Needs []*BrowseNeedCard
+}
+
+type BrowseNeedCard struct {
+	ID                string
+	OwnerName         string
+	CityState         string
+	UrgencyLabel      string
+	UrgencyDotClass   string
+	PrimaryCategory   string
+	VerificationLabel string
+	ShortDescription  *string
+	Status            NeedStatus
+	AmountNeededCents int
+	AmountRaisedCents int
 }
 
 type NeedDetailPageData struct {
@@ -151,5 +167,49 @@ type DonorWelcomePageData struct {
 
 type DonorPreferencesPageData struct {
 	BasePageData
-	Categories []any
+	Categories            []*NeedCategory
+	ZipCode               string
+	Radius                string
+	DonationRange         string
+	NotificationFrequency string
+	SelectedCategoryIDs   map[string]bool
+	Notice                string
+	Error                 string
+}
+
+type DonorConfirmationPageData struct {
+	BasePageData
+}
+
+type ProfileNavItem struct {
+	Label    string
+	Href     string
+	Active   bool
+	Section  string
+	ShowItem bool
+}
+
+type ProfilePageData struct {
+	BasePageData
+	UserID         string
+	UserEmail      string
+	WelcomeName    string
+	UserType       string
+	Notice         string
+	Error          string
+	SidebarItems   []ProfileNavItem
+	Needs          []*Need
+	NeedSummaries  []ProfileNeedSummary
+	DonatedNeeds   []*Need
+	HasNeeds       bool
+	HasDonatedNeed bool
+}
+
+type ProfileNeedSummary struct {
+	NeedID              string
+	PrimaryCategoryName string
+	RequestedAmount     string
+	CurrentStep         string
+	Status              NeedStatus
+	CanDelete           bool
 }

@@ -4,7 +4,9 @@ import (
 	"christjesus/internal"
 	"christjesus/pkg/types"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -24,11 +26,18 @@ func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.LoginPageData{
 		BasePageData: types.BasePageData{Title: "Login"},
+		Email:        strings.TrimSpace(r.URL.Query().Get("email")),
 	}
 
 	// Check if user was redirected here after confirming their email
 	if r.URL.Query().Get("confirmed") == "true" || r.URL.Query().Get("confirmed") == "1" {
 		data.Message = "Your account has been confirmed! You can now log in."
+	}
+
+	if r.URL.Query().Get("confirm_required") == "true" || r.URL.Query().Get("confirm_required") == "1" {
+		if data.Message == "" {
+			data.Message = "Please log in again to continue account confirmation."
+		}
 	}
 
 	err = s.renderTemplate(w, r, "page.login", data)
@@ -77,12 +86,10 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 
 		switch {
 		case errors.As(err, &userNotConfirmed):
-			data.Error = "Your account is not confirmed yet. Enter the verification code to continue."
-			data.Message = "Check your email for a verification code."
-			if renderErr := s.renderTemplate(w, r, "page.login", data); renderErr != nil {
-				s.logger.WithError(renderErr).Error("failed to render login page with unconfirmed-user error")
-				s.internalServerError(w)
-			}
+			s.setRegisterConfirmCookie(w, email, 30*time.Minute)
+			v := url.Values{}
+			v.Set("email", email)
+			http.Redirect(w, r, fmt.Sprintf("/register/confirm?%s", v.Encode()), http.StatusSeeOther)
 			return
 		case errors.As(err, &notAuthorized), errors.As(err, &userNotFound):
 			data.Error = "Invalid email or password."
@@ -199,5 +206,6 @@ func (s *Service) clearAccessTokenCookie(w http.ResponseWriter) {
 func (s *Service) handlePostLogout(w http.ResponseWriter, r *http.Request) {
 	s.clearAccessTokenCookie(w)
 	s.clearRedirectCookie(w)
+	s.clearRegisterConfirmCookie(w)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

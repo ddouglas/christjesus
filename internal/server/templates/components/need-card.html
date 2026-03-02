@@ -1,12 +1,17 @@
 {{define "component.need.card"}}
-<article class="bg-card text-card-foreground flex h-full flex-col gap-6 rounded-xl border py-6 shadow-sm">
-  <header class="space-y-4 px-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="text-lg font-semibold text-foreground">{{derefOr .ShortDescription "Community need"}}</p>
-        <p class="text-sm text-muted-foreground">{{derefOr .City "Charlotte"}}{{if .State}} • {{.State}}{{end}}</p>
-      </div>
-      <div class="text-xs font-medium uppercase text-muted-foreground">{{.Status}}</div>
+<article class="bg-card text-card-foreground flex h-full flex-col gap-5 rounded-xl border py-6 shadow-sm">
+  <header class="space-y-3 px-6">
+    <p class="text-3xl font-semibold leading-none text-foreground">{{.OwnerName}}</p>
+    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+      <span>{{.CityState}}</span>
+      <span>•</span>
+      <span class="h-2.5 w-2.5 rounded-full {{.UrgencyDotClass}}"></span>
+      <span class="font-medium uppercase tracking-wide">{{.UrgencyLabel}}</span>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2 pt-1">
+      <span class="inline-flex items-center justify-center rounded-full border border-border px-3 py-0.5 text-xs font-medium text-foreground">{{.PrimaryCategory}}</span>
+      <span class="inline-flex items-center justify-center rounded-full bg-[color:var(--cj-secondary)] px-3 py-0.5 text-xs font-medium text-foreground">{{.VerificationLabel}}</span>
     </div>
   </header>
 
