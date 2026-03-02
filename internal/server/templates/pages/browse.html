@@ -9,26 +9,38 @@
   </div>
 
   <div class="mt-8 grid gap-8 lg:grid-cols-[280px_1fr]">
-    {{template "component.filters-panel"}}
+    {{template "component.filters-panel" .}}
 
-    <div class="space-y-6">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div class="text-sm text-muted-foreground">
-          Showing {{len .Needs}} needs
+    <div id="browse-results" class="space-y-6">
+      <div id="browse-loading" class="htmx-indicator rounded-xl border border-border bg-card px-6 py-10 text-center text-card-foreground shadow-sm">
+        <div class="mx-auto inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+          </svg>
+          Updating results...
         </div>
       </div>
 
-      {{if .Needs}}
-      <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-        {{range .Needs}}
-        {{template "component.need.card" .}}
-        {{end}}
-      </div>
-      {{else}}
-        <div class="rounded-xl border border-border bg-card px-6 py-12 text-center text-card-foreground shadow-sm">
-          <p class="text-sm text-muted-foreground">No needs available at this time.</p>
+      <div id="browse-results-content" class="space-y-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="text-sm text-muted-foreground">
+            Showing {{len .Needs}} needs
+          </div>
         </div>
-        {{end}}
+
+        {{if .Needs}}
+        <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          {{range .Needs}}
+          {{template "component.need.card" .}}
+          {{end}}
+        </div>
+        {{else}}
+          <div class="rounded-xl border border-border bg-card px-6 py-12 text-center text-card-foreground shadow-sm">
+            <p class="text-sm text-muted-foreground">No needs available at this time.</p>
+          </div>
+          {{end}}
+      </div>
     </div>
   </div>
 </div>

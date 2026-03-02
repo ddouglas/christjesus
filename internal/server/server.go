@@ -252,6 +252,12 @@ func loadTemplates() (*template.Template, error) {
 			}
 			return *s
 		},
+		"hasKey": func(values map[string]bool, key string) bool {
+			if values == nil {
+				return false
+			}
+			return values[key]
+		},
 	}
 
 	t := template.New("").Funcs(funcMap)

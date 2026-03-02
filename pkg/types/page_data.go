@@ -36,21 +36,38 @@ type HomePageData struct {
 
 type BrowsePageData struct {
 	BasePageData
-	Needs []*BrowseNeedCard
+	Needs      []*BrowseNeedCard
+	Categories []*NeedCategory
+	Cities     []string
+	Filters    BrowseFilters
+}
+
+type BrowseFilters struct {
+	Search          string
+	City            string
+	CategoryIDs     map[string]bool
+	VerificationIDs map[string]bool
+	Urgency         string
+	FundingMax      int
 }
 
 type BrowseNeedCard struct {
 	ID                string
 	OwnerName         string
+	City              string
+	State             string
 	CityState         string
 	UrgencyLabel      string
 	UrgencyDotClass   string
+	PrimaryCategoryID string
 	PrimaryCategory   string
+	VerificationID    string
 	VerificationLabel string
 	ShortDescription  *string
 	Status            NeedStatus
 	AmountNeededCents int
 	AmountRaisedCents int
+	FundingPercent    int
 }
 
 type NeedDetailPageData struct {

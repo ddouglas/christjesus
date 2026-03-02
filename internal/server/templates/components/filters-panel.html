@@ -1,19 +1,22 @@
 {{define "component.filters-panel"}}
-<div class="space-y-6 rounded-xl border border-border bg-white p-4 shadow-sm">
+<form id="browse-filter-form" method="GET" action="/browse" hx-get="/browse" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true"
+  hx-indicator="#browse-loading" class="space-y-6 rounded-xl border border-border bg-white p-4 shadow-sm">
+  <!--
   <div>
     <p class="text-sm font-semibold text-foreground">Search</p>
-    <input type="text" placeholder="Search by keyword or neighborhood"
+    <input type="text" name="search" value="{{.Filters.Search}}" placeholder="Search by keyword"
       class="mt-2 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" />
   </div>
+  -->
 
   <div>
     <p class="text-sm font-semibold text-foreground">City</p>
-    <select
+    <select name="city"
       class="mt-2 flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
-      <option value="">Select a city</option>
-      <option value="charlotte">Charlotte, NC</option>
-      <option value="davidson">Davidson, NC</option>
-      <option value="cornelius">Cornelius, NC</option>
+      <option value="">All cities</option>
+      {{range .Cities}}
+      <option value="{{.}}" {{if eq $.Filters.City .}}selected{{end}}>{{.}}</option>
+      {{end}}
     </select>
   </div>
 
@@ -23,38 +26,12 @@
       <span class="inline-flex w-fit items-center justify-center rounded-full border border-border px-2 py-0.5 text-xs font-medium">Multi-select</span>
     </div>
     <div class="mt-3 space-y-2">
+      {{range .Categories}}
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
-        Housing & Shelter
+        <input type="checkbox" name="category" value="{{.ID}}" class="h-4 w-4 rounded border-border" {{if hasKey $.Filters.CategoryIDs .ID}}checked{{end}} />
+        {{.Name}}
       </label>
-      <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
-        Financial Assistance
-      </label>
-      <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
-        Food & Nutrition
-      </label>
-      <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
-        Healthcare
-      </label>
-      <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
-        Employment
-      </label>
-      <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
-        Education
-      </label>
-      <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
-        Community Support
-      </label>
-      <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
-        Legal Aid
-      </label>
+      {{end}}
     </div>
   </div>
 
@@ -62,15 +39,11 @@
     <p class="text-sm font-semibold text-foreground">Verification Level</p>
     <div class="mt-3 space-y-2">
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
+        <input type="checkbox" name="verification" value="personally-verified" class="h-4 w-4 rounded border-border" {{if hasKey .Filters.VerificationIDs "personally-verified"}}checked{{end}} />
         Personally Verified
       </label>
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
-        Documents Reviewed
-      </label>
-      <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" class="h-4 w-4 rounded border-border" />
+        <input type="checkbox" name="verification" value="story-shared" class="h-4 w-4 rounded border-border" {{if hasKey .Filters.VerificationIDs "story-shared"}}checked{{end}} />
         Story Shared
       </label>
     </div>
@@ -80,47 +53,45 @@
     <p class="text-sm font-semibold text-foreground">Urgency</p>
     <div class="mt-3 space-y-2">
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="radio" name="urgency" class="h-4 w-4 border-border" checked />
+        <input type="radio" name="urgency" value="" class="h-4 w-4 border-border" {{if eq .Filters.Urgency ""}}checked{{end}} />
         All
       </label>
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="radio" name="urgency" class="h-4 w-4 border-border" />
-        Critical
+        <input type="radio" name="urgency" value="urgent" class="h-4 w-4 border-border" {{if eq .Filters.Urgency "urgent"}}checked{{end}} />
+        Urgent
       </label>
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="radio" name="urgency" class="h-4 w-4 border-border" />
+        <input type="radio" name="urgency" value="high" class="h-4 w-4 border-border" {{if eq .Filters.Urgency "high"}}checked{{end}} />
         High
       </label>
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="radio" name="urgency" class="h-4 w-4 border-border" />
+        <input type="radio" name="urgency" value="medium" class="h-4 w-4 border-border" {{if eq .Filters.Urgency "medium"}}checked{{end}} />
         Medium
       </label>
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="radio" name="urgency" class="h-4 w-4 border-border" />
+        <input type="radio" name="urgency" value="low" class="h-4 w-4 border-border" {{if eq .Filters.Urgency "low"}}checked{{end}} />
         Low
       </label>
     </div>
   </div>
 
   <div>
-    <p class="text-sm font-semibold text-foreground">Location</p>
-    <select
-      class="mt-2 flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
-      <option value="">Select a neighborhood</option>
-      <option value="uptown">Uptown</option>
-      <option value="south-end">South End</option>
-      <option value="noda">NoDa</option>
-      <option value="plaza-midwood">Plaza-Midwood</option>
-    </select>
-  </div>
-
-  <div>
     <p class="text-sm font-semibold text-foreground">Funding Progress</p>
     <div class="mt-2 flex items-center justify-between text-xs text-muted-foreground">
       <span>0%</span>
-      <span>100%</span>
+      <span>up to {{.Filters.FundingMax}}%</span>
     </div>
-    <input type="range" min="0" max="100" value="100" class="mt-2 w-full" />
+    <input type="range" min="0" max="100" step="5" name="funding_max" value="{{.Filters.FundingMax}}" class="mt-2 w-full" />
   </div>
-</div>
+
+  <div class="flex items-center gap-2">
+    <button type="submit"
+      class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+      Apply Filters
+    </button>
+    <a href="/browse" class="inline-flex h-9 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+      Reset
+    </a>
+  </div>
+</form>
 {{end}}

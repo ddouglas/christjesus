@@ -48,7 +48,21 @@
       }
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/heroicons@2.0.18/24/outline/index.js"></script>
+    <style>
+      .htmx-indicator {
+        display: none;
+      }
+
+      .htmx-request.htmx-indicator {
+        display: block;
+      }
+
+      #browse-filter-form.htmx-request~#browse-results #browse-results-content {
+        display: none;
+      }
+    </style>
   </head>
 
   <body class="bg-background text-foreground min-h-screen">
