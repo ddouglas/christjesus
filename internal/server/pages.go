@@ -152,6 +152,26 @@ func parseBrowseFilters(query url.Values) types.BrowseFilters {
 		VerificationIDs: selectedVerification,
 		Urgency:         strings.TrimSpace(query.Get("urgency")),
 		FundingMax:      fundingMax,
+		ViewMode:        normalizeBrowseViewMode(query.Get("view")),
+		SortBy:          normalizeBrowseSortBy(query.Get("sort")),
+	}
+}
+
+func normalizeBrowseViewMode(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "list":
+		return "list"
+	default:
+		return "grid"
+	}
+}
+
+func normalizeBrowseSortBy(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "newest", "closest", "nearest", "urgency":
+		return strings.ToLower(strings.TrimSpace(raw))
+	default:
+		return "urgency"
 	}
 }
 
@@ -371,6 +391,7 @@ func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.
 			AmountNeededCents: need.AmountNeededCents,
 			AmountRaisedCents: need.AmountRaisedCents,
 			FundingPercent:    fundingPercent,
+			CreatedAt:         need.CreatedAt,
 		}
 
 		if filters.City != "" && !strings.EqualFold(card.City, filters.City) {
@@ -407,6 +428,8 @@ func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.
 
 		cards = append(cards, card)
 	}
+
+	sortBrowseCards(cards, filters.SortBy)
 
 	cityOptions := make([]string, 0, len(cityOptionsSet))
 	for city := range cityOptionsSet {
@@ -459,6 +482,50 @@ func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.
 		Cities:     cityOptions,
 		Filters:    filters,
 	}, nil
+}
+
+func sortBrowseCards(cards []*types.BrowseNeedCard, sortBy string) {
+	switch sortBy {
+	case "newest":
+		sort.SliceStable(cards, func(i, j int) bool {
+			return cards[i].CreatedAt.After(cards[j].CreatedAt)
+		})
+	case "closest":
+		sort.SliceStable(cards, func(i, j int) bool {
+			if cards[i].FundingPercent != cards[j].FundingPercent {
+				return cards[i].FundingPercent > cards[j].FundingPercent
+			}
+			return cards[i].CreatedAt.After(cards[j].CreatedAt)
+		})
+	case "nearest":
+		return
+	case "urgency":
+		fallthrough
+	default:
+		sort.SliceStable(cards, func(i, j int) bool {
+			left := urgencySortWeight(cards[i].UrgencyLabel)
+			right := urgencySortWeight(cards[j].UrgencyLabel)
+			if left != right {
+				return left > right
+			}
+			return cards[i].CreatedAt.After(cards[j].CreatedAt)
+		})
+	}
+}
+
+func urgencySortWeight(label string) int {
+	switch strings.ToUpper(strings.TrimSpace(label)) {
+	case "URGENT":
+		return 4
+	case "HIGH":
+		return 3
+	case "MEDIUM":
+		return 2
+	case "LOW":
+		return 1
+	default:
+		return 0
+	}
 }
 
 func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {

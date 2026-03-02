@@ -1,6 +1,9 @@
 {{define "component.filters-panel"}}
 <form id="browse-filter-form" method="GET" action="/browse" hx-get="/browse" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true"
   hx-indicator="#browse-loading" class="space-y-6 rounded-xl border border-border bg-white p-4 shadow-sm">
+  <input type="hidden" id="browse-view-input" name="view" value="{{.Filters.ViewMode}}" />
+  <input type="hidden" id="browse-sort-input" name="sort" value="{{.Filters.SortBy}}" />
+
   <!--
   <div>
     <p class="text-sm font-semibold text-foreground">Search</p>

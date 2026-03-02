@@ -18,7 +18,7 @@
 {{end}}
 
 {{define "component.browse-results"}}
-<div id="browse-results" class="space-y-6" {{if .LoadResultsOnRender}}hx-get="/browse" hx-trigger="load" hx-target="this" hx-select="#browse-results" hx-swap="outerHTML" hx-indicator="#browse-loading"
+<div id="browse-results" class="" {{if .LoadResultsOnRender}}hx-get="/browse" hx-trigger="load" hx-target="this" hx-select="#browse-results" hx-swap="outerHTML" hx-indicator="#browse-loading"
   hx-include="#browse-filter-form" {{end}}>
   <div id="browse-loading" class="htmx-indicator rounded-xl border border-border bg-card px-6 py-10 text-center text-card-foreground shadow-sm">
     <div class="mx-auto inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -32,8 +32,12 @@
 
   <div id="browse-results-content" class="space-y-6">
     {{if .ShowResultsSkeletons}}
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="h-4 w-36 animate-pulse rounded bg-muted"></div>
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-40 animate-pulse rounded-md bg-muted"></div>
+        <div class="h-9 w-40 animate-pulse rounded-md bg-muted"></div>
+      </div>
     </div>
     <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
       <div class="rounded-2xl border border-border bg-white p-4 shadow-sm">
@@ -62,24 +66,59 @@
       </div>
     </div>
     {{else}}
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="text-sm text-muted-foreground">
           Showing {{len .Needs}} needs
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div class="inline-flex items-center rounded-md border border-border bg-white p-1 text-sm">
+            <button type="button"
+              class="inline-flex h-8 items-center justify-center rounded px-3 transition-colors {{if eq .Filters.ViewMode "grid"}}bg-[color:var(--cj-primary)] text-white{{else}}text-foreground hover:bg-muted{{end}}"
+              hx-get="/browse" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading" hx-include="#browse-filter-form"
+              hx-on:click="document.getElementById('browse-view-input').value='grid'">
+              Grid View
+            </button>
+            <button type="button"
+              class="inline-flex h-8 items-center justify-center rounded px-3 transition-colors {{if eq .Filters.ViewMode "list"}}bg-[color:var(--cj-primary)] text-white{{else}}text-foreground hover:bg-muted{{end}}"
+              hx-get="/browse" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading" hx-include="#browse-filter-form"
+              hx-on:click="document.getElementById('browse-view-input').value='list'">
+              List View
+            </button>
+          </div>
+
+          <select id="browse-sort-select"
+            class="flex h-9 min-w-[190px] items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            hx-get="/browse" hx-trigger="change" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading"
+            hx-include="#browse-filter-form" hx-on:change="document.getElementById('browse-sort-input').value=this.value">
+            <option value="urgency" {{if eq .Filters.SortBy "urgency"}}selected{{end}}>Most urgent</option>
+            <option value="newest" {{if eq .Filters.SortBy "newest"}}selected{{end}}>Newest first</option>
+            <option value="closest" {{if eq .Filters.SortBy "closest"}}selected{{end}}>Closest to goal</option>
+            <option value="nearest" {{if eq .Filters.SortBy "nearest"}}selected{{end}}>Nearest</option>
+          </select>
         </div>
       </div>
 
       {{if .Needs}}
-      <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+      {{if eq .Filters.ViewMode "list"}}
+      <div class="space-y-4">
         {{range .Needs}}
         {{template "component.need.card" .}}
         {{end}}
       </div>
       {{else}}
-        <div class="rounded-xl border border-border bg-card px-6 py-12 text-center text-card-foreground shadow-sm">
-          <p class="text-sm text-muted-foreground">No needs available at this time.</p>
+        <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          {{range .Needs}}
+          {{template "component.need.card" .}}
+          {{end}}
         </div>
         {{end}}
-        {{end}}
+        {{else}}
+          <div class="rounded-xl border border-border bg-card px-6 py-12 text-center text-card-foreground shadow-sm">
+            <p class="text-sm text-muted-foreground">No needs available at this time.</p>
+          </div>
+          {{end}}
+          {{end}}
   </div>
 </div>
 {{end}}

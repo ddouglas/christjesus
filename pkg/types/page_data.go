@@ -51,6 +51,8 @@ type BrowseFilters struct {
 	VerificationIDs map[string]bool
 	Urgency         string
 	FundingMax      int
+	ViewMode        string
+	SortBy          string
 }
 
 type BrowseNeedCard struct {
@@ -70,6 +72,7 @@ type BrowseNeedCard struct {
 	AmountNeededCents int
 	AmountRaisedCents int
 	FundingPercent    int
+	CreatedAt         time.Time
 }
 
 type NeedDetailPageData struct {
