@@ -36,27 +36,6 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Service) handleHealth(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
-}
-
-func (s *Service) redirectWithNotice(w http.ResponseWriter, r *http.Request, notice string) {
-	v := url.Values{}
-	v.Set("notice", notice)
-	http.Redirect(w, r, "/?"+v.Encode(), http.StatusSeeOther)
-}
-
-func (s *Service) redirectWithError(w http.ResponseWriter, r *http.Request, msg string) {
-	v := url.Values{}
-	v.Set("error", msg)
-	http.Redirect(w, r, "/?"+v.Encode(), http.StatusSeeOther)
-}
-
-func required(v string) bool {
-	return strings.TrimSpace(v) != ""
-}
-
 func (s *Service) internalServerError(w http.ResponseWriter) {
 	http.Error(w, "internal server error", http.StatusInternalServerError)
 }
@@ -635,11 +614,6 @@ func userDisplayName(user *types.User) string {
 	}
 
 	return "Anonymous"
-}
-
-func browseCityState(address *types.UserAddress) string {
-	_, _, cityState := browseCityStateParts(address)
-	return cityState
 }
 
 func browseCityStateParts(address *types.UserAddress) (string, string, string) {
