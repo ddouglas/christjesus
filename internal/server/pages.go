@@ -21,11 +21,9 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 		BasePageData: types.BasePageData{Title: ""},
 		Notice:       r.URL.Query().Get("notice"),
 		Error:        r.URL.Query().Get("error"),
-		// FeaturedNeed: needs[0], // First need is featured
-		// Needs:        needs[1:], // Rest are in the grid
-		Categories: sampleCategories(),
-		Stats:      getStats(),
-		Steps:      getSteps(),
+		Categories:   sampleCategories(),
+		Stats:        getStats(),
+		Steps:        getSteps(),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
