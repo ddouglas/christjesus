@@ -1,0 +1,71 @@
+{{define "page.need-donate"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
+  {{if .Error}}
+  <div class="mb-6 rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-4 py-3 text-sm font-semibold text-[color:var(--cj-error)]" role="alert">
+    {{.Error}}
+  </div>
+  {{end}}
+
+  <div class="grid gap-8 lg:grid-cols-2">
+    <section class="rounded-xl border bg-card p-7 shadow-sm">
+      <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Need Summary</p>
+      <p class="mt-2 text-3xl font-semibold text-foreground">Support {{.OwnerName}}</p>
+
+      <div class="mt-4">
+        <span class="inline-flex rounded-full border border-border bg-background px-3 py-1 text-sm font-medium text-foreground">{{.PrimaryCategory}}</span>
+      </div>
+
+      <p class="mt-6 text-sm text-muted-foreground">{{derefOr .ShortDescription "Support this neighbor by learning more and contributing if you can."}}</p>
+
+      <div class="mt-8 rounded-lg border border-border bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
+        Goal: ${{div .AmountNeededCents 100}} • Raised: ${{div .AmountRaisedCents 100}}
+      </div>
+    </section>
+
+    <section class="rounded-xl border bg-card p-7 shadow-sm">
+      <h1 class="text-3xl font-semibold text-foreground">Choose your donation amount</h1>
+      <p class="mt-2 text-base text-muted-foreground">Secure payment via Stripe. 100% goes to the recipient.</p>
+
+      <form method="post" action="/need/{{.NeedID}}/donate" class="mt-7 space-y-6">
+        <div class="grid grid-cols-2 gap-3">
+          {{range .PresetAmounts}}
+          <label class="block cursor-pointer">
+            <input type="radio" name="preset_amount" value="{{.}}" class="peer sr-only" {{if eq $.SelectedPreset .}}checked{{end}} />
+            <span
+              class="inline-flex h-12 w-full items-center justify-center rounded-md border border-border bg-background px-4 text-lg font-semibold text-foreground transition-colors peer-checked:border-[color:var(--cj-primary)] peer-checked:bg-[color:var(--cj-primary)]/10">${{.}}</span>
+          </label>
+          {{end}}
+        </div>
+
+        <div>
+          <label for="custom_amount" class="block text-sm font-semibold text-foreground">Custom amount</label>
+          <input id="custom_amount" name="custom_amount" value="{{.CustomAmount}}" placeholder="Enter amount"
+            class="mt-2 flex h-12 w-full rounded-md border border-input bg-background px-4 py-2 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+        </div>
+
+        <div>
+          <label for="private_message" class="block text-sm font-semibold text-foreground">Private message to recipient (optional)</label>
+          <textarea id="private_message" name="private_message" rows="3" placeholder="Share encouragement or a note for the recipient..."
+            class="mt-2 flex w-full rounded-md border border-input bg-background px-4 py-3 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{.PrivateMessage}}</textarea>
+        </div>
+
+        <label class="flex items-center gap-3 text-sm text-muted-foreground">
+          <input type="checkbox" name="is_anonymous" class="h-5 w-5 rounded border-border" {{if .IsAnonymous}}checked{{end}} />
+          Donate anonymously
+        </label>
+
+        <button type="submit"
+          class="inline-flex h-12 w-full items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-base font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+          Proceed to Payment
+        </button>
+
+        <p class="text-sm text-muted-foreground">Tax-deductible receipt will be emailed to you.</p>
+      </form>
+    </section>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}

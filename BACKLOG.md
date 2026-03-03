@@ -19,6 +19,7 @@ Example:
 - [ ] Add end-to-end tests for donor onboarding flow (welcome → preferences → confirmation) (`impact: high`, `effort: M`)
 - [ ] Add need-state guard across onboarding to block revisits/edits after submission (`impact: high`, `effort: M`)
 - [ ] Add Profile "View Need" button + dedicated need review page (read-only first), then expand with secure reviewer/individual communications and supplemental document uploads (`impact: high`, `effort: L`, `revisit: after profile MVP hardening`)
+- [ ] Add reusable breadcrumb component with proper breadcrumb builder for site-wide propagation (`impact: med`, `effort: M`, `revisit: after nav/layout consolidation`)
 
 ## Done (Optional)
 - Move completed items here with date if you want historical context.

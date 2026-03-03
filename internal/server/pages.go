@@ -508,6 +508,7 @@ func urgencySortWeight(label string) int {
 func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	needID := r.PathValue("id")
+
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
 		if errors.Is(err, types.ErrNeedNotFound) {
@@ -519,10 +520,170 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ownerName := "Anonymous"
+	user, err := s.userRepo.User(ctx, need.UserID)
+	if err == nil {
+		ownerName = userDisplayName(user)
+	} else if !errors.Is(err, types.ErrUserNotFound) {
+		s.logger.WithError(err).WithField("user_id", need.UserID).Warn("failed to fetch need owner for detail page")
+	}
+
+	story, err := s.storyRepo.GetStoryByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need story")
+		s.internalServerError(w)
+		return
+	}
+
+	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need category assignments")
+		s.internalServerError(w)
+		return
+	}
+
+	categoryIDs := make([]string, 0, len(assignments))
+	for _, assignment := range assignments {
+		categoryID := strings.TrimSpace(assignment.CategoryID)
+		if categoryID != "" {
+			categoryIDs = append(categoryIDs, categoryID)
+		}
+	}
+
+	categoryByID := make(map[string]*types.NeedCategory)
+	if len(categoryIDs) > 0 {
+		categories, err := s.categoryRepo.CategoriesByIDs(ctx, categoryIDs)
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need categories")
+			s.internalServerError(w)
+			return
+		}
+
+		for _, category := range categories {
+			if category == nil || strings.TrimSpace(category.ID) == "" {
+				continue
+			}
+			categoryByID[category.ID] = category
+		}
+	}
+
+	var primaryCategory *types.NeedCategory
+	secondaryCategories := make([]*types.NeedCategory, 0)
+	for _, assignment := range assignments {
+		category := categoryByID[assignment.CategoryID]
+		if category == nil {
+			continue
+		}
+
+		if assignment.IsPrimary {
+			primaryCategory = category
+			continue
+		}
+
+		secondaryCategories = append(secondaryCategories, category)
+	}
+
+	var selectedAddress *types.UserAddress
+	if need.UserAddressID != nil {
+		selectedAddressID := strings.TrimSpace(*need.UserAddressID)
+		if selectedAddressID != "" {
+			selectedAddress, err = s.userAddressRepo.ByIDAndUserID(ctx, selectedAddressID, need.UserID)
+			if err != nil {
+				s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch selected address for need detail")
+				s.internalServerError(w)
+				return
+			}
+		}
+	}
+
+	if selectedAddress == nil {
+		selectedAddress, err = s.userAddressRepo.PrimaryByUserID(ctx, need.UserID)
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch primary address for need detail")
+			s.internalServerError(w)
+			return
+		}
+	}
+
+	_, _, cityState := browseCityStateParts(selectedAddress)
+
+	verificationLabel := "Story Shared"
+	if need.VerifiedAt != nil {
+		verificationLabel = "Personally Verified"
+	}
+
+	urgencyLabel, urgencyDotClass := browseUrgency(need.Status, need.AmountNeededCents, need.AmountRaisedCents)
+
+	fundingPercent := 0
+	if need.AmountNeededCents > 0 {
+		fundingPercent = (need.AmountRaisedCents * 100) / need.AmountNeededCents
+		if fundingPercent < 0 {
+			fundingPercent = 0
+		}
+		if fundingPercent > 100 {
+			fundingPercent = 100
+		}
+	}
+
+	docs, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need documents")
+		s.internalServerError(w)
+		return
+	}
+
+	reviewDocs := make([]types.ReviewDocument, 0, len(docs))
+	for _, doc := range docs {
+		reviewDocs = append(reviewDocs, types.ReviewDocument{
+			ID:         doc.ID,
+			FileName:   doc.FileName,
+			TypeLabel:  documentTypeLabel(doc.DocumentType),
+			SizeBytes:  doc.FileSizeBytes,
+			UploadedAt: doc.UploadedAt,
+		})
+	}
+
+	relatedNeeds := make([]*types.BrowseNeedCard, 0, 3)
+	if primaryCategory != nil && strings.TrimSpace(primaryCategory.ID) != "" {
+		relatedFilters := types.BrowseFilters{
+			CategoryIDs: map[string]bool{primaryCategory.ID: true},
+			FundingMax:  100,
+			ViewMode:    "grid",
+			SortBy:      "urgency",
+		}
+
+		relatedData, err := s.buildBrowseResultsPageData(ctx, relatedFilters)
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Warn("failed to load related needs")
+		} else {
+			for _, related := range relatedData.Needs {
+				if related == nil || related.ID == needID {
+					continue
+				}
+				relatedNeeds = append(relatedNeeds, related)
+				if len(relatedNeeds) == 3 {
+					break
+				}
+			}
+		}
+	}
+
 	data := &types.NeedDetailPageData{
-		BasePageData: types.BasePageData{},
-		// Title: need.Name + " - Need Details",
-		Need: need,
+		BasePageData:        types.BasePageData{Title: "Need Details"},
+		ID:                  needID,
+		Need:                need,
+		OwnerName:           ownerName,
+		SelectedAddress:     selectedAddress,
+		CityState:           cityState,
+		UrgencyLabel:        urgencyLabel,
+		UrgencyDotClass:     urgencyDotClass,
+		VerificationLabel:   verificationLabel,
+		FundingPercent:      fundingPercent,
+		Story:               story,
+		PrimaryCategory:     primaryCategory,
+		SecondaryCategories: secondaryCategories,
+		Documents:           reviewDocs,
+		RelatedNeeds:        relatedNeeds,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -77,7 +77,46 @@ type BrowseNeedCard struct {
 
 type NeedDetailPageData struct {
 	BasePageData
-	Need *Need
+	ID                  string
+	Need                *Need
+	OwnerName           string
+	SelectedAddress     *UserAddress
+	CityState           string
+	UrgencyLabel        string
+	UrgencyDotClass     string
+	VerificationLabel   string
+	FundingPercent      int
+	Story               *NeedStory
+	PrimaryCategory     *NeedCategory
+	SecondaryCategories []*NeedCategory
+	Documents           []ReviewDocument
+	RelatedNeeds        []*BrowseNeedCard
+}
+
+type NeedDonatePageData struct {
+	BasePageData
+	NeedID            string
+	OwnerName         string
+	PrimaryCategory   string
+	ShortDescription  *string
+	AmountNeededCents int
+	AmountRaisedCents int
+	SelectedPreset    int
+	CustomAmount      string
+	PrivateMessage    string
+	IsAnonymous       bool
+	Error             string
+	PresetAmounts     []int
+}
+
+type NeedDonateConfirmationPageData struct {
+	BasePageData
+	NeedID          string
+	IntentID        string
+	OwnerName       string
+	AmountCents     int
+	IsAnonymous     bool
+	PrimaryCategory string
 }
 
 type LoginPageData struct {

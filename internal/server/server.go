@@ -44,6 +44,7 @@ type Service struct {
 	userRepo                    *store.UserRepository
 	donorPreferenceRepo         *store.DonorPreferenceRepository
 	donorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
+	donationIntentRepo          *store.DonationIntentRepository
 
 	cookie    *securecookie.SecureCookie
 	jwksCache *jwk.Cache
@@ -70,6 +71,7 @@ func New(
 	userRepo *store.UserRepository,
 	donorPreferenceRepo *store.DonorPreferenceRepository,
 	donorPreferenceAssignRepo *store.DonorPreferenceAssignmentRepository,
+	donationIntentRepo *store.DonationIntentRepository,
 
 	jwkCache *jwk.Cache,
 	jwksURL string,
@@ -96,6 +98,7 @@ func New(
 		userRepo:                    userRepo,
 		donorPreferenceRepo:         donorPreferenceRepo,
 		donorPreferenceAssignRepo:   donorPreferenceAssignRepo,
+		donationIntentRepo:          donationIntentRepo,
 
 		cookie:    securecookie.New(hashKey, blockKey),
 		jwksCache: jwkCache,
@@ -186,6 +189,9 @@ func (s *Service) buildRouter(r *flow.Mux) {
 
 	r.HandleFunc("/browse", s.handleBrowse, http.MethodGet)
 	r.HandleFunc("/need/:id", s.handleNeedDetail, http.MethodGet)
+	r.HandleFunc("/need/:id/donate", s.handleGetNeedDonate, http.MethodGet)
+	r.HandleFunc("/need/:id/donate", s.handlePostNeedDonate, http.MethodPost)
+	r.HandleFunc("/need/:id/donate/confirmation", s.handleGetNeedDonateConfirmation, http.MethodGet)
 	// r.HandleFunc("/forms/prayer", s.handlePrayerRequestSubmit, http.MethodPost)
 	// r.HandleFunc("/forms/signup", s.handleEmailSignupSubmit, http.MethodPost)
 	// r.HandleFunc("/healthz", s.handleHealth, http.MethodGet)
