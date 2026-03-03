@@ -148,22 +148,6 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	cancelURL := fmt.Sprintf("%s/need/%s/donate", strings.TrimRight(s.config.AppBaseURL, "/"), needID)
 
 	donorEmail := s.resolveDonorCheckoutEmail(ctx, r, donorUserID)
-	if _, claimsEmail, _, _, claimsOK := s.authClaimsFromRequest(r); claimsOK {
-		s.logger.WithFields(map[string]any{
-			"path":                    r.URL.Path,
-			"context_user_id_present": donorUserID != nil,
-			"context_email_present":   strings.TrimSpace(fmt.Sprint(ctx.Value(contextKeyEmail))) != "",
-			"claims_email_present":    strings.TrimSpace(claimsEmail) != "",
-			"resolved_email_present":  donorEmail != "",
-		}).Info("donate auth trace: checkout email resolution with claims")
-	} else {
-		s.logger.WithFields(map[string]any{
-			"path":                    r.URL.Path,
-			"context_user_id_present": donorUserID != nil,
-			"context_email_present":   strings.TrimSpace(fmt.Sprint(ctx.Value(contextKeyEmail))) != "",
-			"resolved_email_present":  donorEmail != "",
-		}).Info("donate auth trace: checkout email resolution without claims")
-	}
 
 	checkoutParams := &stripe.CheckoutSessionCreateParams{
 		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
@@ -191,13 +175,6 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	if donorEmail != "" {
 		checkoutParams.CustomerEmail = stripe.String(donorEmail)
 	}
-
-	s.logger.WithFields(map[string]any{
-		"path":                       r.URL.Path,
-		"customer_email_set":         checkoutParams.CustomerEmail != nil,
-		"client_reference_id_set":    checkoutParams.ClientReferenceID != nil,
-		"metadata_intent_id_present": checkoutParams.Metadata["donation_intent_id"] != "",
-	}).Info("donate auth trace: stripe checkout params summary")
 
 	pp.Print(checkoutParams)
 

@@ -49,20 +49,8 @@ func (s *Service) LoggingMiddleware(next http.Handler) http.Handler {
 
 func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, cookieErr := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
-		hasAccessCookie := cookieErr == nil
-
 		userID, email, givenName, familyName, ok := s.authClaimsFromRequest(r)
 		if !ok {
-			s.logger.WithFields(logrus.Fields{
-				"path":               r.URL.Path,
-				"method":             r.Method,
-				"has_access_cookie":  hasAccessCookie,
-				"is_tls":             r.TLS != nil,
-				"x_forwarded_proto":  r.Header.Get("X-Forwarded-Proto"),
-				"x_forwarded_host":   r.Header.Get("X-Forwarded-Host"),
-				"user_agent_present": strings.TrimSpace(r.UserAgent()) != "",
-			}).Info("auth trace: no claims attached to request context")
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -80,14 +68,6 @@ func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 			ctx = context.WithValue(ctx, contextKeyUserName, givenName)
 		}
 
-		s.logger.WithFields(logrus.Fields{
-			"path":              r.URL.Path,
-			"method":            r.Method,
-			"user_id":           userID,
-			"email_present":     strings.TrimSpace(email) != "",
-			"has_access_cookie": hasAccessCookie,
-		}).Info("auth trace: claims attached to request context")
-
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -96,11 +76,6 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, string
 	// 1. Get cookie
 	cookie, err := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
 	if err != nil {
-		s.logger.WithFields(logrus.Fields{
-			"path":   r.URL.Path,
-			"method": r.Method,
-			"reason": "missing_access_cookie",
-		}).Info("auth trace: token extraction failed")
 		return "", "", "", "", false
 	}
 
@@ -108,22 +83,14 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, string
 	var accessToken string
 	err = s.cookie.Decode(internal.COOKIE_ACCESS_TOKEN_NAME, cookie.Value, &accessToken)
 	if err != nil {
-		s.logger.WithError(err).WithFields(logrus.Fields{
-			"path":   r.URL.Path,
-			"method": r.Method,
-			"reason": "cookie_decode_failed",
-		}).Info("auth trace: token extraction failed")
+		s.logger.WithError(err).Debug("failed to decrypt access token")
 		return "", "", "", "", false
 	}
 
 	// 3. Validate token
 	set, err := s.jwksCache.Lookup(r.Context(), s.jwksURL)
 	if err != nil {
-		s.logger.WithError(err).WithFields(logrus.Fields{
-			"path":   r.URL.Path,
-			"method": r.Method,
-			"reason": "jwks_lookup_failed",
-		}).Warn("auth trace: token extraction failed")
+		s.logger.WithError(err).Warn("failed to fetch JWKS")
 		return "", "", "", "", false
 	}
 
@@ -135,32 +102,17 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, string
 		jwt.WithAudience(s.config.CognitoClientID),
 	)
 	if err != nil {
-		s.logger.WithError(err).WithFields(logrus.Fields{
-			"path":   r.URL.Path,
-			"method": r.Method,
-			"reason": "jwt_parse_failed",
-		}).Info("auth trace: token extraction failed")
+		s.logger.WithError(err).Debug("failed to parse JWT")
 		return "", "", "", "", false
 	}
 
 	userID, ok := token.Subject()
 	if !ok || userID == "" {
-		s.logger.WithFields(logrus.Fields{
-			"path":   r.URL.Path,
-			"method": r.Method,
-			"reason": "missing_subject",
-		}).Info("auth trace: token extraction failed")
 		return "", "", "", "", false
 	}
 
 	var tokenUse string
 	if err := token.Get("token_use", &tokenUse); err != nil || tokenUse != "id" {
-		s.logger.WithFields(logrus.Fields{
-			"path":      r.URL.Path,
-			"method":    r.Method,
-			"reason":    "invalid_token_use",
-			"token_use": tokenUse,
-		}).Info("auth trace: token extraction failed")
 		return "", "", "", "", false
 	}
 
