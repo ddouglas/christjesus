@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"christjesus/internal/utils"
 	"christjesus/pkg/types"
+
+	"github.com/k0kubun/pp"
+	"github.com/stripe/stripe-go/v84"
 )
 
 var donatePresetAmounts = []int{25, 50, 100, 250}
@@ -103,6 +106,11 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 			donorUserID = &trimmed
 		}
 	}
+	if donorUserID == nil {
+		s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
 
 	intent := &types.DonationIntent{
 		ID:              utils.NanoID(),
@@ -127,9 +135,98 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := url.Values{}
-	v.Set("intent_id", intent.ID)
-	http.Redirect(w, r, fmt.Sprintf("/need/%s/donate/confirmation?%s", needID, v.Encode()), http.StatusSeeOther)
+	if s.stripeClient == nil {
+		data.Error = "Payments are not configured yet. Please try again later."
+		if renderErr := s.renderTemplate(w, r, "page.need-donate", data); renderErr != nil {
+			s.logger.WithError(renderErr).Error("failed to render need donate page with stripe config error")
+			s.internalServerError(w)
+		}
+		return
+	}
+
+	successURL := fmt.Sprintf("%s/need/%s/donate/confirmation?intent_id=%s", strings.TrimRight(s.config.AppBaseURL, "/"), needID, intent.ID)
+	cancelURL := fmt.Sprintf("%s/need/%s/donate", strings.TrimRight(s.config.AppBaseURL, "/"), needID)
+
+	donorEmail := s.resolveDonorCheckoutEmail(ctx, r, donorUserID)
+	if _, claimsEmail, _, _, claimsOK := s.authClaimsFromRequest(r); claimsOK {
+		s.logger.WithFields(map[string]any{
+			"path":                    r.URL.Path,
+			"context_user_id_present": donorUserID != nil,
+			"context_email_present":   strings.TrimSpace(fmt.Sprint(ctx.Value(contextKeyEmail))) != "",
+			"claims_email_present":    strings.TrimSpace(claimsEmail) != "",
+			"resolved_email_present":  donorEmail != "",
+		}).Info("donate auth trace: checkout email resolution with claims")
+	} else {
+		s.logger.WithFields(map[string]any{
+			"path":                    r.URL.Path,
+			"context_user_id_present": donorUserID != nil,
+			"context_email_present":   strings.TrimSpace(fmt.Sprint(ctx.Value(contextKeyEmail))) != "",
+			"resolved_email_present":  donorEmail != "",
+		}).Info("donate auth trace: checkout email resolution without claims")
+	}
+
+	checkoutParams := &stripe.CheckoutSessionCreateParams{
+		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
+		SuccessURL: stripe.String(successURL),
+		CancelURL:  stripe.String(cancelURL),
+		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{
+			{
+				Quantity: stripe.Int64(1),
+				PriceData: &stripe.CheckoutSessionCreateLineItemPriceDataParams{
+					Currency:   stripe.String(string(stripe.CurrencyUSD)),
+					UnitAmount: stripe.Int64(int64(amountCents)),
+					ProductData: &stripe.CheckoutSessionCreateLineItemPriceDataProductDataParams{
+						Name:        stripe.String(fmt.Sprintf("Support %s", data.OwnerName)),
+						Description: stripe.String(fmt.Sprintf("Donation for need %s", needID)),
+					},
+				},
+			},
+		},
+		ClientReferenceID: stripe.String(intent.ID),
+		Metadata: map[string]string{
+			"donation_intent_id": intent.ID,
+			"need_id":            needID,
+		},
+	}
+	if donorEmail != "" {
+		checkoutParams.CustomerEmail = stripe.String(donorEmail)
+	}
+
+	s.logger.WithFields(map[string]any{
+		"path":                       r.URL.Path,
+		"customer_email_set":         checkoutParams.CustomerEmail != nil,
+		"client_reference_id_set":    checkoutParams.ClientReferenceID != nil,
+		"metadata_intent_id_present": checkoutParams.Metadata["donation_intent_id"] != "",
+	}).Info("donate auth trace: stripe checkout params summary")
+
+	pp.Print(checkoutParams)
+
+	checkoutSession, err := s.stripeClient.V1CheckoutSessions.Create(ctx, checkoutParams)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to create stripe checkout session")
+		data.Error = "Unable to start Stripe checkout right now. Please try again."
+		if renderErr := s.renderTemplate(w, r, "page.need-donate", data); renderErr != nil {
+			s.logger.WithError(renderErr).Error("failed to render need donate page after checkout create failure")
+			s.internalServerError(w)
+		}
+		return
+	}
+
+	if checkoutSession == nil || strings.TrimSpace(checkoutSession.ID) == "" || strings.TrimSpace(checkoutSession.URL) == "" {
+		data.Error = "Unable to start Stripe checkout right now. Please try again."
+		if renderErr := s.renderTemplate(w, r, "page.need-donate", data); renderErr != nil {
+			s.logger.WithError(renderErr).Error("failed to render need donate page after invalid checkout session")
+			s.internalServerError(w)
+		}
+		return
+	}
+
+	if err := s.donationIntentRepo.SetCheckoutSessionID(ctx, intent.ID, checkoutSession.ID); err != nil {
+		s.logger.WithError(err).WithField("intent_id", intent.ID).Warn("failed to persist checkout session id on donation intent")
+	}
+
+	http.Redirect(w, r, checkoutSession.URL, http.StatusSeeOther)
+
 }
 
 func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http.Request) {
@@ -253,4 +350,31 @@ func parseDonationAmountCents(raw string) (int, error) {
 	}
 
 	return amountDollars * 100, nil
+}
+
+func (s *Service) resolveDonorCheckoutEmail(ctx context.Context, r *http.Request, donorUserID *string) string {
+	if email, ok := ctx.Value(contextKeyEmail).(string); ok {
+		trimmed := strings.TrimSpace(email)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+
+	if _, email, _, _, ok := s.authClaimsFromRequest(r); ok {
+		trimmed := strings.TrimSpace(email)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+
+	if donorUserID == nil {
+		return ""
+	}
+
+	user, err := s.userRepo.User(ctx, *donorUserID)
+	if err != nil || user == nil || user.Email == nil {
+		return ""
+	}
+
+	return strings.TrimSpace(*user.Email)
 }

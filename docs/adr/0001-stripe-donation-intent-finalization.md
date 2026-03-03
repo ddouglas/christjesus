@@ -48,6 +48,18 @@ Every Checkout Session must carry internal identifiers:
 
 Use Checkout metadata and/or `client_reference_id` so webhook handlers can resolve internal records without ambiguity.
 
+### Alternative considered: Payment Links
+
+Payment Links were considered but not selected for this flow.
+
+Why they are not the primary choice here:
+- This app has per-need, per-intent dynamic checkout context (need, donor intent, chosen amount, anonymity/message).
+- We need deterministic one-to-one correlation between internal `donation_intent` records and Stripe payment objects.
+- Server-side business rules and lifecycle checks must run before redirecting to Stripe.
+
+When Payment Links could still be useful:
+- Static fundraising campaigns with fixed amounts and minimal per-transaction app state.
+
 ### Raised amount accounting
 
 Only sum finalized/completed donations for progress:

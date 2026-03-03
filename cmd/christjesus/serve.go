@@ -19,6 +19,7 @@ import (
 	"github.com/lestrrat-go/httprc/v3"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/sirupsen/logrus"
+	"github.com/stripe/stripe-go/v84"
 	"github.com/urfave/cli/v2"
 )
 
@@ -47,6 +48,10 @@ func serve(cCtx *cli.Context) error {
 
 	cognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 	s3Client := s3.NewFromConfig(awsConfig)
+	var stripeClient *stripe.Client
+	if config.StripeSecretKey != "" {
+		stripeClient = stripe.NewClient(config.StripeSecretKey)
+	}
 
 	pool, err := db.Connect(ctx, config)
 	if err != nil {
@@ -83,6 +88,7 @@ func serve(cCtx *cli.Context) error {
 		logger,
 		cognitoClient,
 		s3Client,
+		stripeClient,
 		needsRepo,
 		progressRepo,
 		categoryRepo,

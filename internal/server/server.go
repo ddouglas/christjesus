@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/securecookie"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/sirupsen/logrus"
+	"github.com/stripe/stripe-go/v84"
 )
 
 //go:embed templates static
@@ -33,6 +34,7 @@ type Service struct {
 
 	cognitoClient *cognitoidentityprovider.Client
 	s3Client      *s3.Client
+	stripeClient  *stripe.Client
 
 	needsRepo                   *store.NeedRepository
 	progressRepo                *store.NeedProgressRepository
@@ -60,6 +62,7 @@ func New(
 
 	cognitoClient *cognitoidentityprovider.Client,
 	s3Client *s3.Client,
+	stripeClient *stripe.Client,
 
 	needsRepo *store.NeedRepository,
 	progressRepo *store.NeedProgressRepository,
@@ -87,6 +90,7 @@ func New(
 
 		cognitoClient: cognitoClient,
 		s3Client:      s3Client,
+		stripeClient:  stripeClient,
 
 		needsRepo:                   needsRepo,
 		progressRepo:                progressRepo,
@@ -180,6 +184,10 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc("/onboarding/donor/preferences", s.handleGetOnboardingDonorPreferences, http.MethodGet)
 		r.HandleFunc("/onboarding/donor/preferences", s.handlePostOnboardingDonorPreferences, http.MethodPost)
 		r.HandleFunc("/onboarding/donor/confirmation", s.handleGetOnboardingDonorConfirmation, http.MethodGet)
+
+		r.HandleFunc("/need/:id/donate", s.handleGetNeedDonate, http.MethodGet)
+		r.HandleFunc("/need/:id/donate", s.handlePostNeedDonate, http.MethodPost)
+		r.HandleFunc("/need/:id/donate/confirmation", s.handleGetNeedDonateConfirmation, http.MethodGet)
 	})
 
 	// Sponsor onboarding flow
@@ -189,9 +197,7 @@ func (s *Service) buildRouter(r *flow.Mux) {
 
 	r.HandleFunc("/browse", s.handleBrowse, http.MethodGet)
 	r.HandleFunc("/need/:id", s.handleNeedDetail, http.MethodGet)
-	r.HandleFunc("/need/:id/donate", s.handleGetNeedDonate, http.MethodGet)
-	r.HandleFunc("/need/:id/donate", s.handlePostNeedDonate, http.MethodPost)
-	r.HandleFunc("/need/:id/donate/confirmation", s.handleGetNeedDonateConfirmation, http.MethodGet)
+	r.HandleFunc("/webhooks/stripe", s.handlePostStripeWebhook, http.MethodPost)
 	// r.HandleFunc("/forms/prayer", s.handlePrayerRequestSubmit, http.MethodPost)
 	// r.HandleFunc("/forms/signup", s.handleEmailSignupSubmit, http.MethodPost)
 	// r.HandleFunc("/healthz", s.handleHealth, http.MethodGet)

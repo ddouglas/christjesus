@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -66,4 +67,105 @@ func (r *DonationIntentRepository) ByID(ctx context.Context, intentID string) (*
 	}
 
 	return &intent, nil
+}
+
+func (r *DonationIntentRepository) SetCheckoutSessionID(ctx context.Context, intentID, checkoutSessionID string) error {
+	now := time.Now()
+
+	query, args, err := psql().
+		Update(donationIntentTableName).
+		Set("checkout_session_id", checkoutSessionID).
+		Set("updated_at", now).
+		Where(sq.Eq{"id": intentID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to generate donation intent checkout session update query: %w", err)
+	}
+
+	if _, err = r.pool.Exec(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to update donation intent checkout session id: %w", err)
+	}
+
+	return nil
+}
+
+func (r *DonationIntentRepository) RecordWebhookEventIfNew(ctx context.Context, stripeEventID, eventType string, payload []byte) (bool, error) {
+	now := time.Now()
+
+	query, args, err := psql().
+		Insert("christjesus.stripe_webhook_events").
+		Columns("id", "stripe_event_id", "event_type", "payload", "created_at").
+		Values(utils.NanoID(), stripeEventID, eventType, json.RawMessage(payload), now).
+		Suffix("ON CONFLICT (stripe_event_id) DO NOTHING").
+		ToSql()
+	if err != nil {
+		return false, fmt.Errorf("failed to generate webhook event insert query: %w", err)
+	}
+
+	tag, err := r.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return false, fmt.Errorf("failed to insert webhook event: %w", err)
+	}
+
+	return tag.RowsAffected() > 0, nil
+}
+
+func (r *DonationIntentRepository) FinalizeIntentByID(ctx context.Context, intentID string, checkoutSessionID, paymentIntentID *string) (bool, error) {
+	now := time.Now()
+
+	qb := psql().
+		Update(donationIntentTableName).
+		Set("payment_status", types.DonationPaymentStatusFinalized).
+		Set("updated_at", now).
+		Where(sq.Eq{"id": intentID}).
+		Where(sq.NotEq{"payment_status": types.DonationPaymentStatusFinalized})
+
+	if checkoutSessionID != nil && *checkoutSessionID != "" {
+		qb = qb.Set("checkout_session_id", *checkoutSessionID)
+	}
+	if paymentIntentID != nil && *paymentIntentID != "" {
+		qb = qb.Set("payment_intent_id", *paymentIntentID)
+	}
+
+	query, args, err := qb.ToSql()
+	if err != nil {
+		return false, fmt.Errorf("failed to generate finalize donation intent query: %w", err)
+	}
+
+	tag, err := r.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return false, fmt.Errorf("failed to finalize donation intent: %w", err)
+	}
+
+	return tag.RowsAffected() > 0, nil
+}
+
+func (r *DonationIntentRepository) MarkIntentFailedByID(ctx context.Context, intentID string, checkoutSessionID, paymentIntentID *string) (bool, error) {
+	now := time.Now()
+
+	qb := psql().
+		Update(donationIntentTableName).
+		Set("payment_status", types.DonationPaymentStatusFailed).
+		Set("updated_at", now).
+		Where(sq.Eq{"id": intentID}).
+		Where(sq.NotEq{"payment_status": types.DonationPaymentStatusFinalized})
+
+	if checkoutSessionID != nil && *checkoutSessionID != "" {
+		qb = qb.Set("checkout_session_id", *checkoutSessionID)
+	}
+	if paymentIntentID != nil && *paymentIntentID != "" {
+		qb = qb.Set("payment_intent_id", *paymentIntentID)
+	}
+
+	query, args, err := qb.ToSql()
+	if err != nil {
+		return false, fmt.Errorf("failed to generate fail donation intent query: %w", err)
+	}
+
+	tag, err := r.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return false, fmt.Errorf("failed to fail donation intent: %w", err)
+	}
+
+	return tag.RowsAffected() > 0, nil
 }

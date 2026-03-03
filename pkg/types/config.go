@@ -3,9 +3,15 @@ package types
 type Config struct {
 	Environment     string `envconfig:"ENVIRONMENT" default:"development"`
 	ServerPort      uint   `envconfig:"SERVER_PORT" default:"8080"`
+	AppBaseURL      string `envconfig:"APP_BASE_URL" default:"http://localhost:8080"`
 	DatabaseURL     string `envconfig:"DATABASE_URL" required:"true"`
 	ReadTimeoutSec  uint   `envconfig:"READ_TIMEOUT_SEC" default:"10"`
 	WriteTimeoutSec uint   `envconfig:"WRITE_TIMEOUT_SEC" default:"15"`
+
+	// Stripe Payments
+	StripeSecretKey      string `envconfig:"STRIPE_SECRET_KEY"`
+	StripePublishableKey string `envconfig:"STRIPE_PUBLISHABLE_KEY"`
+	StripeWebhookSecret  string `envconfig:"STRIPE_WEBHOOK_SECRET"`
 
 	// Cognito Auth
 	CognitoUserPoolID string `envconfig:"COGNITO_USER_POOL_ID" required:"true"`

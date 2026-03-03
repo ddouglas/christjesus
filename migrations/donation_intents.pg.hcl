@@ -16,6 +16,18 @@ table "donation_intents" {
     comment = "Optional authenticated donor user id"
   }
 
+  column "checkout_session_id" {
+    type    = text
+    null    = true
+    comment = "Stripe checkout session id"
+  }
+
+  column "payment_intent_id" {
+    type    = text
+    null    = true
+    comment = "Stripe payment intent id"
+  }
+
   column "amount_cents" {
     type = integer
     null = false
@@ -68,6 +80,11 @@ table "donation_intents" {
 
   index "idx_donation_intents_need_created" {
     columns = [column.need_id, column.created_at]
+  }
+
+  index "idx_donation_intents_checkout_session_id" {
+    columns = [column.checkout_session_id]
+    where   = "checkout_session_id IS NOT NULL"
   }
 
   index "idx_donation_intents_donor_user_id" {
