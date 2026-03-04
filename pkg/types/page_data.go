@@ -281,6 +281,7 @@ type ProfileDonationSummary struct {
 	NeedLabel   string
 	Amount      string
 	Status      string
+	IsFinalized bool
 	IsAnonymous bool
 	CreatedAt   string
 }

@@ -152,12 +152,15 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 				needLabel = "Need request"
 			}
 
+			isFinalized := strings.TrimSpace(strings.ToLower(intent.PaymentStatus)) == types.DonationPaymentStatusFinalized
+
 			donationSummaries = append(donationSummaries, types.ProfileDonationSummary{
 				IntentID:    intent.ID,
 				NeedID:      needID,
 				NeedLabel:   needLabel,
 				Amount:      formatUSDFromCents(intent.AmountCents),
 				Status:      formatDonationStatus(intent.PaymentStatus),
+				IsFinalized: isFinalized,
 				IsAnonymous: intent.IsAnonymous,
 				CreatedAt:   intent.CreatedAt.Format("Jan 2, 2006"),
 			})
