@@ -92,6 +92,30 @@ func (r *NeedRepository) NeedsByUser(ctx context.Context, userID string) ([]*typ
 	return needs, nil
 }
 
+func (r *NeedRepository) NeedsByIDs(ctx context.Context, needIDs []string) ([]*types.Need, error) {
+	if len(needIDs) == 0 {
+		return []*types.Need{}, nil
+	}
+
+	query, args, err := psql().Select(needColumns...).From(needTableName).
+		Where(sq.Eq{"id": needIDs}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate needs by ids query: %w", err)
+	}
+
+	needs := make([]*types.Need, 0)
+	err = pgxscan.Select(ctx, r.pool, &needs, query, args...)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return needs, nil
+		}
+		return nil, fmt.Errorf("failed to fetch needs by ids: %w", err)
+	}
+
+	return needs, nil
+}
+
 func (r *NeedRepository) NeedsByStatus(ctx context.Context, userID string) ([]*types.Need, error) {
 
 	query, args, err := psql().Select(needColumns...).From(needTableName).

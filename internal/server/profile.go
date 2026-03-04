@@ -102,25 +102,54 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		needLabelByID := make(map[string]string)
+		distinctNeedIDs := make([]string, 0, len(intents))
+		seenNeedIDs := make(map[string]bool)
+		for _, intent := range intents {
+			if intent == nil {
+				continue
+			}
+			needID := strings.TrimSpace(intent.NeedID)
+			if needID == "" || seenNeedIDs[needID] {
+				continue
+			}
+			seenNeedIDs[needID] = true
+			distinctNeedIDs = append(distinctNeedIDs, needID)
+		}
+
+		needLabelByID := make(map[string]string, len(distinctNeedIDs))
+		needsByID := make(map[string]*types.Need)
+		needs, err := s.needsRepo.NeedsByIDs(ctx, distinctNeedIDs)
+		if err != nil {
+			s.logger.WithError(err).WithField("user_id", userID).Error("failed to batch fetch needs for donor profile")
+			s.internalServerError(w)
+			return
+		}
+		for _, need := range needs {
+			if need == nil {
+				continue
+			}
+			needsByID[need.ID] = need
+		}
+		for _, needID := range distinctNeedIDs {
+			needLabel := "Need request"
+			if need, ok := needsByID[needID]; ok {
+				shortDescription := strings.TrimSpace(derefString(need.ShortDescription))
+				if shortDescription != "" {
+					needLabel = shortDescription
+				}
+			}
+			needLabelByID[needID] = needLabel
+		}
+
 		for _, intent := range intents {
 			if intent == nil {
 				continue
 			}
 
 			needID := strings.TrimSpace(intent.NeedID)
-			needLabel := "Need request"
-			if cached, ok := needLabelByID[needID]; ok {
-				needLabel = cached
-			} else {
-				need, err := s.needsRepo.Need(ctx, needID)
-				if err == nil && need != nil {
-					shortDescription := strings.TrimSpace(derefString(need.ShortDescription))
-					if shortDescription != "" {
-						needLabel = shortDescription
-					}
-				}
-				needLabelByID[needID] = needLabel
+			needLabel := needLabelByID[needID]
+			if strings.TrimSpace(needLabel) == "" {
+				needLabel = "Need request"
 			}
 
 			donationSummaries = append(donationSummaries, types.ProfileDonationSummary{
