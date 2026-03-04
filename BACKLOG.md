@@ -13,7 +13,6 @@ Example:
 ---
 
 ## Later / Low Priority
-- [ ] Persist donor preferences to DB and prefill onboarding form (`impact: med`, `effort: M`, `revisit: after need flow polish`)
 - [ ] Add tests around auth navbar injection (`impact: med`, `effort: M`)
 - [ ] Add end-to-end tests for donor onboarding flow (welcome → preferences → confirmation) (`impact: high`, `effort: M`)
 - [ ] Add need-state guard across onboarding to block revisits/edits after submission (`impact: high`, `effort: M`)
@@ -89,4 +88,5 @@ Example:
 
 ## Done (Optional)
 - Move completed items here with date if you want historical context.
+- [x] Persist donor preferences to DB and prefill onboarding form (`impact: med`, `effort: M`, `revisit: after need flow polish`) — 2026-03-03
 - [x] Add donor onboarding completion confirmation page (`impact: low`, `effort: S`) — 2026-03-03
