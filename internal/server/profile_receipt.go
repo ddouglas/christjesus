@@ -49,9 +49,13 @@ func (s *Service) handleGetProfileDonationReceipt(w http.ResponseWriter, r *http
 	}
 
 	need, err := s.needsRepo.Need(ctx, intent.NeedID)
-	if err != nil {
+	if err != nil && !errors.Is(err, types.ErrNeedNotFound) {
 		s.logger.WithError(err).WithField("need_id", intent.NeedID).Error("failed to fetch need for donation receipt")
 		s.internalServerError(w)
+		return
+	}
+	if errors.Is(err, types.ErrNeedNotFound) {
+		s.redirectProfileWithError(w, r, "Need not found for this donation receipt.")
 		return
 	}
 
