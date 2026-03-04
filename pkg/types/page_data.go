@@ -252,18 +252,18 @@ type ProfileNavItem struct {
 
 type ProfilePageData struct {
 	BasePageData
-	UserID         string
-	UserEmail      string
-	WelcomeName    string
-	UserType       string
-	Notice         string
-	Error          string
-	SidebarItems   []ProfileNavItem
-	Needs          []*Need
-	NeedSummaries  []ProfileNeedSummary
-	DonatedNeeds   []*Need
-	HasNeeds       bool
-	HasDonatedNeed bool
+	UserID            string
+	UserEmail         string
+	WelcomeName       string
+	UserType          string
+	Notice            string
+	Error             string
+	SidebarItems      []ProfileNavItem
+	Needs             []*Need
+	NeedSummaries     []ProfileNeedSummary
+	DonationSummaries []ProfileDonationSummary
+	HasNeeds          bool
+	HasDonations      bool
 }
 
 type ProfileNeedSummary struct {
@@ -273,4 +273,14 @@ type ProfileNeedSummary struct {
 	CurrentStep         string
 	Status              NeedStatus
 	CanDelete           bool
+}
+
+type ProfileDonationSummary struct {
+	IntentID    string
+	NeedID      string
+	NeedLabel   string
+	Amount      string
+	Status      string
+	IsAnonymous bool
+	CreatedAt   string
 }

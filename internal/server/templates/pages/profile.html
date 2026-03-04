@@ -85,18 +85,43 @@
 
       {{if eq .UserType "donor"}}
       <div id="donations" class="rounded-xl border bg-background p-6">
-        <h2 class="text-xl font-semibold text-foreground">Needs I’ve Donated To</h2>
-        {{if .HasDonatedNeed}}
-        <ul class="mt-4 space-y-3">
-          {{range .DonatedNeeds}}
-          <li class="rounded-lg border p-4">
-            <p class="text-sm font-semibold text-foreground">Need ID: {{.ID}}</p>
-            <p class="mt-1 text-sm text-muted-foreground">Status: {{.Status}}</p>
-          </li>
-          {{end}}
-        </ul>
+        <h2 class="text-xl font-semibold text-foreground">Donation History</h2>
+        {{if .HasDonations}}
+        <div class="mt-4 overflow-x-auto rounded-lg border">
+          <table class="w-full min-w-[700px] divide-y divide-border text-left">
+            <thead class="bg-muted/50">
+              <tr>
+                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Need</th>
+                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amount</th>
+                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
+                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Anonymous</th>
+                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Date</th>
+                <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border bg-background">
+              {{range .DonationSummaries}}
+              <tr>
+                <td class="px-4 py-3 text-sm font-medium text-foreground">{{.NeedLabel}}</td>
+                <td class="px-4 py-3 text-sm text-muted-foreground">{{.Amount}}</td>
+                <td class="px-4 py-3 text-sm text-muted-foreground">{{.Status}}</td>
+                <td class="px-4 py-3 text-sm text-muted-foreground">{{if .IsAnonymous}}Yes
+                  {{else}}No{{end}}
+                </td>
+                <td class="px-4 py-3 text-sm text-muted-foreground">{{.CreatedAt}}</td>
+                <td class="px-4 py-3 text-sm">
+                  <div class="flex items-center gap-3">
+                    <a href="/need/{{.NeedID}}" class="font-medium text-[color:var(--cj-primary)] hover:underline">View need</a>
+                    <a href="/profile/donations/{{.IntentID}}/receipt" target="_blank" rel="noopener noreferrer" class="font-medium text-[color:var(--cj-primary)] hover:underline">View receipt</a>
+                  </div>
+                </td>
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
         {{else}}
-          <p class="mt-4 text-sm text-muted-foreground">No donated needs to show yet.</p>
+          <p class="mt-4 text-sm text-muted-foreground">No donations to show yet.</p>
           {{end}}
       </div>
       {{end}}

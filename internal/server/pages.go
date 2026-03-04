@@ -169,6 +169,10 @@ func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.
 		return nil, err
 	}
 
+	if err := s.applyFinalizedRaisedAmounts(ctx, needs); err != nil {
+		return nil, err
+	}
+
 	categories, err := s.categoryRepo.Categories(ctx)
 	if err != nil {
 		return nil, err
@@ -340,16 +344,7 @@ func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.
 			verificationLabel = "Personally Verified"
 		}
 
-		fundingPercent := 0
-		if need.AmountNeededCents > 0 {
-			fundingPercent = (need.AmountRaisedCents * 100) / need.AmountNeededCents
-			if fundingPercent < 0 {
-				fundingPercent = 0
-			}
-			if fundingPercent > 100 {
-				fundingPercent = 100
-			}
-		}
+		fundingPercent := fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents)
 
 		card := &types.BrowseNeedCard{
 			ID:                need.ID,
@@ -520,6 +515,12 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := s.applyFinalizedRaisedAmount(ctx, need); err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to load finalized donation totals for need detail")
+		s.internalServerError(w)
+		return
+	}
+
 	ownerName := "Anonymous"
 	user, err := s.userRepo.User(ctx, need.UserID)
 	if err == nil {
@@ -614,16 +615,7 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 
 	urgencyLabel, urgencyDotClass := browseUrgency(need.Status, need.AmountNeededCents, need.AmountRaisedCents)
 
-	fundingPercent := 0
-	if need.AmountNeededCents > 0 {
-		fundingPercent = (need.AmountRaisedCents * 100) / need.AmountNeededCents
-		if fundingPercent < 0 {
-			fundingPercent = 0
-		}
-		if fundingPercent > 100 {
-			fundingPercent = 100
-		}
-	}
+	fundingPercent := fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents)
 
 	docs, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
 	if err != nil {
