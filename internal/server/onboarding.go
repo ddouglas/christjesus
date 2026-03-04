@@ -203,6 +203,15 @@ func (s *Service) setUserType(ctx context.Context, userType string) error {
 	return s.userRepo.Update(ctx, userID, existingUser)
 }
 
+func (s *Service) redirectIfNeedSubmitted(w http.ResponseWriter, r *http.Request, need *types.Need) bool {
+	if need == nil || need.Status != types.NeedStatusSubmitted {
+		return false
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/confirmation", need.ID), http.StatusSeeOther)
+	return true
+}
+
 func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 
@@ -212,6 +221,10 @@ func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch need from datastore")
 		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
 		return
 	}
 
@@ -239,6 +252,10 @@ func (s *Service) handlePostOnboardingNeedWelcome(w http.ResponseWriter, r *http
 		return
 	}
 
+	if s.redirectIfNeedSubmitted(w, r, need) {
+		return
+	}
+
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepWelcome)
 	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/location", need.ID), http.StatusSeeOther)
 
@@ -252,6 +269,10 @@ func (s *Service) handleGetOnboardingNeedLocation(w http.ResponseWriter, r *http
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch need from datastore")
 		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
 		return
 	}
 
@@ -320,6 +341,10 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch need from datastore")
 		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
 		return
 	}
 
@@ -451,6 +476,10 @@ func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *ht
 		return
 	}
 
+	if s.redirectIfNeedSubmitted(w, r, need) {
+		return
+	}
+
 	categories, err := s.categoryRepo.Categories(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to load categories from database")
@@ -485,6 +514,10 @@ func (s *Service) handlePostOnboardingNeedCategories(w http.ResponseWriter, r *h
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch need from datastore")
 		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
 		return
 	}
 	err = r.ParseForm()
@@ -587,6 +620,10 @@ func (s *Service) handleGetOnboardingNeedStory(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	if s.redirectIfNeedSubmitted(w, r, need) {
+		return
+	}
+
 	// Get all assignments and find primary
 	var primaryCategory *types.NeedCategory
 	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
@@ -636,6 +673,17 @@ func (s *Service) handleGetOnboardingNeedDocuments(w http.ResponseWriter, r *htt
 	ctx := r.Context()
 	needID := r.PathValue("needID")
 
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch need")
+		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
+		return
+	}
+
 	// Get existing documents
 	documents, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
 	if err != nil {
@@ -676,6 +724,17 @@ func (s *Service) handlePostOnboardingNeedDocumentsUpload(w http.ResponseWriter,
 	var ctx = r.Context()
 
 	needID := r.PathValue("needID")
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch need")
+		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
+		return
+	}
+
 	userID, err := s.userIDFromContext(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("user id not found")
@@ -814,6 +873,17 @@ func (s *Service) handlePostOnboardingNeedDocuments(w http.ResponseWriter, r *ht
 	ctx := r.Context()
 	needID := r.PathValue("needID")
 
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need")
+		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		s.logger.WithError(err).Error("failed to parse documents continue form")
 		s.redirectDocsWithError(w, r, needID, "Invalid form submission.")
@@ -834,13 +904,6 @@ func (s *Service) handlePostOnboardingNeedDocuments(w http.ResponseWriter, r *ht
 		return
 	}
 
-	need, err := s.needsRepo.Need(ctx, needID)
-	if err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need")
-		s.internalServerError(w)
-		return
-	}
-
 	need.CurrentStep = types.NeedStepDocuments
 	err = s.needsRepo.UpdateNeed(ctx, need.ID, need)
 	if err != nil {
@@ -857,7 +920,18 @@ func (s *Service) handlePostOnboardingNeedDocumentMetadata(w http.ResponseWriter
 	ctx := r.Context()
 	needID := r.PathValue("needID")
 
-	err := r.ParseForm()
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need")
+		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
+		return
+	}
+
+	err = r.ParseForm()
 	if err != nil {
 		s.logger.WithError(err).Error("failed to parse form")
 		s.internalServerError(w)
@@ -927,6 +1001,17 @@ func (s *Service) handlePostOnboardingNeedDocumentDelete(w http.ResponseWriter, 
 	ctx := r.Context()
 	needID := r.PathValue("needID")
 	documentID := r.PathValue("documentID")
+
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need")
+		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
+		return
+	}
 
 	if documentID == "" {
 		s.redirectDocsWithError(w, r, needID, "Invalid document request.")
@@ -1035,6 +1120,10 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 	if err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need")
 		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
 		return
 	}
 
@@ -1180,6 +1269,10 @@ func (s *Service) handlePostOnboardingNeedStory(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	if s.redirectIfNeedSubmitted(w, r, need) {
+		return
+	}
+
 	// Decode story data
 	story := &types.NeedStory{
 		NeedID: needID,
@@ -1251,6 +1344,10 @@ func (s *Service) handlePostOnboardingNeedReview(w http.ResponseWriter, r *http.
 	if err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need for review submit")
 		s.internalServerError(w)
+		return
+	}
+
+	if s.redirectIfNeedSubmitted(w, r, need) {
 		return
 	}
 
