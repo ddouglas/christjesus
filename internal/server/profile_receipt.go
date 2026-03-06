@@ -83,7 +83,9 @@ func (s *Service) handleGetProfileDonationReceipt(w http.ResponseWriter, r *http
 		w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filename))
 		w.Header().Set("Cache-Control", "private, no-store")
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.Copy(w, cachedReceipt.Body)
+		if _, err := io.Copy(w, cachedReceipt.Body); err != nil {
+			s.logger.WithError(err).WithField("intent_id", intent.ID).Error("failed to stream cached donation receipt pdf")
+		}
 		return
 	}
 
@@ -124,13 +126,24 @@ func (s *Service) handleGetProfileDonationReceipt(w http.ResponseWriter, r *http
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filename))
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(pdfBytes)
+	if _, err := w.Write(pdfBytes); err != nil {
+		s.logger.WithError(err).WithField("intent_id", intent.ID).Error("failed to write donation receipt pdf response")
+		return
+	}
 }
 
 func buildDonationReceiptPDF(summary types.ProfileDonationSummary, donorName, donorEmail, appBaseURL string) ([]byte, error) {
+	safeIntentID := pdfSafeText(summary.IntentID)
+	safeCreatedAt := pdfSafeText(summary.CreatedAt)
+	safeAmount := pdfSafeText(summary.Amount)
+	safeStatus := pdfSafeText(summary.Status)
+	safeNeedLabel := pdfSafeText(summary.NeedLabel)
+	safeDonorName := pdfSafeText(donorName)
+	safeDonorEmail := pdfSafeText(donorEmail)
+
 	pdf := fpdf.New("P", "mm", "Letter", "")
 	pdf.SetAutoPageBreak(true, 12)
-	pdf.SetTitle("ChristJesus Donation Receipt "+summary.IntentID, false)
+	pdf.SetTitle("ChristJesus Donation Receipt "+safeIntentID, false)
 	pdf.SetAuthor("ChristJesus", false)
 	pdf.SetSubject("Donation receipt", false)
 	pdf.AddPage()
@@ -148,17 +161,17 @@ func buildDonationReceiptPDF(summary types.ProfileDonationSummary, donorName, do
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.CellFormat(0, 8, "Receipt Details", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 11)
-	pdf.CellFormat(0, 7, "Receipt ID: "+summary.IntentID, "", 1, "L", false, 0, "")
-	pdf.CellFormat(0, 7, "Donation Date: "+summary.CreatedAt, "", 1, "L", false, 0, "")
-	pdf.CellFormat(0, 7, "Amount: "+summary.Amount, "", 1, "L", false, 0, "")
-	pdf.CellFormat(0, 7, "Status: "+summary.Status, "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 7, "Receipt ID: "+safeIntentID, "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 7, "Donation Date: "+safeCreatedAt, "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 7, "Amount: "+safeAmount, "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 7, "Status: "+safeStatus, "", 1, "L", false, 0, "")
 	pdf.CellFormat(0, 7, "Anonymous Donation: "+map[bool]string{true: "Yes", false: "No"}[summary.IsAnonymous], "", 1, "L", false, 0, "")
 	pdf.Ln(2)
 
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.CellFormat(0, 8, "Need", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 11)
-	pdf.MultiCell(0, 7, summary.NeedLabel, "", "L", false)
+	pdf.MultiCell(0, 7, safeNeedLabel, "", "L", false)
 	needURL := strings.TrimRight(strings.TrimSpace(appBaseURL), "/") + "/need/" + summary.NeedID
 	if strings.TrimSpace(appBaseURL) == "" {
 		needURL = "/need/" + summary.NeedID
@@ -173,8 +186,8 @@ func buildDonationReceiptPDF(summary types.ProfileDonationSummary, donorName, do
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.CellFormat(0, 8, "Donor", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 11)
-	pdf.CellFormat(0, 7, "Name: "+strings.TrimSpace(donorName), "", 1, "L", false, 0, "")
-	pdf.CellFormat(0, 7, "Email: "+strings.TrimSpace(donorEmail), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 7, "Name: "+safeDonorName, "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 7, "Email: "+safeDonorEmail, "", 1, "L", false, 0, "")
 	pdf.Ln(4)
 
 	pdf.SetTextColor(90, 90, 90)
@@ -187,6 +200,24 @@ func buildDonationReceiptPDF(summary types.ProfileDonationSummary, donorName, do
 	}
 
 	return output.Bytes(), nil
+}
+
+func pdfSafeText(value string) string {
+	clean := strings.ToValidUTF8(value, "")
+	var b strings.Builder
+	b.Grow(len(clean))
+	for _, r := range clean {
+		switch {
+		case r == '\n' || r == '\r' || r == '\t':
+			b.WriteRune(r)
+		case r >= 32 && r <= 255:
+			b.WriteRune(r)
+		default:
+			b.WriteRune('?')
+		}
+	}
+
+	return strings.TrimSpace(b.String())
 }
 
 func isS3NotFoundError(err error) bool {

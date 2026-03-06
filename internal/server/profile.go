@@ -324,7 +324,7 @@ func buildProfileSidebar(userType string) []types.ProfileNavItem {
 		{Label: "Profile Overview", Href: "#overview", Active: true, Section: "overview", ShowItem: true},
 		{Label: "My Needs", Href: "#my-needs", Active: false, Section: "my-needs", ShowItem: userType == string(types.UserTypeNeed)},
 		{Label: "Need Status", Href: "#need-status", Active: false, Section: "need-status", ShowItem: userType == string(types.UserTypeNeed)},
-		{Label: "Needs I've Donated To", Href: "#donations", Active: false, Section: "donations", ShowItem: userType == string(types.UserTypeDonor)},
+		{Label: "Donation History", Href: "#donations", Active: false, Section: "donations", ShowItem: userType == string(types.UserTypeDonor)},
 	}
 
 	filtered := make([]types.ProfileNavItem, 0, len(items))
