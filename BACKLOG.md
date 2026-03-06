@@ -19,7 +19,7 @@ Example:
 - [ ] Add Profile "View Need" button + dedicated need review page (read-only first), then expand with secure reviewer/individual communications and supplemental document uploads (`impact: high`, `effort: L`, `revisit: after profile MVP hardening`)
 - [ ] Add reusable breadcrumb component with proper breadcrumb builder for site-wide propagation (`impact: med`, `effort: M`, `revisit: after nav/layout consolidation`)
 - [ ] Add webhook resilience pass: handle reconciliation signals, retries, and backfill job for missed events (`impact: high`, `effort: L`, `revisit: before production launch`)
-- [ ] Improve post-donation trust UX with finalized-intent confirmation/receipt details (not redirect-only) (`impact: med`, `effort: M`, `revisit: after ledger MVP`)
+- [x] Improve post-donation trust UX with finalized-intent confirmation/receipt details (not redirect-only) (`impact: med`, `effort: M`, `revisit: after ledger MVP`) — 2026-03-05
 - [x] Implement working `Categories` navbar item + backed categories page route/render (data-driven cards/counts, desktop + mobile parity) (`impact: high`, `effort: M`, `revisit: align to docs/images/Categories - List.png + docs/images/Categories - HoverState.png + docs/images/Category - AssociatedNeeds.png + docs/images/Categories - BrowseCTA.png`) — 2026-03-05
 - [ ] Enrich homepage with additional detail sections/content density while preserving current design system and hierarchy (`impact: med`, `effort: M`, `revisit: scope from docs/images/Homepage - NeedCategories.png + docs/images/Homepage - FeaturedNeed.png + docs/images/Homepage - FeaturedNeedsHomepage.png and follow-up product notes`)
 
@@ -92,3 +92,4 @@ Example:
 - [x] Add donor onboarding completion confirmation page (`impact: low`, `effort: S`) — 2026-03-03
 - [x] Add need-state guard across onboarding to block revisits/edits after submission (`impact: high`, `effort: M`) — 2026-03-05
 - [x] Implement working `Categories` navbar item + backed categories page route/render (data-driven cards/counts, desktop + mobile parity) (`impact: high`, `effort: M`, `revisit: align to docs/images/Categories - List.png + docs/images/Categories - HoverState.png + docs/images/Category - AssociatedNeeds.png + docs/images/Categories - BrowseCTA.png`) — 2026-03-05
+- [x] Improve post-donation trust UX with finalized-intent confirmation/receipt details (not redirect-only) (`impact: med`, `effort: M`, `revisit: after ledger MVP`) — 2026-03-05
