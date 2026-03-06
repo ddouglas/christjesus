@@ -135,12 +135,20 @@ type NeedDonatePageData struct {
 
 type NeedDonateConfirmationPageData struct {
 	BasePageData
-	NeedID          string
-	IntentID        string
-	OwnerName       string
-	AmountCents     int
-	IsAnonymous     bool
-	PrimaryCategory string
+	NeedID             string
+	IntentID           string
+	OwnerName          string
+	AmountCents        int
+	IsAnonymous        bool
+	PrimaryCategory    string
+	PaymentStatus      string
+	StatusLabel        string
+	StatusTitle        string
+	StatusDescription  string
+	StatusGuidance     string
+	ShowRetryCTA       bool
+	ShowReceiptDetails bool
+	DonationDate       string
 }
 
 type LoginPageData struct {

@@ -127,7 +127,7 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.donationIntentRepo.Create(ctx, intent); err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to create donation intent")
-		data.Error = "Unable to save your donation intent right now. Please try again."
+		data.Error = "Unable to save your donation right now. Please try again."
 		if renderErr := s.renderTemplate(w, r, "page.need-donate", data); renderErr != nil {
 			s.logger.WithError(renderErr).Error("failed to render need donate page after persistence failure")
 			s.internalServerError(w)
@@ -234,13 +234,21 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 	}
 
 	data := &types.NeedDonateConfirmationPageData{
-		BasePageData:    types.BasePageData{Title: "Donation Confirmation"},
-		NeedID:          need.ID,
-		IntentID:        intent.ID,
-		OwnerName:       ownerName,
-		AmountCents:     intent.AmountCents,
-		IsAnonymous:     intent.IsAnonymous,
-		PrimaryCategory: primaryCategory,
+		BasePageData:       types.BasePageData{Title: "Donation Confirmation"},
+		NeedID:             need.ID,
+		IntentID:           intent.ID,
+		OwnerName:          ownerName,
+		AmountCents:        intent.AmountCents,
+		IsAnonymous:        intent.IsAnonymous,
+		PrimaryCategory:    primaryCategory,
+		PaymentStatus:      intent.PaymentStatus,
+		StatusLabel:        donationStatusLabel(intent.PaymentStatus),
+		StatusTitle:        donationStatusTitle(intent.PaymentStatus, ownerName),
+		StatusDescription:  donationStatusDescription(intent.PaymentStatus),
+		StatusGuidance:     donationStatusGuidance(intent.PaymentStatus),
+		ShowRetryCTA:       intent.PaymentStatus == types.DonationPaymentStatusFailed || intent.PaymentStatus == types.DonationPaymentStatusCanceled,
+		ShowReceiptDetails: intent.PaymentStatus == types.DonationPaymentStatusFinalized,
+		DonationDate:       donationConfirmationDate(intent),
 	}
 
 	if err := s.renderTemplate(w, r, "page.need-donate-confirmation", data); err != nil {
@@ -248,6 +256,70 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 		s.internalServerError(w)
 		return
 	}
+}
+
+func donationStatusLabel(status string) string {
+	switch strings.TrimSpace(status) {
+	case types.DonationPaymentStatusFinalized:
+		return "Payment Complete"
+	case types.DonationPaymentStatusFailed:
+		return "Payment Failed"
+	case types.DonationPaymentStatusCanceled:
+		return "Payment Canceled"
+	default:
+		return "Payment Processing"
+	}
+}
+
+func donationStatusTitle(status, ownerName string) string {
+	switch strings.TrimSpace(status) {
+	case types.DonationPaymentStatusFinalized:
+		return fmt.Sprintf("Thank you for supporting %s", ownerName)
+	case types.DonationPaymentStatusFailed:
+		return "We couldn't complete your donation"
+	case types.DonationPaymentStatusCanceled:
+		return "Donation was canceled"
+	default:
+		return "Thanks — we captured your donation"
+	}
+}
+
+func donationStatusDescription(status string) string {
+	switch strings.TrimSpace(status) {
+	case types.DonationPaymentStatusFinalized:
+		return "Your donation is finalized and has been applied to this need."
+	case types.DonationPaymentStatusFailed:
+		return "Your payment did not complete. No finalized donation was recorded for this attempt."
+	case types.DonationPaymentStatusCanceled:
+		return "You exited checkout before completion, so no finalized donation was recorded."
+	default:
+		return "We received your donation and payment is still processing."
+	}
+}
+
+func donationStatusGuidance(status string) string {
+	switch strings.TrimSpace(status) {
+	case types.DonationPaymentStatusFinalized:
+		return "You can keep this page as your confirmation summary and view your receipt from Profile → Donations."
+	case types.DonationPaymentStatusFailed:
+		return "Please try again using the retry button below. If this continues, contact support with your donation reference ID."
+	case types.DonationPaymentStatusCanceled:
+		return "You can return to the donation form and submit again whenever you're ready."
+	default:
+		return "If this remains in processing, refresh shortly or check your donation status from your profile."
+	}
+}
+
+func donationConfirmationDate(intent *types.DonationIntent) string {
+	if intent == nil {
+		return ""
+	}
+
+	if strings.TrimSpace(intent.PaymentStatus) == types.DonationPaymentStatusFinalized {
+		return intent.UpdatedAt.Local().Format("Jan 2, 2006 3:04 PM MST")
+	}
+
+	return intent.CreatedAt.Local().Format("Jan 2, 2006 3:04 PM MST")
 }
 
 func (s *Service) buildNeedDonatePageData(ctx context.Context, needID string, data *types.NeedDonatePageData) (*types.NeedDonatePageData, error) {
