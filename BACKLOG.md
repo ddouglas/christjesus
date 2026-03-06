@@ -18,8 +18,6 @@ Example:
 - [ ] Add need-state guard across onboarding to block revisits/edits after submission (`impact: high`, `effort: M`)
 - [ ] Add Profile "View Need" button + dedicated need review page (read-only first), then expand with secure reviewer/individual communications and supplemental document uploads (`impact: high`, `effort: L`, `revisit: after profile MVP hardening`)
 - [ ] Add reusable breadcrumb component with proper breadcrumb builder for site-wide propagation (`impact: med`, `effort: M`, `revisit: after nav/layout consolidation`)
-- [ ] Ensure raised amount/progress accounting is driven by finalized donation intents (and optionally project to need totals) (`impact: high`, `effort: M`, `revisit: after Stripe webhook MVP stabilization`)
-- [ ] Add donor donation ledger/history view with status timeline in profile (`impact: med`, `effort: M`, `revisit: after donation intent lifecycle hardening`)
 - [ ] Add webhook resilience pass: handle reconciliation signals, retries, and backfill job for missed events (`impact: high`, `effort: L`, `revisit: before production launch`)
 - [ ] Improve post-donation trust UX with finalized-intent confirmation/receipt details (not redirect-only) (`impact: med`, `effort: M`, `revisit: after ledger MVP`)
 - [ ] Implement working `Categories` navbar item + backed categories page route/render (data-driven cards/counts, desktop + mobile parity) (`impact: high`, `effort: M`, `revisit: align to docs/images/Categories - List.png + docs/images/Categories - HoverState.png + docs/images/Category - AssociatedNeeds.png + docs/images/Categories - BrowseCTA.png`)
@@ -88,5 +86,7 @@ Example:
 
 ## Done (Optional)
 - Move completed items here with date if you want historical context.
+- [x] Ensure raised amount/progress accounting is driven by finalized donation intents (and optionally project to need totals) (`impact: high`, `effort: M`, `revisit: after Stripe webhook MVP stabilization`) — 2026-03-03
+- [x] Add donor donation ledger/history view with status timeline in profile (`impact: med`, `effort: M`, `revisit: after donation intent lifecycle hardening`) — 2026-03-03
 - [x] Persist donor preferences to DB and prefill onboarding form (`impact: med`, `effort: M`, `revisit: after need flow polish`) — 2026-03-03
 - [x] Add donor onboarding completion confirmation page (`impact: low`, `effort: S`) — 2026-03-03

@@ -42,6 +42,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 	myNeeds := make([]*types.Need, 0)
 	needSummaries := make([]types.ProfileNeedSummary, 0)
+	donationSummaries := make([]types.ProfileDonationSummary, 0)
 	if userType == string(types.UserTypeNeed) {
 		needs, err := s.needsRepo.NeedsByUser(ctx, userID)
 		if err != nil {
@@ -93,22 +94,93 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	donatedNeeds := make([]*types.Need, 0)
+	if userType == string(types.UserTypeDonor) {
+		intents, err := s.donationIntentRepo.DonationIntentsByDonorUserID(ctx, userID)
+		if err != nil {
+			s.logger.WithError(err).WithField("user_id", userID).Error("failed to fetch donation intents for profile")
+			s.internalServerError(w)
+			return
+		}
+
+		distinctNeedIDs := make([]string, 0, len(intents))
+		seenNeedIDs := make(map[string]bool)
+		for _, intent := range intents {
+			if intent == nil {
+				continue
+			}
+			needID := strings.TrimSpace(intent.NeedID)
+			if needID == "" || seenNeedIDs[needID] {
+				continue
+			}
+			seenNeedIDs[needID] = true
+			distinctNeedIDs = append(distinctNeedIDs, needID)
+		}
+
+		needLabelByID := make(map[string]string, len(distinctNeedIDs))
+		needsByID := make(map[string]*types.Need)
+		needs, err := s.needsRepo.NeedsByIDs(ctx, distinctNeedIDs)
+		if err != nil {
+			s.logger.WithError(err).WithField("user_id", userID).Error("failed to batch fetch needs for donor profile")
+			s.internalServerError(w)
+			return
+		}
+		for _, need := range needs {
+			if need == nil {
+				continue
+			}
+			needsByID[need.ID] = need
+		}
+		for _, needID := range distinctNeedIDs {
+			needLabel := "Need request"
+			if need, ok := needsByID[needID]; ok {
+				shortDescription := strings.TrimSpace(derefString(need.ShortDescription))
+				if shortDescription != "" {
+					needLabel = shortDescription
+				}
+			}
+			needLabelByID[needID] = needLabel
+		}
+
+		for _, intent := range intents {
+			if intent == nil {
+				continue
+			}
+
+			needID := strings.TrimSpace(intent.NeedID)
+			needLabel := needLabelByID[needID]
+			if strings.TrimSpace(needLabel) == "" {
+				needLabel = "Need request"
+			}
+
+			isFinalized := strings.TrimSpace(strings.ToLower(intent.PaymentStatus)) == types.DonationPaymentStatusFinalized
+
+			donationSummaries = append(donationSummaries, types.ProfileDonationSummary{
+				IntentID:    intent.ID,
+				NeedID:      needID,
+				NeedLabel:   needLabel,
+				Amount:      formatUSDFromCents(intent.AmountCents),
+				Status:      formatDonationStatus(intent.PaymentStatus),
+				IsFinalized: isFinalized,
+				IsAnonymous: intent.IsAnonymous,
+				CreatedAt:   intent.CreatedAt.Format("Jan 2, 2006"),
+			})
+		}
+	}
 
 	data := &types.ProfilePageData{
-		BasePageData:   types.BasePageData{Title: "My Profile"},
-		UserID:         userID,
-		UserEmail:      userEmail,
-		WelcomeName:    userName,
-		UserType:       userType,
-		Notice:         strings.TrimSpace(r.URL.Query().Get("notice")),
-		Error:          strings.TrimSpace(r.URL.Query().Get("error")),
-		SidebarItems:   buildProfileSidebar(userType),
-		Needs:          myNeeds,
-		NeedSummaries:  needSummaries,
-		DonatedNeeds:   donatedNeeds,
-		HasNeeds:       len(myNeeds) > 0,
-		HasDonatedNeed: len(donatedNeeds) > 0,
+		BasePageData:      types.BasePageData{Title: "My Profile"},
+		UserID:            userID,
+		UserEmail:         userEmail,
+		WelcomeName:       userName,
+		UserType:          userType,
+		Notice:            strings.TrimSpace(r.URL.Query().Get("notice")),
+		Error:             strings.TrimSpace(r.URL.Query().Get("error")),
+		SidebarItems:      buildProfileSidebar(userType),
+		Needs:             myNeeds,
+		NeedSummaries:     needSummaries,
+		DonationSummaries: donationSummaries,
+		HasNeeds:          len(myNeeds) > 0,
+		HasDonations:      len(donationSummaries) > 0,
 	}
 
 	err = s.renderTemplate(w, r, "page.profile", data)
@@ -232,12 +304,27 @@ func formatNeedStepLabel(step types.NeedStep) string {
 	}
 }
 
+func formatDonationStatus(status string) string {
+	switch strings.TrimSpace(strings.ToLower(status)) {
+	case types.DonationPaymentStatusFinalized:
+		return "Finalized"
+	case types.DonationPaymentStatusPending:
+		return "Pending"
+	case types.DonationPaymentStatusFailed:
+		return "Failed"
+	case types.DonationPaymentStatusCanceled:
+		return "Canceled"
+	default:
+		return "Unknown"
+	}
+}
+
 func buildProfileSidebar(userType string) []types.ProfileNavItem {
 	items := []types.ProfileNavItem{
 		{Label: "Profile Overview", Href: "#overview", Active: true, Section: "overview", ShowItem: true},
 		{Label: "My Needs", Href: "#my-needs", Active: false, Section: "my-needs", ShowItem: userType == string(types.UserTypeNeed)},
 		{Label: "Need Status", Href: "#need-status", Active: false, Section: "need-status", ShowItem: userType == string(types.UserTypeNeed)},
-		{Label: "Needs I've Donated To", Href: "#donations", Active: false, Section: "donations", ShowItem: userType == string(types.UserTypeDonor)},
+		{Label: "Donation History", Href: "#donations", Active: false, Section: "donations", ShowItem: userType == string(types.UserTypeDonor)},
 	}
 
 	filtered := make([]types.ProfileNavItem, 0, len(items))

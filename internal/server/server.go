@@ -158,6 +158,7 @@ func (s *Service) buildRouter(r *flow.Mux) {
 
 		r.HandleFunc("/profile", s.handleGetProfile, http.MethodGet)
 		r.HandleFunc("/profile/needs/:needID/delete", s.handlePostProfileNeedDelete, http.MethodPost)
+		r.HandleFunc("/profile/donations/:intentID/receipt", s.handleGetProfileDonationReceipt, http.MethodGet)
 
 		r.HandleFunc("/onboarding", s.handleGetOnboarding, http.MethodGet)
 		r.HandleFunc("/onboarding", s.handlePostOnboarding, http.MethodPost)
