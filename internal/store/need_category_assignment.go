@@ -69,6 +69,40 @@ func (r *AssignmentRepository) GetAssignmentsByNeedIDs(ctx context.Context, need
 	return assignments, nil
 }
 
+func (r *AssignmentRepository) PrimaryNeedCountsByCategoryIDs(ctx context.Context, categoryIDs []string) (map[string]int, error) {
+	counts := make(map[string]int)
+	if len(categoryIDs) == 0 {
+		return counts, nil
+	}
+
+	query, args, err := psql().
+		Select("a.category_id", "COUNT(DISTINCT a.need_id) AS need_count").
+		From(assignmentTableName + " a").
+		Join("christjesus.needs n ON n.id = a.need_id").
+		Where(sq.Eq{"a.category_id": categoryIDs, "a.is_primary": true}).
+		Where(sq.NotEq{"n.status": types.NeedStatusDraft}).
+		GroupBy("a.category_id").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate primary need counts query: %w", err)
+	}
+
+	rows := make([]struct {
+		CategoryID string `db:"category_id"`
+		NeedCount  int    `db:"need_count"`
+	}, 0)
+	err = pgxscan.Select(ctx, r.pool, &rows, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch primary need counts by category ids: %w", err)
+	}
+
+	for _, row := range rows {
+		counts[row.CategoryID] = row.NeedCount
+	}
+
+	return counts, nil
+}
+
 // CreateAssignment creates a new category assignment
 func (r *AssignmentRepository) CreateAssignment(ctx context.Context, assignment *types.NeedCategoryAssignment) error {
 	now := time.Now()

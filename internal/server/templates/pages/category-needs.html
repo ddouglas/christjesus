@@ -1,0 +1,42 @@
+{{define "page.category.needs"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
+  <div class="mb-6 text-sm text-muted-foreground">
+    <a href="/">Home</a> / <a href="{{.BackHref}}">Categories</a> / <span class="text-foreground">{{.Category.Name}}</span>
+  </div>
+
+  <div class="mb-8 overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 text-white">
+    <div class="flex flex-col gap-4 px-6 py-10 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Category focus</p>
+        <h1 class="mt-2 text-3xl font-semibold md:text-4xl">{{.Category.Name}}</h1>
+        <p class="mt-2 text-sm text-white/80">Highlighting verified needs in this category.</p>
+      </div>
+      <div class="rounded-xl bg-white/10 px-5 py-4 text-sm text-white/80">
+        <p class="text-xs uppercase tracking-wide text-white/60">Active needs</p>
+        <p class="mt-1 text-2xl font-semibold text-white">{{len .Needs}}</p>
+      </div>
+    </div>
+  </div>
+
+  {{if .Needs}}
+  <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+    {{range .Needs}}
+    {{template "component.need.card" .}}
+    {{end}}
+  </div>
+  {{else}}
+  <div class="mt-10 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border p-10 text-center">
+    <p class="text-sm font-semibold text-foreground">No needs posted for this category yet.</p>
+    <p class="text-sm text-muted-foreground">Browse all verified needs or check back soon.</p>
+    <a href="{{.BrowseHref}}"
+      class="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
+      Browse all needs
+    </a>
+  </div>
+  {{end}}
+</div>
+
+{{template "footer" .}}
+{{end}}
