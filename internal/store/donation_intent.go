@@ -69,6 +69,30 @@ func (r *DonationIntentRepository) ByID(ctx context.Context, intentID string) (*
 	return &intent, nil
 }
 
+func (r *DonationIntentRepository) ByPaymentIntentID(ctx context.Context, paymentIntentID string) (*types.DonationIntent, error) {
+	query, args, err := psql().
+		Select(donationIntentColumns...).
+		From(donationIntentTableName).
+		Where(sq.Eq{"payment_intent_id": paymentIntentID}).
+		OrderBy("updated_at desc").
+		Limit(1).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate donation intent by payment intent id query: %w", err)
+	}
+
+	var intent types.DonationIntent
+	err = pgxscan.Get(ctx, r.pool, &intent, query, args...)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to fetch donation intent by payment intent id: %w", err)
+	}
+
+	return &intent, nil
+}
+
 func (r *DonationIntentRepository) SetCheckoutSessionID(ctx context.Context, intentID, checkoutSessionID string) error {
 	now := time.Now()
 
@@ -168,6 +192,65 @@ func (r *DonationIntentRepository) MarkIntentFailedByID(ctx context.Context, int
 	}
 
 	return tag.RowsAffected() > 0, nil
+}
+
+func (r *DonationIntentRepository) MarkIntentCanceledByID(ctx context.Context, intentID string, checkoutSessionID, paymentIntentID *string) (bool, error) {
+	now := time.Now()
+
+	qb := psql().
+		Update(donationIntentTableName).
+		Set("payment_status", types.DonationPaymentStatusCanceled).
+		Set("updated_at", now).
+		Where(sq.Eq{"id": intentID}).
+		Where(sq.NotEq{"payment_status": types.DonationPaymentStatusFinalized})
+
+	if checkoutSessionID != nil && *checkoutSessionID != "" {
+		qb = qb.Set("checkout_session_id", *checkoutSessionID)
+	}
+	if paymentIntentID != nil && *paymentIntentID != "" {
+		qb = qb.Set("payment_intent_id", *paymentIntentID)
+	}
+
+	query, args, err := qb.ToSql()
+	if err != nil {
+		return false, fmt.Errorf("failed to generate cancel donation intent query: %w", err)
+	}
+
+	tag, err := r.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return false, fmt.Errorf("failed to cancel donation intent: %w", err)
+	}
+
+	return tag.RowsAffected() > 0, nil
+}
+
+func (r *DonationIntentRepository) PendingIntentsOlderThan(ctx context.Context, cutoff time.Time, limit int) ([]*types.DonationIntent, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+
+	query, args, err := psql().
+		Select(donationIntentColumns...).
+		From(donationIntentTableName).
+		Where(sq.Eq{"payment_status": types.DonationPaymentStatusPending}).
+		Where(sq.Lt{"created_at": cutoff}).
+		OrderBy("created_at asc").
+		Limit(uint64(limit)).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate pending stale donation intents query: %w", err)
+	}
+
+	intents := make([]*types.DonationIntent, 0)
+	err = pgxscan.Select(ctx, r.pool, &intents, query, args...)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return intents, nil
+		}
+		return nil, fmt.Errorf("failed to fetch pending stale donation intents: %w", err)
+	}
+
+	return intents, nil
 }
 
 func (r *DonationIntentRepository) FinalizedAmountByNeedID(ctx context.Context, needID string) (int, error) {

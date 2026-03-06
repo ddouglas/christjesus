@@ -153,6 +153,12 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
 		SuccessURL: stripe.String(successURL),
 		CancelURL:  stripe.String(cancelURL),
+		PaymentIntentData: &stripe.CheckoutSessionCreatePaymentIntentDataParams{
+			Metadata: map[string]string{
+				"donation_intent_id": intent.ID,
+				"need_id":            needID,
+			},
+		},
 		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{
 			{
 				Quantity: stripe.Int64(1),

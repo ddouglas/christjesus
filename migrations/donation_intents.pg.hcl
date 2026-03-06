@@ -91,4 +91,14 @@ table "donation_intents" {
     columns = [column.donor_user_id]
     where   = "donor_user_id IS NOT NULL"
   }
+
+  index "idx_donation_intents_payment_intent_updated" {
+    columns = [column.payment_intent_id, column.updated_at]
+    where   = "payment_intent_id IS NOT NULL"
+  }
+
+  index "idx_donation_intents_pending_created_at" {
+    columns = [column.created_at]
+    where   = "payment_status = 'pending'"
+  }
 }
