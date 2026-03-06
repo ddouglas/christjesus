@@ -243,7 +243,7 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 		PrimaryCategory:    primaryCategory,
 		PaymentStatus:      intent.PaymentStatus,
 		StatusLabel:        donationStatusLabel(intent.PaymentStatus),
-		StatusTitle:        donationStatusTitle(intent.PaymentStatus),
+		StatusTitle:        donationStatusTitle(intent.PaymentStatus, ownerName),
 		StatusDescription:  donationStatusDescription(intent.PaymentStatus),
 		StatusGuidance:     donationStatusGuidance(intent.PaymentStatus),
 		ShowRetryCTA:       intent.PaymentStatus == types.DonationPaymentStatusFailed || intent.PaymentStatus == types.DonationPaymentStatusCanceled,
@@ -271,10 +271,10 @@ func donationStatusLabel(status string) string {
 	}
 }
 
-func donationStatusTitle(status string) string {
+func donationStatusTitle(status, ownerName string) string {
 	switch strings.TrimSpace(status) {
 	case types.DonationPaymentStatusFinalized:
-		return "Thank you for supporting"
+		return fmt.Sprintf("Thank you for supporting %s", ownerName)
 	case types.DonationPaymentStatusFailed:
 		return "We couldn't complete your donation"
 	case types.DonationPaymentStatusCanceled:
