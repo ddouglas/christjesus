@@ -50,7 +50,7 @@ func reconcileDonations(cCtx *cli.Context) error {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{})
 
-	ctx := context.Background()
+	ctx := cCtx.Context
 
 	pool, err := db.Connect(ctx, cfg)
 	if err != nil {
@@ -206,7 +206,7 @@ func mapPaymentIntentStatusToAction(status string) (action string, reason string
 	case string(stripe.PaymentIntentStatusCanceled):
 		return "cancel", "payment_intent.canceled"
 	case string(stripe.PaymentIntentStatusRequiresPaymentMethod), string(stripe.PaymentIntentStatusRequiresAction):
-		return "fail", "payment_intent terminal failure state"
+		return "skip", fmt.Sprintf("payment intent requires customer action; non-terminal (%s)", status)
 	default:
 		return "skip", fmt.Sprintf("payment intent still non-terminal (%s)", status)
 	}
