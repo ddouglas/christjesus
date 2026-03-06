@@ -65,6 +65,8 @@ func (s *Service) processStripeWebhookEvent(ctx context.Context, event stripe.Ev
 	switch string(event.Type) {
 	case "checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed":
 		return s.processCheckoutSessionWebhookEvent(ctx, event)
+	case "payment_intent.succeeded", "payment_intent.payment_failed", "payment_intent.canceled":
+		return s.processPaymentIntentWebhookEvent(ctx, event)
 	default:
 		return nil
 	}
@@ -128,6 +130,65 @@ func (s *Service) processCheckoutSessionWebhookEvent(ctx context.Context, event 
 		_, err := s.donationIntentRepo.MarkIntentFailedByID(ctx, intentID, checkoutSessionID, paymentIntentID)
 		if err != nil {
 			return fmt.Errorf("mark donation intent failed from async failure: %w", err)
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
+func (s *Service) processPaymentIntentWebhookEvent(ctx context.Context, event stripe.Event) error {
+	var paymentIntent stripe.PaymentIntent
+	if err := json.Unmarshal(event.Data.Raw, &paymentIntent); err != nil {
+		return fmt.Errorf("unmarshal payment intent event data: %w", err)
+	}
+
+	stripePaymentIntentID := strings.TrimSpace(paymentIntent.ID)
+	if stripePaymentIntentID == "" {
+		s.logger.WithField("stripe_event_id", event.ID).Warn("payment intent webhook missing payment intent id")
+		return nil
+	}
+
+	intentID := strings.TrimSpace(paymentIntent.Metadata["donation_intent_id"])
+	if intentID == "" {
+		intent, err := s.donationIntentRepo.ByPaymentIntentID(ctx, stripePaymentIntentID)
+		if err != nil {
+			return fmt.Errorf("find donation intent by payment intent id: %w", err)
+		}
+		if intent != nil {
+			intentID = intent.ID
+		}
+	}
+
+	if intentID == "" {
+		s.logger.WithFields(map[string]any{
+			"stripe_event_id":       event.ID,
+			"payment_intent_id":     stripePaymentIntentID,
+			"payment_intent_status": paymentIntent.Status,
+		}).Warn("payment intent webhook missing donation intent correlation")
+		return nil
+	}
+
+	paymentIntentID := stripePaymentIntentID
+	paymentIntentIDRef := &paymentIntentID
+
+	switch string(event.Type) {
+	case "payment_intent.succeeded":
+		_, err := s.donationIntentRepo.FinalizeIntentByID(ctx, intentID, nil, paymentIntentIDRef)
+		if err != nil {
+			return fmt.Errorf("finalize donation intent from payment_intent.succeeded: %w", err)
+		}
+		return nil
+	case "payment_intent.payment_failed":
+		_, err := s.donationIntentRepo.MarkIntentFailedByID(ctx, intentID, nil, paymentIntentIDRef)
+		if err != nil {
+			return fmt.Errorf("mark donation intent failed from payment_intent.payment_failed: %w", err)
+		}
+		return nil
+	case "payment_intent.canceled":
+		_, err := s.donationIntentRepo.MarkIntentCanceledByID(ctx, intentID, nil, paymentIntentIDRef)
+		if err != nil {
+			return fmt.Errorf("mark donation intent canceled from payment_intent.canceled: %w", err)
 		}
 		return nil
 	default:
