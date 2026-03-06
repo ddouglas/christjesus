@@ -197,6 +197,8 @@ func (s *Service) buildRouter(r *flow.Mux) {
 	// r.HandleFunc("/onboarding/sponsor/organization/welcome", s.handleGetOnboardingSponsorOrganizationWelcome, http.MethodGet)
 
 	r.HandleFunc("/browse", s.handleBrowse, http.MethodGet)
+	r.HandleFunc("/categories", s.handleCategories, http.MethodGet)
+	r.HandleFunc("/category/:slug", s.handleCategoryNeeds, http.MethodGet)
 	r.HandleFunc("/need/:id", s.handleNeedDetail, http.MethodGet)
 	r.HandleFunc("/webhooks/stripe", s.handlePostStripeWebhook, http.MethodPost)
 	// r.HandleFunc("/forms/prayer", s.handlePrayerRequestSubmit, http.MethodPost)

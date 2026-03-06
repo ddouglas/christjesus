@@ -75,6 +75,30 @@ type BrowseNeedCard struct {
 	CreatedAt         time.Time
 }
 
+type CategoriesPageData struct {
+	BasePageData
+	Categories []*CategoryListItem
+	BrowseHref string
+}
+
+type CategoryListItem struct {
+	ID          string
+	Name        string
+	Slug        string
+	Description *string
+	Icon        *string
+	NeedCount   int
+	Href        string
+}
+
+type CategoryNeedsPageData struct {
+	BasePageData
+	Category   *NeedCategory
+	Needs      []*BrowseNeedCard
+	BackHref   string
+	BrowseHref string
+}
+
 type NeedDetailPageData struct {
 	BasePageData
 	ID                  string

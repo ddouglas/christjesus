@@ -1,0 +1,52 @@
+{{define "page.categories"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
+  <div class="space-y-2">
+    <p class="text-sm font-semibold uppercase tracking-wide text-[color:var(--cj-accent)]">Categories</p>
+    <h1 class="text-3xl font-semibold text-foreground">Explore needs by category</h1>
+    <p class="text-muted-foreground">Find verified needs aligned with your heart to serve.</p>
+  </div>
+
+  {{if .Categories}}
+  <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    {{range .Categories}}
+    <a href="{{.Href}}" class="group h-full">
+      <article class="flex h-full flex-col gap-6 rounded-xl border py-6 shadow-sm transition-all hover:-translate-y-1 hover:border-[color:var(--cj-accent)] hover:shadow-lg">
+        <div class="space-y-4 px-6">
+          <div class="flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--cj-accent)]/10 text-sm font-semibold text-[color:var(--cj-accent)] transition group-hover:bg-[color:var(--cj-accent)]/20">
+            {{if .Icon}}
+              {{.Icon}}
+            {{else}}
+              •
+            {{end}}
+          </div>
+          <div>
+            <p class="text-base font-semibold text-foreground">{{.Name}}</p>
+            <p class="text-sm text-muted-foreground">{{.NeedCount}} active needs</p>
+          </div>
+        </div>
+      </article>
+    </a>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="mt-8 rounded-xl border border-border bg-card px-6 py-10 text-center text-card-foreground shadow-sm">
+    <p class="text-sm text-muted-foreground">No categories are available right now.</p>
+  </div>
+  {{end}}
+
+  <div class="mt-10 flex flex-col items-start gap-3 rounded-2xl border border-border bg-slate-50 p-6 md:flex-row md:items-center md:justify-between">
+    <div>
+      <p class="text-lg font-semibold text-foreground">Ready to browse all needs?</p>
+      <p class="text-sm text-muted-foreground">Use filters to refine by urgency, verification level, and location.</p>
+    </div>
+    <a href="{{.BrowseHref}}"
+      class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+      Browse Needs
+    </a>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}
