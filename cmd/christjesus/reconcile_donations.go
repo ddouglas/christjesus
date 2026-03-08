@@ -189,34 +189,6 @@ func resolveDonationStatusFromStripe(ctx context.Context, stripeClient *stripe.C
 		return resolveFromCheckoutSession(ctx, stripeClient, session, checkoutSessionIDValue)
 	}
 
-	if strings.TrimSpace(intent.ID) != "" {
-		params := &stripe.CheckoutSessionListParams{}
-		params.Limit = stripe.Int64(100)
-		params.CreatedRange = &stripe.RangeQueryParams{GreaterThanOrEqual: intent.CreatedAt.Unix()}
-
-		for session, listErr := range stripeClient.V1CheckoutSessions.List(ctx, params) {
-			if listErr != nil {
-				return "skip", nil, nil, "", fmt.Errorf("list stripe checkout sessions for intent %s: %w", intent.ID, listErr)
-			}
-			if session == nil {
-				continue
-			}
-			if strings.TrimSpace(session.ClientReferenceID) != strings.TrimSpace(intent.ID) {
-				continue
-			}
-
-			checkoutSessionIDValue := strings.TrimSpace(session.ID)
-			action, checkoutSessionID, paymentIntentID, reason, err = resolveFromCheckoutSession(ctx, stripeClient, session, checkoutSessionIDValue)
-			if err != nil {
-				return "skip", nil, nil, "", err
-			}
-			if reason != "" {
-				reason = "matched checkout session by client_reference_id; " + reason
-			}
-			return action, checkoutSessionID, paymentIntentID, reason, nil
-		}
-	}
-
 	return "skip", nil, nil, "no stripe IDs available for reconciliation or lookup", nil
 }
 
