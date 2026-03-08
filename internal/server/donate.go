@@ -12,7 +12,6 @@ import (
 	"christjesus/internal/utils"
 	"christjesus/pkg/types"
 
-	"github.com/k0kubun/pp"
 	"github.com/stripe/stripe-go/v84"
 )
 
@@ -136,6 +135,9 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.stripeClient == nil {
+		if _, markErr := s.donationIntentRepo.MarkIntentFailedByID(ctx, intent.ID, nil, nil); markErr != nil {
+			s.logger.WithError(markErr).WithField("intent_id", intent.ID).Warn("failed to mark donation intent failed after stripe client unavailable")
+		}
 		data.Error = "Payments are not configured yet. Please try again later."
 		if renderErr := s.renderTemplate(w, r, "page.need-donate", data); renderErr != nil {
 			s.logger.WithError(renderErr).Error("failed to render need donate page with stripe config error")
@@ -182,11 +184,12 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 		checkoutParams.CustomerEmail = stripe.String(donorEmail)
 	}
 
-	pp.Print(checkoutParams)
-
 	checkoutSession, err := s.stripeClient.V1CheckoutSessions.Create(ctx, checkoutParams)
 	if err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to create stripe checkout session")
+		if _, markErr := s.donationIntentRepo.MarkIntentFailedByID(ctx, intent.ID, nil, nil); markErr != nil {
+			s.logger.WithError(markErr).WithField("intent_id", intent.ID).Warn("failed to mark donation intent failed after stripe checkout create failure")
+		}
 		data.Error = "Unable to start Stripe checkout right now. Please try again."
 		if renderErr := s.renderTemplate(w, r, "page.need-donate", data); renderErr != nil {
 			s.logger.WithError(renderErr).Error("failed to render need donate page after checkout create failure")
@@ -196,6 +199,9 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkoutSession == nil || strings.TrimSpace(checkoutSession.ID) == "" || strings.TrimSpace(checkoutSession.URL) == "" {
+		if _, markErr := s.donationIntentRepo.MarkIntentFailedByID(ctx, intent.ID, nil, nil); markErr != nil {
+			s.logger.WithError(markErr).WithField("intent_id", intent.ID).Warn("failed to mark donation intent failed after invalid checkout session response")
+		}
 		data.Error = "Unable to start Stripe checkout right now. Please try again."
 		if renderErr := s.renderTemplate(w, r, "page.need-donate", data); renderErr != nil {
 			s.logger.WithError(renderErr).Error("failed to render need donate page after invalid checkout session")
@@ -205,7 +211,17 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.donationIntentRepo.SetCheckoutSessionID(ctx, intent.ID, checkoutSession.ID); err != nil {
-		s.logger.WithError(err).WithField("intent_id", intent.ID).Warn("failed to persist checkout session id on donation intent")
+		checkoutSessionID := checkoutSession.ID
+		if _, markErr := s.donationIntentRepo.MarkIntentFailedByID(ctx, intent.ID, &checkoutSessionID, nil); markErr != nil {
+			s.logger.WithError(markErr).WithField("intent_id", intent.ID).Warn("failed to mark donation intent failed after checkout session persistence failure")
+		}
+		s.logger.WithError(err).WithField("intent_id", intent.ID).Error("failed to persist checkout session id on donation intent")
+		data.Error = "Unable to start Stripe checkout right now. Please try again."
+		if renderErr := s.renderTemplate(w, r, "page.need-donate", data); renderErr != nil {
+			s.logger.WithError(renderErr).Error("failed to render need donate page after checkout session persistence failure")
+			s.internalServerError(w)
+		}
+		return
 	}
 
 	http.Redirect(w, r, checkoutSession.URL, http.StatusSeeOther)

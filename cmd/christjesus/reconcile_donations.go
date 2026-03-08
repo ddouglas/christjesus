@@ -186,17 +186,54 @@ func resolveDonationStatusFromStripe(ctx context.Context, stripeClient *stripe.C
 			return "skip", nil, nil, "", fmt.Errorf("retrieve stripe checkout session %s: %w", checkoutSessionIDValue, retrieveErr)
 		}
 
-		checkoutSessionID = &checkoutSessionIDValue
-		if session.PaymentIntent != nil && strings.TrimSpace(session.PaymentIntent.ID) != "" {
-			paymentIntentIDValue := strings.TrimSpace(session.PaymentIntent.ID)
-			paymentIntentID = &paymentIntentIDValue
+		return resolveFromCheckoutSession(ctx, stripeClient, session, checkoutSessionIDValue)
+	}
+
+	return "skip", nil, nil, "no stripe IDs available for reconciliation or lookup", nil
+}
+
+func resolveFromCheckoutSession(ctx context.Context, stripeClient *stripe.Client, session *stripe.CheckoutSession, sessionID string) (action string, checkoutSessionID *string, paymentIntentID *string, reason string, err error) {
+	if session == nil {
+		return "skip", nil, nil, "checkout session not found", nil
+	}
+
+	trimmedSessionID := strings.TrimSpace(sessionID)
+	if trimmedSessionID == "" {
+		trimmedSessionID = strings.TrimSpace(session.ID)
+	}
+	if trimmedSessionID != "" {
+		checkoutSessionID = &trimmedSessionID
+	}
+
+	if session.PaymentIntent != nil && strings.TrimSpace(session.PaymentIntent.ID) != "" {
+		paymentIntentIDValue := strings.TrimSpace(session.PaymentIntent.ID)
+		paymentIntentID = &paymentIntentIDValue
+
+		paymentIntent, retrieveErr := stripeClient.V1PaymentIntents.Retrieve(ctx, paymentIntentIDValue, nil)
+		if retrieveErr != nil {
+			logrus.WithError(retrieveErr).WithFields(logrus.Fields{
+				"checkout_session_id": trimmedSessionID,
+				"payment_intent_id":   paymentIntentIDValue,
+			}).Warn("failed to retrieve stripe payment intent from checkout session; falling back to checkout session status")
+
+			action, reason = mapCheckoutSessionToAction(session)
+			if reason != "" {
+				reason = fmt.Sprintf("payment intent lookup from checkout session failed: %v; fallback to checkout session; %s", retrieveErr, reason)
+			} else {
+				reason = fmt.Sprintf("payment intent lookup from checkout session failed: %v; fallback to checkout session", retrieveErr)
+			}
+			return action, checkoutSessionID, paymentIntentID, reason, nil
 		}
 
-		action, reason = mapCheckoutSessionToAction(session)
+		action, reason = mapPaymentIntentStatusToAction(string(paymentIntent.Status))
+		if reason != "" {
+			reason = "payment intent lookup from checkout session; " + reason
+		}
 		return action, checkoutSessionID, paymentIntentID, reason, nil
 	}
 
-	return "skip", nil, nil, "no stripe IDs available for reconciliation", nil
+	action, reason = mapCheckoutSessionToAction(session)
+	return action, checkoutSessionID, paymentIntentID, reason, nil
 }
 
 func mapPaymentIntentStatusToAction(status string) (action string, reason string) {
