@@ -13,14 +13,41 @@ import (
 )
 
 func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+	ctx := r.Context()
 
-	_ = sampleNeeds()
+	latestNeeds, err := s.needsRepo.LatestNeeds(ctx, 5)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch latest needs for home page")
+		s.internalServerError(w)
+		return
+	}
+
+	if err := s.applyFinalizedRaisedAmounts(ctx, latestNeeds); err != nil {
+		s.logger.WithError(err).Error("failed to apply finalized raised totals for home page needs")
+		s.internalServerError(w)
+		return
+	}
+
+	homeNeedCards := s.buildHomeNeedCards(ctx, latestNeeds)
+
+	var featuredNeed *types.BrowseNeedCard
+	featuredNeeds := make([]*types.BrowseNeedCard, 0, 4)
+	if len(homeNeedCards) > 0 {
+		featuredNeed = homeNeedCards[0]
+	}
+	if len(homeNeedCards) > 1 {
+		featuredNeeds = append(featuredNeeds, homeNeedCards[1:]...)
+		if len(featuredNeeds) > 4 {
+			featuredNeeds = featuredNeeds[:4]
+		}
+	}
 
 	data := &types.HomePageData{
 		BasePageData: types.BasePageData{Title: ""},
 		Notice:       r.URL.Query().Get("notice"),
 		Error:        r.URL.Query().Get("error"),
+		FeaturedNeed: featuredNeed,
+		Needs:        featuredNeeds,
 		Categories:   sampleCategories(),
 		Stats:        getStats(),
 		Steps:        getSteps(),
@@ -32,6 +59,193 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 		s.internalServerError(w)
 		return
 	}
+}
+
+func (s *Service) buildHomeNeedCards(ctx context.Context, needs []*types.Need) []*types.BrowseNeedCard {
+	if len(needs) == 0 {
+		return []*types.BrowseNeedCard{}
+	}
+
+	userIDs := make([]string, 0, len(needs))
+	needIDs := make([]string, 0, len(needs))
+	selectedAddressIDs := make([]string, 0, len(needs))
+	seenUserIDs := make(map[string]bool)
+	seenNeedIDs := make(map[string]bool)
+	seenAddressIDs := make(map[string]bool)
+
+	for _, need := range needs {
+		if need == nil {
+			continue
+		}
+
+		if !seenUserIDs[need.UserID] {
+			seenUserIDs[need.UserID] = true
+			userIDs = append(userIDs, need.UserID)
+		}
+
+		if !seenNeedIDs[need.ID] {
+			seenNeedIDs[need.ID] = true
+			needIDs = append(needIDs, need.ID)
+		}
+
+		if need.UserAddressID != nil {
+			selectedAddressID := strings.TrimSpace(*need.UserAddressID)
+			if selectedAddressID != "" && !seenAddressIDs[selectedAddressID] {
+				seenAddressIDs[selectedAddressID] = true
+				selectedAddressIDs = append(selectedAddressIDs, selectedAddressID)
+			}
+		}
+	}
+
+	userNamesByID := make(map[string]string)
+	users, err := s.userRepo.UsersByIDs(ctx, userIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to batch fetch users for home featured needs")
+	} else {
+		for _, user := range users {
+			if user == nil || strings.TrimSpace(user.ID) == "" {
+				continue
+			}
+			userNamesByID[user.ID] = userDisplayName(user)
+		}
+	}
+
+	selectedAddressesByID := make(map[string]*types.UserAddress)
+	selectedAddresses, err := s.userAddressRepo.ByIDs(ctx, selectedAddressIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to batch fetch selected addresses for home featured needs")
+	} else {
+		for _, address := range selectedAddresses {
+			if address == nil || strings.TrimSpace(address.ID) == "" {
+				continue
+			}
+			selectedAddressesByID[address.ID] = address
+		}
+	}
+
+	primaryAddressesByUserID := make(map[string]*types.UserAddress)
+	primaryAddresses, err := s.userAddressRepo.PrimaryByUserIDs(ctx, userIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to batch fetch primary addresses for home featured needs")
+	} else {
+		for _, address := range primaryAddresses {
+			if address == nil || strings.TrimSpace(address.UserID) == "" {
+				continue
+			}
+			if _, exists := primaryAddressesByUserID[address.UserID]; !exists {
+				primaryAddressesByUserID[address.UserID] = address
+			}
+		}
+	}
+
+	assignmentsByNeedID := make(map[string][]*types.NeedCategoryAssignment)
+	primaryCategoryIDs := make([]string, 0)
+	seenPrimaryCategoryIDs := make(map[string]bool)
+	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to batch fetch category assignments for home featured needs")
+	} else {
+		for _, assignment := range assignments {
+			if assignment == nil || strings.TrimSpace(assignment.NeedID) == "" {
+				continue
+			}
+			assignmentsByNeedID[assignment.NeedID] = append(assignmentsByNeedID[assignment.NeedID], assignment)
+			if assignment.IsPrimary {
+				categoryID := strings.TrimSpace(assignment.CategoryID)
+				if categoryID != "" && !seenPrimaryCategoryIDs[categoryID] {
+					seenPrimaryCategoryIDs[categoryID] = true
+					primaryCategoryIDs = append(primaryCategoryIDs, categoryID)
+				}
+			}
+		}
+	}
+
+	categoryNamesByID := make(map[string]string)
+	primaryCategories, err := s.categoryRepo.CategoriesByIDs(ctx, primaryCategoryIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to batch fetch categories for home featured needs")
+	} else {
+		for _, category := range primaryCategories {
+			if category == nil || strings.TrimSpace(category.ID) == "" {
+				continue
+			}
+			categoryNamesByID[category.ID] = category.Name
+		}
+	}
+
+	cards := make([]*types.BrowseNeedCard, 0, len(needs))
+	for _, need := range needs {
+		if need == nil {
+			continue
+		}
+
+		ownerName := "Anonymous"
+		if cached, ok := userNamesByID[need.UserID]; ok && strings.TrimSpace(cached) != "" {
+			ownerName = cached
+		}
+
+		var address *types.UserAddress
+		if need.UserAddressID != nil {
+			selectedAddressID := strings.TrimSpace(*need.UserAddressID)
+			if selectedAddressID != "" {
+				if selectedAddress, ok := selectedAddressesByID[selectedAddressID]; ok && selectedAddress != nil && selectedAddress.UserID == need.UserID {
+					address = selectedAddress
+				}
+			}
+		}
+		if address == nil {
+			address = primaryAddressesByUserID[need.UserID]
+		}
+
+		city, state, cityState := browseCityStateParts(address)
+
+		primaryCategory := "General Need"
+		primaryCategoryID := ""
+		for _, assignment := range assignmentsByNeedID[need.ID] {
+			if !assignment.IsPrimary {
+				continue
+			}
+			primaryCategoryID = assignment.CategoryID
+			if cachedName, ok := categoryNamesByID[assignment.CategoryID]; ok && strings.TrimSpace(cachedName) != "" {
+				primaryCategory = cachedName
+			}
+			break
+		}
+		if primaryCategoryID == "" {
+			primaryCategoryID = strings.ToLower(strings.ReplaceAll(primaryCategory, " ", "-"))
+		}
+
+		urgencyLabel, urgencyDotClass := browseUrgency(need.Status, need.AmountNeededCents, need.AmountRaisedCents)
+
+		verificationID := "story-shared"
+		verificationLabel := "Story Shared"
+		if need.VerifiedAt != nil {
+			verificationID = "personally-verified"
+			verificationLabel = "Personally Verified"
+		}
+
+		cards = append(cards, &types.BrowseNeedCard{
+			ID:                need.ID,
+			OwnerName:         ownerName,
+			City:              city,
+			State:             state,
+			CityState:         cityState,
+			UrgencyLabel:      urgencyLabel,
+			UrgencyDotClass:   urgencyDotClass,
+			PrimaryCategoryID: primaryCategoryID,
+			PrimaryCategory:   primaryCategory,
+			VerificationID:    verificationID,
+			VerificationLabel: verificationLabel,
+			ShortDescription:  need.ShortDescription,
+			Status:            need.Status,
+			AmountNeededCents: need.AmountNeededCents,
+			AmountRaisedCents: need.AmountRaisedCents,
+			FundingPercent:    fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents),
+			CreatedAt:         need.CreatedAt,
+		})
+	}
+
+	return cards
 }
 
 func (s *Service) internalServerError(w http.ResponseWriter) {

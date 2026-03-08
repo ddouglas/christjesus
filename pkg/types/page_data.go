@@ -27,8 +27,8 @@ type HomePageData struct {
 	BasePageData
 	Notice       string
 	Error        string
-	FeaturedNeed *Need
-	Needs        []*Need
+	FeaturedNeed *BrowseNeedCard
+	Needs        []*BrowseNeedCard
 	Categories   []CategoryData
 	Stats        StatsData
 	Steps        []StepData

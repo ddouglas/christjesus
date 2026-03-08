@@ -36,7 +36,7 @@
       <div class="order-last border-0 bg-white/80 shadow-lg rounded-xl md:order-none">
         <div class="space-y-2 p-6 pb-0">
           <p class="text-sm font-semibold text-muted-foreground">Featured Need</p>
-          <p class="text-2xl font-semibold text-foreground">Personally verified needs ready for support.</p>
+          <p class="text-2xl font-semibold text-foreground">Latest need in the queue, ready for support.</p>
         </div>
         <div class="p-6">
           {{if .FeaturedNeed}}
@@ -59,8 +59,14 @@
     </div>
 
     <div class="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {{if .Needs}}
       {{range .Needs}}
       {{template "component.need.card" .}}
+      {{end}}
+      {{else}}
+      <div class="rounded-xl border border-border bg-card px-6 py-8 text-center text-card-foreground shadow-sm md:col-span-2 lg:col-span-4">
+        <p class="text-sm text-muted-foreground">More featured needs will appear here as new needs are submitted.</p>
+      </div>
       {{end}}
     </div>
   </section>
