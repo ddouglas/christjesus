@@ -69,6 +69,32 @@ func (r *NeedRepository) BrowseNeeds(ctx context.Context) ([]*types.Need, error)
 	return needs, nil
 }
 
+func (r *NeedRepository) LatestNeeds(ctx context.Context, limit int) ([]*types.Need, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+
+	query, args, err := psql().Select(needColumns...).From(needTableName).
+		Where(sq.NotEq{"status": types.NeedStatusDraft}).
+		OrderBy("created_at desc").
+		Limit(uint64(limit)).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate latest needs query: %w", err)
+	}
+
+	needs := make([]*types.Need, 0)
+	err = pgxscan.Select(ctx, r.pool, &needs, query, args...)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return needs, nil
+		}
+		return nil, fmt.Errorf("failed to fetch latest needs: %w", err)
+	}
+
+	return needs, nil
+}
+
 func (r *NeedRepository) NeedsByUser(ctx context.Context, userID string) ([]*types.Need, error) {
 
 	query, args, err := psql().Select(needColumns...).From(needTableName).
