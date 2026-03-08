@@ -296,15 +296,15 @@ func templateFuncMap() template.FuncMap {
 			}
 			return values[key]
 		},
-		"route": func(name string, params map[string]string) string {
+		"route": func(name string, params map[string]string) (string, error) {
 			trimmedName := strings.TrimSpace(name)
 			path, err := BuildRoute(RouteName(trimmedName), params)
 			if err != nil {
-				panic(fmt.Sprintf("template route(%q) failed: %v", trimmedName, err))
+				return "", fmt.Errorf("template route(%q) failed: %w", trimmedName, err)
 			}
-			return path
+			return path, nil
 		},
-		"routeq": func(name string, params map[string]string, query map[string]string) string {
+		"routeq": func(name string, params map[string]string, query map[string]string) (string, error) {
 			trimmedName := strings.TrimSpace(name)
 			values := url.Values{}
 			for key, value := range query {
@@ -317,14 +317,14 @@ func templateFuncMap() template.FuncMap {
 
 			path, err := BuildRouteWithQuery(RouteName(trimmedName), params, values)
 			if err != nil {
-				panic(fmt.Sprintf("template routeq(%q) failed: %v", trimmedName, err))
+				return "", fmt.Errorf("template routeq(%q) failed: %w", trimmedName, err)
 			}
-			return path
+			return path, nil
 		},
-		"dict": func(values ...string) map[string]string {
+		"dict": func(values ...string) (map[string]string, error) {
 			result := make(map[string]string)
 			if len(values)%2 != 0 {
-				panic(fmt.Sprintf("dict expects even number of arguments, got %d", len(values)))
+				return nil, fmt.Errorf("dict expects even number of arguments, got %d", len(values))
 			}
 
 			for i := 0; i < len(values); i += 2 {
@@ -335,7 +335,7 @@ func templateFuncMap() template.FuncMap {
 				result[key] = values[i+1]
 			}
 
-			return result
+			return result, nil
 		},
 	}
 }

@@ -123,82 +123,74 @@ func TestNormalizedCategorySlug(t *testing.T) {
 	}
 }
 
-func TestTemplateFuncMapRoutePanicsOnInvalidParams(t *testing.T) {
+func TestTemplateFuncMapRouteReturnsErrorOnInvalidParams(t *testing.T) {
 	t.Parallel()
 
 	funcs := templateFuncMap()
-	route, ok := funcs["route"].(func(string, map[string]string) string)
+	route, ok := funcs["route"].(func(string, map[string]string) (string, error))
 	if !ok {
 		t.Fatalf("route helper has unexpected type")
 	}
 
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatal("expected panic from route helper")
-		}
-		if !strings.Contains(recovered.(string), "template route") {
-			t.Fatalf("panic = %v, want message containing template route", recovered)
-		}
-	}()
-
-	_ = route("category_needs", map[string]string{"slug": ""})
+	_, err := route("category.needs", map[string]string{"slug": ""})
+	if err == nil {
+		t.Fatal("expected error from route helper")
+	}
+	if !strings.Contains(err.Error(), "template route") {
+		t.Fatalf("err = %v, want message containing template route", err)
+	}
 }
 
-func TestTemplateFuncMapRouteQPanicsOnInvalidParams(t *testing.T) {
+func TestTemplateFuncMapRouteQReturnsErrorOnInvalidParams(t *testing.T) {
 	t.Parallel()
 
 	funcs := templateFuncMap()
-	routeq, ok := funcs["routeq"].(func(string, map[string]string, map[string]string) string)
+	routeq, ok := funcs["routeq"].(func(string, map[string]string, map[string]string) (string, error))
 	if !ok {
 		t.Fatalf("routeq helper has unexpected type")
 	}
 
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatal("expected panic from routeq helper")
-		}
-		if !strings.Contains(recovered.(string), "template routeq") {
-			t.Fatalf("panic = %v, want message containing template routeq", recovered)
-		}
-	}()
-
-	_ = routeq("category_needs", map[string]string{"slug": ""}, map[string]string{"city": "Nashville"})
+	_, err := routeq("category.needs", map[string]string{"slug": ""}, map[string]string{"city": "Nashville"})
+	if err == nil {
+		t.Fatal("expected error from routeq helper")
+	}
+	if !strings.Contains(err.Error(), "template routeq") {
+		t.Fatalf("err = %v, want message containing template routeq", err)
+	}
 }
 
-func TestTemplateFuncMapDictPanicsOnOddArgs(t *testing.T) {
+func TestTemplateFuncMapDictReturnsErrorOnOddArgs(t *testing.T) {
 	t.Parallel()
 
 	funcs := templateFuncMap()
-	dict, ok := funcs["dict"].(func(...string) map[string]string)
+	dict, ok := funcs["dict"].(func(...string) (map[string]string, error))
 	if !ok {
 		t.Fatalf("dict helper has unexpected type")
 	}
 
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatal("expected panic from dict helper")
-		}
-		if !strings.Contains(recovered.(string), "dict expects even") {
-			t.Fatalf("panic = %v, want message containing dict expects even", recovered)
-		}
-	}()
-
-	_ = dict("key-only")
+	_, err := dict("key-only")
+	if err == nil {
+		t.Fatal("expected error from dict helper")
+	}
+	if !strings.Contains(err.Error(), "dict expects even") {
+		t.Fatalf("err = %v, want message containing dict expects even", err)
+	}
 }
 
 func TestTemplateFuncMapRouteQBuildsQueryString(t *testing.T) {
 	t.Parallel()
 
 	funcs := templateFuncMap()
-	routeq, ok := funcs["routeq"].(func(string, map[string]string, map[string]string) string)
+	routeq, ok := funcs["routeq"].(func(string, map[string]string, map[string]string) (string, error))
 	if !ok {
 		t.Fatalf("routeq helper has unexpected type")
 	}
 
-	actual := routeq("browse", nil, map[string]string{"city": "New York", "": "ignored"})
+	actual, err := routeq("browse", nil, map[string]string{"city": "New York", "": "ignored"})
+	if err != nil {
+		t.Fatalf("routeq() unexpected error: %v", err)
+	}
+
 	parsed, err := url.Parse(actual)
 	if err != nil {
 		t.Fatalf("url.Parse() error: %v", err)
