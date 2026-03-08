@@ -12,7 +12,6 @@ import (
 	"christjesus/internal/utils"
 	"christjesus/pkg/types"
 
-	"github.com/k0kubun/pp"
 	"github.com/stripe/stripe-go/v84"
 )
 
@@ -184,8 +183,6 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	if donorEmail != "" {
 		checkoutParams.CustomerEmail = stripe.String(donorEmail)
 	}
-
-	pp.Print(checkoutParams)
 
 	checkoutSession, err := s.stripeClient.V1CheckoutSessions.Create(ctx, checkoutParams)
 	if err != nil {

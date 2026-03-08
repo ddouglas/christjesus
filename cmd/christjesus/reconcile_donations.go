@@ -211,7 +211,18 @@ func resolveFromCheckoutSession(ctx context.Context, stripeClient *stripe.Client
 
 		paymentIntent, retrieveErr := stripeClient.V1PaymentIntents.Retrieve(ctx, paymentIntentIDValue, nil)
 		if retrieveErr != nil {
-			return "skip", checkoutSessionID, paymentIntentID, "", fmt.Errorf("retrieve stripe payment intent %s from checkout session: %w", paymentIntentIDValue, retrieveErr)
+			logrus.WithError(retrieveErr).WithFields(logrus.Fields{
+				"checkout_session_id": trimmedSessionID,
+				"payment_intent_id":   paymentIntentIDValue,
+			}).Warn("failed to retrieve stripe payment intent from checkout session; falling back to checkout session status")
+
+			action, reason = mapCheckoutSessionToAction(session)
+			if reason != "" {
+				reason = fmt.Sprintf("payment intent lookup from checkout session failed: %v; fallback to checkout session; %s", retrieveErr, reason)
+			} else {
+				reason = fmt.Sprintf("payment intent lookup from checkout session failed: %v; fallback to checkout session", retrieveErr)
+			}
+			return action, checkoutSessionID, paymentIntentID, reason, nil
 		}
 
 		action, reason = mapPaymentIntentStatusToAction(string(paymentIntent.Status))
