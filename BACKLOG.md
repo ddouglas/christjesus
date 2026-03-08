@@ -19,6 +19,7 @@ Example:
 - [ ] Add Profile "View Need" button + dedicated need review page (read-only first), then expand with secure reviewer/individual communications and supplemental document uploads (`impact: high`, `effort: L`, `revisit: after profile MVP hardening`)
 - [ ] Add reusable breadcrumb component with proper breadcrumb builder for site-wide propagation (`impact: med`, `effort: M`, `revisit: after nav/layout consolidation`)
 - [ ] Add centralized route builder (named routes + params) to replace hardcoded paths across handlers/templates (`impact: high`, `effort: M`, `revisit: before navigation/layout hardening`)
+- [ ] Extract shared need-card assembler used by homepage and browse flows to eliminate duplicated mapping logic (`impact: med`, `effort: M`, `revisit: after homepage/browse parity pass`)
 - [x] Add webhook resilience pass: handle reconciliation signals, retries, and backfill job for missed events (`impact: high`, `effort: L`, `revisit: before production launch`) — 2026-03-05
 - [x] Improve post-donation trust UX with finalized-intent confirmation/receipt details (not redirect-only) (`impact: med`, `effort: M`, `revisit: after ledger MVP`) — 2026-03-05
 - [x] Implement working `Categories` navbar item + backed categories page route/render (data-driven cards/counts, desktop + mobile parity) (`impact: high`, `effort: M`, `revisit: align to docs/images/Categories - List.png + docs/images/Categories - HoverState.png + docs/images/Category - AssociatedNeeds.png + docs/images/Categories - BrowseCTA.png`) — 2026-03-05

@@ -88,6 +88,11 @@ func (s *Service) buildHomeCategories(ctx context.Context) []types.CategoryData 
 			continue
 		}
 
+		slug := strings.TrimSpace(category.Slug)
+		if slug == "" {
+			slug = slugifyCategoryName(category.Name)
+		}
+
 		icon := "home"
 		if category.Icon != nil && strings.TrimSpace(*category.Icon) != "" {
 			icon = strings.TrimSpace(*category.Icon)
@@ -95,7 +100,7 @@ func (s *Service) buildHomeCategories(ctx context.Context) []types.CategoryData 
 
 		homeCategories = append(homeCategories, types.CategoryData{
 			Name:  category.Name,
-			Slug:  strings.TrimSpace(category.Slug),
+			Slug:  slug,
 			Count: countsByCategoryID[category.ID],
 			Icon:  icon,
 		})
