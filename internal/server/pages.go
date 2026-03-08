@@ -65,7 +65,7 @@ func (s *Service) buildHomeCategories(ctx context.Context) []types.CategoryData 
 	categories, err := s.categoryRepo.Categories(ctx)
 	if err != nil {
 		s.logger.WithError(err).Warn("failed to fetch categories for home page")
-		return sampleCategories()
+		return []types.CategoryData{}
 	}
 
 	categoryIDs := make([]string, 0, len(categories))
@@ -107,7 +107,7 @@ func (s *Service) buildHomeCategories(ctx context.Context) []types.CategoryData 
 	}
 
 	if len(homeCategories) == 0 {
-		return sampleCategories()
+		return []types.CategoryData{}
 	}
 
 	sort.SliceStable(homeCategories, func(i, j int) bool {
@@ -823,31 +823,6 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		s.logger.WithError(err).Error("failed to render need detail page")
 		s.internalServerError(w)
 		return
-	}
-}
-
-func sampleNeeds() []*types.Need {
-	return []*types.Need{}
-}
-
-func sampleCategories() []types.CategoryData {
-	return []types.CategoryData{
-		{Name: "Unhoused", Slug: "unhoused", Count: 18, Icon: "home"},
-		{Name: "Unbanked", Slug: "unbanked", Count: 9, Icon: "wallet"},
-		{Name: "Malnourished", Slug: "malnourished", Count: 12, Icon: "utensils"},
-		{Name: "Health Condition", Slug: "health-condition", Count: 15, Icon: "heart-pulse"},
-		{Name: "Unemployment", Slug: "unemployment", Count: 22, Icon: "briefcase"},
-		{Name: "Utility & Basic Needs", Slug: "utility-basic-needs", Count: 14, Icon: "lightbulb"},
-		{Name: "Family & Children", Slug: "family-children", Count: 11, Icon: "users"},
-		{Name: "Legal Documentation", Slug: "legal-documentation", Count: 7, Icon: "file-text"},
-	}
-}
-
-func getStats() types.StatsData {
-	return types.StatsData{
-		TotalRaised:  7824000, // $78,240
-		NeedsFunded:  214,
-		LivesChanged: 389,
 	}
 }
 

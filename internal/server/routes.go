@@ -62,41 +62,41 @@ var routePatterns = map[RouteName]string{
 	RouteLogin:                         "/login",
 	RouteLogout:                        "/logout",
 	RouteProfile:                       "/profile",
-	RouteProfileNeedDelete:             "/profile/needs/{needID}/delete",
-	RouteProfileDonationReceipt:        "/profile/donations/{intentID}/receipt",
+	RouteProfileNeedDelete:             "/profile/needs/:needID/delete",
+	RouteProfileDonationReceipt:        "/profile/donations/:intentID/receipt",
 	RouteOnboarding:                    "/onboarding",
 	RouteOnboardingDonorWelcome:        "/onboarding/donor/welcome",
 	RouteOnboardingDonorPreferences:    "/onboarding/donor/preferences",
 	RouteOnboardingDonorConfirmation:   "/onboarding/donor/confirmation",
 	RouteOnboardingSponsorIndividual:   "/onboarding/sponsor/individual/welcome",
 	RouteOnboardingSponsorOrganization: "/onboarding/sponsor/organization/welcome",
-	RouteOnboardingNeedWelcome:         "/onboarding/need/{needID}/welcome",
-	RouteOnboardingNeedLocation:        "/onboarding/need/{needID}/location",
-	RouteOnboardingNeedCategories:      "/onboarding/need/{needID}/categories",
-	RouteOnboardingNeedDetails:         "/onboarding/need/{needID}/details",
-	RouteOnboardingNeedStory:           "/onboarding/need/{needID}/story",
-	RouteOnboardingNeedDocuments:       "/onboarding/need/{needID}/documents",
-	RouteOnboardingNeedDocumentsUpload: "/onboarding/need/{needID}/documents/upload",
-	RouteOnboardingNeedDocumentsMeta:   "/onboarding/need/{needID}/documents/metadata",
-	RouteOnboardingNeedDocumentDelete:  "/onboarding/need/{needID}/documents/{documentID}/delete",
-	RouteOnboardingNeedReview:          "/onboarding/need/{needID}/review",
-	RouteOnboardingNeedConfirmation:    "/onboarding/need/{needID}/confirmation",
+	RouteOnboardingNeedWelcome:         "/onboarding/need/:needID/welcome",
+	RouteOnboardingNeedLocation:        "/onboarding/need/:needID/location",
+	RouteOnboardingNeedCategories:      "/onboarding/need/:needID/categories",
+	RouteOnboardingNeedDetails:         "/onboarding/need/:needID/details",
+	RouteOnboardingNeedStory:           "/onboarding/need/:needID/story",
+	RouteOnboardingNeedDocuments:       "/onboarding/need/:needID/documents",
+	RouteOnboardingNeedDocumentsUpload: "/onboarding/need/:needID/documents/upload",
+	RouteOnboardingNeedDocumentsMeta:   "/onboarding/need/:needID/documents/metadata",
+	RouteOnboardingNeedDocumentDelete:  "/onboarding/need/:needID/documents/:documentID/delete",
+	RouteOnboardingNeedReview:          "/onboarding/need/:needID/review",
+	RouteOnboardingNeedConfirmation:    "/onboarding/need/:needID/confirmation",
 	RouteBrowse:                        "/browse",
 	RouteCategories:                    "/categories",
-	RouteCategoryNeeds:                 "/category/{slug}",
+	RouteCategoryNeeds:                 "/category/:slug",
 	RouteMap:                           "/map",
 	RouteGuidelines:                    "/guidelines",
 	RouteAbout:                         "/about",
 	RouteShare:                         "/share",
 	RouteTerms:                         "/terms",
 	RoutePrivacy:                       "/privacy",
-	RouteNeedDetail:                    "/need/{id}",
-	RouteNeedDonate:                    "/need/{id}/donate",
-	RouteNeedDonateConfirmation:        "/need/{id}/donate/confirmation",
+	RouteNeedDetail:                    "/need/:id",
+	RouteNeedDonate:                    "/need/:id/donate",
+	RouteNeedDonateConfirmation:        "/need/:id/donate/confirmation",
 	RouteStripeWebhook:                 "/webhooks/stripe",
 }
 
-var routeTokenRE = regexp.MustCompile(`\{([a-zA-Z0-9_]+)\}`)
+var routeTokenRE = regexp.MustCompile(`:([a-zA-Z0-9_]+)`)
 
 func RoutePattern(name RouteName) string {
 	if pattern, ok := routePatterns[name]; ok {
@@ -113,7 +113,7 @@ func BuildRoute(name RouteName, params map[string]string) (string, error) {
 
 	missing := make([]string, 0)
 	built := routeTokenRE.ReplaceAllStringFunc(pattern, func(token string) string {
-		key := strings.TrimSuffix(strings.TrimPrefix(token, "{"), "}")
+		key := strings.TrimPrefix(token, ":")
 		value, exists := params[key]
 		if !exists || strings.TrimSpace(value) == "" {
 			missing = append(missing, key)
