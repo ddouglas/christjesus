@@ -135,125 +135,32 @@ func (s *Service) buildHomeStats(ctx context.Context) types.StatsData {
 }
 
 func (s *Service) buildHomeNeedCards(ctx context.Context, needs []*types.Need) []*types.BrowseNeedCard {
+	return s.buildNeedCards(ctx, needs, "home featured needs")
+}
+
+type needCardBuildContext struct {
+	userNamesByID           map[string]string
+	selectedAddressesByID   map[string]*types.UserAddress
+	primaryAddressesByUser  map[string]*types.UserAddress
+	assignmentsByNeedID     map[string][]*types.NeedCategoryAssignment
+	categoryNamesByCategory map[string]string
+}
+
+func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logContext string) []*types.BrowseNeedCard {
 	if len(needs) == 0 {
 		return []*types.BrowseNeedCard{}
 	}
 
-	userIDs := make([]string, 0, len(needs))
-	needIDs := make([]string, 0, len(needs))
-	selectedAddressIDs := make([]string, 0, len(needs))
-	seenUserIDs := make(map[string]bool)
-	seenNeedIDs := make(map[string]bool)
-	seenAddressIDs := make(map[string]bool)
-
-	for _, need := range needs {
-		if need == nil {
-			continue
-		}
-
-		if !seenUserIDs[need.UserID] {
-			seenUserIDs[need.UserID] = true
-			userIDs = append(userIDs, need.UserID)
-		}
-
-		if !seenNeedIDs[need.ID] {
-			seenNeedIDs[need.ID] = true
-			needIDs = append(needIDs, need.ID)
-		}
-
-		if need.UserAddressID != nil {
-			selectedAddressID := strings.TrimSpace(*need.UserAddressID)
-			if selectedAddressID != "" && !seenAddressIDs[selectedAddressID] {
-				seenAddressIDs[selectedAddressID] = true
-				selectedAddressIDs = append(selectedAddressIDs, selectedAddressID)
-			}
-		}
-	}
-
-	userNamesByID := make(map[string]string)
-	users, err := s.userRepo.UsersByIDs(ctx, userIDs)
-	if err != nil {
-		s.logger.WithError(err).Warn("failed to batch fetch users for home featured needs")
-	} else {
-		for _, user := range users {
-			if user == nil || strings.TrimSpace(user.ID) == "" {
-				continue
-			}
-			userNamesByID[user.ID] = userDisplayName(user)
-		}
-	}
-
-	selectedAddressesByID := make(map[string]*types.UserAddress)
-	selectedAddresses, err := s.userAddressRepo.ByIDs(ctx, selectedAddressIDs)
-	if err != nil {
-		s.logger.WithError(err).Warn("failed to batch fetch selected addresses for home featured needs")
-	} else {
-		for _, address := range selectedAddresses {
-			if address == nil || strings.TrimSpace(address.ID) == "" {
-				continue
-			}
-			selectedAddressesByID[address.ID] = address
-		}
-	}
-
-	primaryAddressesByUserID := make(map[string]*types.UserAddress)
-	primaryAddresses, err := s.userAddressRepo.PrimaryByUserIDs(ctx, userIDs)
-	if err != nil {
-		s.logger.WithError(err).Warn("failed to batch fetch primary addresses for home featured needs")
-	} else {
-		for _, address := range primaryAddresses {
-			if address == nil || strings.TrimSpace(address.UserID) == "" {
-				continue
-			}
-			if _, exists := primaryAddressesByUserID[address.UserID]; !exists {
-				primaryAddressesByUserID[address.UserID] = address
-			}
-		}
-	}
-
-	assignmentsByNeedID := make(map[string][]*types.NeedCategoryAssignment)
-	primaryCategoryIDs := make([]string, 0)
-	seenPrimaryCategoryIDs := make(map[string]bool)
-	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
-	if err != nil {
-		s.logger.WithError(err).Warn("failed to batch fetch category assignments for home featured needs")
-	} else {
-		for _, assignment := range assignments {
-			if assignment == nil || strings.TrimSpace(assignment.NeedID) == "" {
-				continue
-			}
-			assignmentsByNeedID[assignment.NeedID] = append(assignmentsByNeedID[assignment.NeedID], assignment)
-			if assignment.IsPrimary {
-				categoryID := strings.TrimSpace(assignment.CategoryID)
-				if categoryID != "" && !seenPrimaryCategoryIDs[categoryID] {
-					seenPrimaryCategoryIDs[categoryID] = true
-					primaryCategoryIDs = append(primaryCategoryIDs, categoryID)
-				}
-			}
-		}
-	}
-
-	categoryNamesByID := make(map[string]string)
-	primaryCategories, err := s.categoryRepo.CategoriesByIDs(ctx, primaryCategoryIDs)
-	if err != nil {
-		s.logger.WithError(err).Warn("failed to batch fetch categories for home featured needs")
-	} else {
-		for _, category := range primaryCategories {
-			if category == nil || strings.TrimSpace(category.ID) == "" {
-				continue
-			}
-			categoryNamesByID[category.ID] = category.Name
-		}
-	}
-
+	ctxData := s.loadNeedCardBuildContext(ctx, needs, logContext)
 	cards := make([]*types.BrowseNeedCard, 0, len(needs))
+
 	for _, need := range needs {
 		if need == nil {
 			continue
 		}
 
 		ownerName := "Anonymous"
-		if cached, ok := userNamesByID[need.UserID]; ok && strings.TrimSpace(cached) != "" {
+		if cached, ok := ctxData.userNamesByID[need.UserID]; ok && strings.TrimSpace(cached) != "" {
 			ownerName = cached
 		}
 
@@ -261,25 +168,25 @@ func (s *Service) buildHomeNeedCards(ctx context.Context, needs []*types.Need) [
 		if need.UserAddressID != nil {
 			selectedAddressID := strings.TrimSpace(*need.UserAddressID)
 			if selectedAddressID != "" {
-				if selectedAddress, ok := selectedAddressesByID[selectedAddressID]; ok && selectedAddress != nil && selectedAddress.UserID == need.UserID {
+				if selectedAddress, ok := ctxData.selectedAddressesByID[selectedAddressID]; ok && selectedAddress != nil && selectedAddress.UserID == need.UserID {
 					address = selectedAddress
 				}
 			}
 		}
 		if address == nil {
-			address = primaryAddressesByUserID[need.UserID]
+			address = ctxData.primaryAddressesByUser[need.UserID]
 		}
 
 		city, state, cityState := browseCityStateParts(address)
 
 		primaryCategory := "General Need"
 		primaryCategoryID := ""
-		for _, assignment := range assignmentsByNeedID[need.ID] {
+		for _, assignment := range ctxData.assignmentsByNeedID[need.ID] {
 			if !assignment.IsPrimary {
 				continue
 			}
 			primaryCategoryID = assignment.CategoryID
-			if cachedName, ok := categoryNamesByID[assignment.CategoryID]; ok && strings.TrimSpace(cachedName) != "" {
+			if cachedName, ok := ctxData.categoryNamesByCategory[assignment.CategoryID]; ok && strings.TrimSpace(cachedName) != "" {
 				primaryCategory = cachedName
 			}
 			break
@@ -319,6 +226,120 @@ func (s *Service) buildHomeNeedCards(ctx context.Context, needs []*types.Need) [
 	}
 
 	return cards
+}
+
+func (s *Service) loadNeedCardBuildContext(ctx context.Context, needs []*types.Need, logContext string) needCardBuildContext {
+	userIDs := make([]string, 0, len(needs))
+	needIDs := make([]string, 0, len(needs))
+	selectedAddressIDs := make([]string, 0, len(needs))
+	seenUserIDs := make(map[string]bool)
+	seenNeedIDs := make(map[string]bool)
+	seenAddressIDs := make(map[string]bool)
+
+	for _, need := range needs {
+		if need == nil {
+			continue
+		}
+
+		if !seenUserIDs[need.UserID] {
+			seenUserIDs[need.UserID] = true
+			userIDs = append(userIDs, need.UserID)
+		}
+
+		if !seenNeedIDs[need.ID] {
+			seenNeedIDs[need.ID] = true
+			needIDs = append(needIDs, need.ID)
+		}
+
+		if need.UserAddressID != nil {
+			selectedAddressID := strings.TrimSpace(*need.UserAddressID)
+			if selectedAddressID != "" && !seenAddressIDs[selectedAddressID] {
+				seenAddressIDs[selectedAddressID] = true
+				selectedAddressIDs = append(selectedAddressIDs, selectedAddressID)
+			}
+		}
+	}
+
+	ctxData := needCardBuildContext{
+		userNamesByID:           make(map[string]string),
+		selectedAddressesByID:   make(map[string]*types.UserAddress),
+		primaryAddressesByUser:  make(map[string]*types.UserAddress),
+		assignmentsByNeedID:     make(map[string][]*types.NeedCategoryAssignment),
+		categoryNamesByCategory: make(map[string]string),
+	}
+
+	users, err := s.userRepo.UsersByIDs(ctx, userIDs)
+	if err != nil {
+		s.logger.WithError(err).Warnf("failed to batch fetch users for %s", logContext)
+	} else {
+		for _, user := range users {
+			if user == nil || strings.TrimSpace(user.ID) == "" {
+				continue
+			}
+			ctxData.userNamesByID[user.ID] = userDisplayName(user)
+		}
+	}
+
+	selectedAddresses, err := s.userAddressRepo.ByIDs(ctx, selectedAddressIDs)
+	if err != nil {
+		s.logger.WithError(err).Warnf("failed to batch fetch selected addresses for %s", logContext)
+	} else {
+		for _, address := range selectedAddresses {
+			if address == nil || strings.TrimSpace(address.ID) == "" {
+				continue
+			}
+			ctxData.selectedAddressesByID[address.ID] = address
+		}
+	}
+
+	primaryAddresses, err := s.userAddressRepo.PrimaryByUserIDs(ctx, userIDs)
+	if err != nil {
+		s.logger.WithError(err).Warnf("failed to batch fetch primary addresses for %s", logContext)
+	} else {
+		for _, address := range primaryAddresses {
+			if address == nil || strings.TrimSpace(address.UserID) == "" {
+				continue
+			}
+			if _, exists := ctxData.primaryAddressesByUser[address.UserID]; !exists {
+				ctxData.primaryAddressesByUser[address.UserID] = address
+			}
+		}
+	}
+
+	primaryCategoryIDs := make([]string, 0)
+	seenPrimaryCategoryIDs := make(map[string]bool)
+	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
+	if err != nil {
+		s.logger.WithError(err).Warnf("failed to batch fetch category assignments for %s", logContext)
+	} else {
+		for _, assignment := range assignments {
+			if assignment == nil || strings.TrimSpace(assignment.NeedID) == "" {
+				continue
+			}
+			ctxData.assignmentsByNeedID[assignment.NeedID] = append(ctxData.assignmentsByNeedID[assignment.NeedID], assignment)
+			if assignment.IsPrimary {
+				categoryID := strings.TrimSpace(assignment.CategoryID)
+				if categoryID != "" && !seenPrimaryCategoryIDs[categoryID] {
+					seenPrimaryCategoryIDs[categoryID] = true
+					primaryCategoryIDs = append(primaryCategoryIDs, categoryID)
+				}
+			}
+		}
+	}
+
+	primaryCategories, err := s.categoryRepo.CategoriesByIDs(ctx, primaryCategoryIDs)
+	if err != nil {
+		s.logger.WithError(err).Warnf("failed to batch fetch categories for %s", logContext)
+	} else {
+		for _, category := range primaryCategories {
+			if category == nil || strings.TrimSpace(category.ID) == "" {
+				continue
+			}
+			ctxData.categoryNamesByCategory[category.ID] = category.Name
+		}
+	}
+
+	return ctxData
 }
 
 func (s *Service) internalServerError(w http.ResponseWriter) {
@@ -466,192 +487,24 @@ func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.
 	}
 	s.logger.WithField("db_category_count", len(categories)).Info("browse: loaded category options from DB")
 
-	userNameCache := make(map[string]string)
-	userAddressCache := make(map[string]*types.UserAddress)
-	categoryNameCache := make(map[string]string)
 	categoryOptionMap := make(map[string]categoryFilterOption)
 	cityOptionsSet := make(map[string]bool)
-	userIDs := make([]string, 0, len(needs))
-	needIDs := make([]string, 0, len(needs))
-	selectedAddressIDs := make([]string, 0)
-	seenUserIDs := make(map[string]bool)
-	seenNeedIDs := make(map[string]bool)
-	seenSelectedAddressIDs := make(map[string]bool)
-	for _, need := range needs {
-		if !seenUserIDs[need.UserID] {
-			seenUserIDs[need.UserID] = true
-			userIDs = append(userIDs, need.UserID)
-		}
-		if !seenNeedIDs[need.ID] {
-			seenNeedIDs[need.ID] = true
-			needIDs = append(needIDs, need.ID)
-		}
-		if need.UserAddressID != nil {
-			selectedAddressID := strings.TrimSpace(*need.UserAddressID)
-			if selectedAddressID != "" && !seenSelectedAddressIDs[selectedAddressID] {
-				seenSelectedAddressIDs[selectedAddressID] = true
-				selectedAddressIDs = append(selectedAddressIDs, selectedAddressID)
-			}
-		}
-	}
+	allCards := s.buildNeedCards(ctx, needs, "browse needs")
 
-	users, err := s.userRepo.UsersByIDs(ctx, userIDs)
-	if err != nil {
-		s.logger.WithError(err).Warn("failed to batch fetch users for browse needs")
-		users = []*types.User{}
-	}
-	for _, user := range users {
-		if user == nil || strings.TrimSpace(user.ID) == "" {
+	cards := make([]*types.BrowseNeedCard, 0, len(allCards))
+	for _, card := range allCards {
+		if card == nil {
 			continue
 		}
-		userNameCache[user.ID] = userDisplayName(user)
-	}
 
-	selectedAddressesByID := make(map[string]*types.UserAddress)
-	selectedAddresses, err := s.userAddressRepo.ByIDs(ctx, selectedAddressIDs)
-	if err != nil {
-		s.logger.WithError(err).Warn("failed to batch fetch selected addresses for browse needs")
-		selectedAddresses = []*types.UserAddress{}
-	}
-	for _, address := range selectedAddresses {
-		if address == nil || strings.TrimSpace(address.ID) == "" {
-			continue
+		if card.City != "N/A" {
+			cityOptionsSet[card.City] = true
 		}
-		selectedAddressesByID[address.ID] = address
-	}
-
-	primaryAddressesByUserID := make(map[string]*types.UserAddress)
-	primaryAddresses, err := s.userAddressRepo.PrimaryByUserIDs(ctx, userIDs)
-	if err != nil {
-		s.logger.WithError(err).Warn("failed to batch fetch primary addresses for browse needs")
-		primaryAddresses = []*types.UserAddress{}
-	}
-	for _, address := range primaryAddresses {
-		if address == nil || strings.TrimSpace(address.UserID) == "" {
-			continue
-		}
-		if _, exists := primaryAddressesByUserID[address.UserID]; !exists {
-			primaryAddressesByUserID[address.UserID] = address
-		}
-	}
-
-	assignmentsByNeedID := make(map[string][]*types.NeedCategoryAssignment)
-	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
-	if err != nil {
-		s.logger.WithError(err).Warn("failed to batch fetch category assignments for browse needs")
-		assignments = []*types.NeedCategoryAssignment{}
-	}
-	primaryCategoryIDs := make([]string, 0)
-	seenPrimaryCategoryIDs := make(map[string]bool)
-	for _, assignment := range assignments {
-		if assignment == nil || strings.TrimSpace(assignment.NeedID) == "" {
-			continue
-		}
-		assignmentsByNeedID[assignment.NeedID] = append(assignmentsByNeedID[assignment.NeedID], assignment)
-		if assignment.IsPrimary {
-			categoryID := strings.TrimSpace(assignment.CategoryID)
-			if categoryID != "" && !seenPrimaryCategoryIDs[categoryID] {
-				seenPrimaryCategoryIDs[categoryID] = true
-				primaryCategoryIDs = append(primaryCategoryIDs, categoryID)
-			}
-		}
-	}
-
-	primaryCategories, err := s.categoryRepo.CategoriesByIDs(ctx, primaryCategoryIDs)
-	if err != nil {
-		s.logger.WithError(err).Warn("failed to batch fetch primary categories for browse needs")
-		primaryCategories = []*types.NeedCategory{}
-	}
-	for _, category := range primaryCategories {
-		if category == nil || strings.TrimSpace(category.ID) == "" {
-			continue
-		}
-		categoryNameCache[category.ID] = category.Name
-	}
-
-	cards := make([]*types.BrowseNeedCard, 0, len(needs))
-	for _, need := range needs {
-		ownerName := "Anonymous"
-		if cached, ok := userNameCache[need.UserID]; ok && strings.TrimSpace(cached) != "" {
-			ownerName = cached
+		if strings.TrimSpace(card.PrimaryCategoryID) != "" {
+			categoryOptionMap[card.PrimaryCategoryID] = categoryFilterOption{ID: card.PrimaryCategoryID, Name: card.PrimaryCategory}
 		}
 
-		address := userAddressCache[need.UserID]
-		if address == nil {
-			if need.UserAddressID != nil && strings.TrimSpace(*need.UserAddressID) != "" {
-				selectedAddressID := strings.TrimSpace(*need.UserAddressID)
-				if selectedAddress, ok := selectedAddressesByID[selectedAddressID]; ok && selectedAddress != nil {
-					if selectedAddress.UserID == need.UserID {
-						address = selectedAddress
-					}
-				}
-			}
-
-			if address == nil {
-				if primaryAddress, ok := primaryAddressesByUserID[need.UserID]; ok {
-					address = primaryAddress
-				}
-			}
-
-			userAddressCache[need.UserID] = address
-		}
-
-		city, state, cityState := browseCityStateParts(address)
-		if city != "N/A" {
-			cityOptionsSet[city] = true
-		}
-
-		primaryCategory := "General Need"
-		primaryCategoryID := ""
-		for _, assignment := range assignmentsByNeedID[need.ID] {
-			if !assignment.IsPrimary {
-				continue
-			}
-			primaryCategoryID = assignment.CategoryID
-
-			if cachedName, ok := categoryNameCache[assignment.CategoryID]; ok {
-				primaryCategory = cachedName
-			}
-			break
-		}
-		if primaryCategoryID == "" {
-			primaryCategoryID = strings.ToLower(strings.ReplaceAll(primaryCategory, " ", "-"))
-		}
-		if primaryCategoryID != "" {
-			categoryOptionMap[primaryCategoryID] = categoryFilterOption{ID: primaryCategoryID, Name: primaryCategory}
-		}
-
-		urgencyLabel, urgencyDotClass := browseUrgency(need.Status, need.AmountNeededCents, need.AmountRaisedCents)
-		urgencyID := strings.ToLower(urgencyLabel)
-
-		verificationID := "story-shared"
-		verificationLabel := "Story Shared"
-		if need.VerifiedAt != nil {
-			verificationID = "personally-verified"
-			verificationLabel = "Personally Verified"
-		}
-
-		fundingPercent := fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents)
-
-		card := &types.BrowseNeedCard{
-			ID:                need.ID,
-			OwnerName:         ownerName,
-			City:              city,
-			State:             state,
-			CityState:         cityState,
-			UrgencyLabel:      urgencyLabel,
-			UrgencyDotClass:   urgencyDotClass,
-			PrimaryCategoryID: primaryCategoryID,
-			PrimaryCategory:   primaryCategory,
-			VerificationID:    verificationID,
-			VerificationLabel: verificationLabel,
-			ShortDescription:  need.ShortDescription,
-			Status:            need.Status,
-			AmountNeededCents: need.AmountNeededCents,
-			AmountRaisedCents: need.AmountRaisedCents,
-			FundingPercent:    fundingPercent,
-			CreatedAt:         need.CreatedAt,
-		}
+		urgencyID := strings.ToLower(card.UrgencyLabel)
 
 		if filters.City != "" && !strings.EqualFold(card.City, filters.City) {
 			continue
