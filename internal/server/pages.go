@@ -139,11 +139,11 @@ func (s *Service) buildHomeNeedCards(ctx context.Context, needs []*types.Need) [
 }
 
 type needCardBuildContext struct {
-	userNamesByID           map[string]string
-	selectedAddressesByID   map[string]*types.UserAddress
-	primaryAddressesByUser  map[string]*types.UserAddress
-	assignmentsByNeedID     map[string][]*types.NeedCategoryAssignment
-	categoryNamesByCategory map[string]string
+	userNamesByID             map[string]string
+	selectedAddressesByID     map[string]*types.UserAddress
+	primaryAddressesByUserID  map[string]*types.UserAddress
+	assignmentsByNeedID       map[string][]*types.NeedCategoryAssignment
+	categoryNamesByCategoryID map[string]string
 }
 
 func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logContext string) []*types.BrowseNeedCard {
@@ -174,7 +174,7 @@ func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logCo
 			}
 		}
 		if address == nil {
-			address = ctxData.primaryAddressesByUser[need.UserID]
+			address = ctxData.primaryAddressesByUserID[need.UserID]
 		}
 
 		city, state, cityState := browseCityStateParts(address)
@@ -186,7 +186,7 @@ func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logCo
 				continue
 			}
 			primaryCategoryID = assignment.CategoryID
-			if cachedName, ok := ctxData.categoryNamesByCategory[assignment.CategoryID]; ok && strings.TrimSpace(cachedName) != "" {
+			if cachedName, ok := ctxData.categoryNamesByCategoryID[assignment.CategoryID]; ok && strings.TrimSpace(cachedName) != "" {
 				primaryCategory = cachedName
 			}
 			break
@@ -261,11 +261,11 @@ func (s *Service) loadNeedCardBuildContext(ctx context.Context, needs []*types.N
 	}
 
 	ctxData := needCardBuildContext{
-		userNamesByID:           make(map[string]string),
-		selectedAddressesByID:   make(map[string]*types.UserAddress),
-		primaryAddressesByUser:  make(map[string]*types.UserAddress),
-		assignmentsByNeedID:     make(map[string][]*types.NeedCategoryAssignment),
-		categoryNamesByCategory: make(map[string]string),
+		userNamesByID:             make(map[string]string),
+		selectedAddressesByID:     make(map[string]*types.UserAddress),
+		primaryAddressesByUserID:  make(map[string]*types.UserAddress),
+		assignmentsByNeedID:       make(map[string][]*types.NeedCategoryAssignment),
+		categoryNamesByCategoryID: make(map[string]string),
 	}
 
 	users, err := s.userRepo.UsersByIDs(ctx, userIDs)
@@ -300,8 +300,8 @@ func (s *Service) loadNeedCardBuildContext(ctx context.Context, needs []*types.N
 			if address == nil || strings.TrimSpace(address.UserID) == "" {
 				continue
 			}
-			if _, exists := ctxData.primaryAddressesByUser[address.UserID]; !exists {
-				ctxData.primaryAddressesByUser[address.UserID] = address
+			if _, exists := ctxData.primaryAddressesByUserID[address.UserID]; !exists {
+				ctxData.primaryAddressesByUserID[address.UserID] = address
 			}
 		}
 	}
@@ -335,7 +335,7 @@ func (s *Service) loadNeedCardBuildContext(ctx context.Context, needs []*types.N
 			if category == nil || strings.TrimSpace(category.ID) == "" {
 				continue
 			}
-			ctxData.categoryNamesByCategory[category.ID] = category.Name
+			ctxData.categoryNamesByCategoryID[category.ID] = category.Name
 		}
 	}
 
