@@ -102,7 +102,7 @@ func RoutePattern(name RouteName) string {
 	if pattern, ok := routePatterns[name]; ok {
 		return pattern
 	}
-	return ""
+	panic(fmt.Sprintf("unknown route pattern: %s", name))
 }
 
 func BuildRoute(name RouteName, params map[string]string) (string, error) {
@@ -115,11 +115,17 @@ func BuildRoute(name RouteName, params map[string]string) (string, error) {
 	built := routeTokenRE.ReplaceAllStringFunc(pattern, func(token string) string {
 		key := strings.TrimPrefix(token, ":")
 		value, exists := params[key]
-		if !exists || strings.TrimSpace(value) == "" {
+		if !exists {
 			missing = append(missing, key)
 			return token
 		}
-		return url.PathEscape(value)
+
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			missing = append(missing, key)
+			return token
+		}
+		return url.PathEscape(trimmed)
 	})
 
 	if len(missing) > 0 {

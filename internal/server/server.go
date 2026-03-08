@@ -206,6 +206,36 @@ func (s *Service) buildRouter(r *flow.Mux) {
 }
 
 func loadTemplates() (*template.Template, error) {
+	funcMap := templateFuncMap()
+
+	t := template.New("").Funcs(funcMap)
+	err := fs.WalkDir(uiFS, "templates", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".html") {
+			return nil
+		}
+
+		data, err := fs.ReadFile(uiFS, path)
+		if err != nil {
+			return fmt.Errorf("read template %s: %w", path, err)
+		}
+
+		if _, err := t.Parse(string(data)); err != nil {
+			return fmt.Errorf("parse template %s: %w", path, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return t, nil
+}
+
+func templateFuncMap() template.FuncMap {
 	toInt64 := func(value any) int64 {
 		switch v := value.(type) {
 		case int:
@@ -236,7 +266,7 @@ func loadTemplates() (*template.Template, error) {
 		}
 	}
 
-	funcMap := template.FuncMap{
+	return template.FuncMap{
 		"div": func(a, b any) int64 {
 			a64 := toInt64(a)
 			b64 := toInt64(b)
@@ -267,13 +297,15 @@ func loadTemplates() (*template.Template, error) {
 			return values[key]
 		},
 		"route": func(name string, params map[string]string) string {
-			path, err := BuildRoute(RouteName(strings.TrimSpace(name)), params)
+			trimmedName := strings.TrimSpace(name)
+			path, err := BuildRoute(RouteName(trimmedName), params)
 			if err != nil {
-				return "#"
+				panic(fmt.Sprintf("template route(%q) failed: %v", trimmedName, err))
 			}
 			return path
 		},
 		"routeq": func(name string, params map[string]string, query map[string]string) string {
+			trimmedName := strings.TrimSpace(name)
 			values := url.Values{}
 			for key, value := range query {
 				trimmedKey := strings.TrimSpace(key)
@@ -283,16 +315,16 @@ func loadTemplates() (*template.Template, error) {
 				values.Set(trimmedKey, value)
 			}
 
-			path, err := BuildRouteWithQuery(RouteName(strings.TrimSpace(name)), params, values)
+			path, err := BuildRouteWithQuery(RouteName(trimmedName), params, values)
 			if err != nil {
-				return "#"
+				panic(fmt.Sprintf("template routeq(%q) failed: %v", trimmedName, err))
 			}
 			return path
 		},
 		"dict": func(values ...string) map[string]string {
 			result := make(map[string]string)
 			if len(values)%2 != 0 {
-				return result
+				panic(fmt.Sprintf("dict expects even number of arguments, got %d", len(values)))
 			}
 
 			for i := 0; i < len(values); i += 2 {
@@ -306,32 +338,6 @@ func loadTemplates() (*template.Template, error) {
 			return result
 		},
 	}
-
-	t := template.New("").Funcs(funcMap)
-	err := fs.WalkDir(uiFS, "templates", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".html") {
-			return nil
-		}
-
-		data, err := fs.ReadFile(uiFS, path)
-		if err != nil {
-			return fmt.Errorf("read template %s: %w", path, err)
-		}
-
-		if _, err := t.Parse(string(data)); err != nil {
-			return fmt.Errorf("parse template %s: %w", path, err)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return t, nil
 }
 
 func (s *Service) userIDFromContext(ctx context.Context) (string, error) {

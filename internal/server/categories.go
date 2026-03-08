@@ -45,9 +45,10 @@ func (s *Service) handleCategories(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		slug := strings.TrimSpace(category.Slug)
+		slug := normalizedCategorySlug(category)
 		if slug == "" {
-			slug = slugifyCategoryName(category.Name)
+			s.logger.WithField("category_id", category.ID).Warn("skipping category with empty slug")
+			continue
 		}
 
 		items = append(items, &types.CategoryListItem{
@@ -134,6 +135,19 @@ func (s *Service) handleCategoryNeeds(w http.ResponseWriter, r *http.Request) {
 		s.internalServerError(w)
 		return
 	}
+}
+
+func normalizedCategorySlug(category *types.NeedCategory) string {
+	if category == nil {
+		return ""
+	}
+
+	slug := strings.TrimSpace(category.Slug)
+	if slug == "" {
+		slug = slugifyCategoryName(category.Name)
+	}
+
+	return strings.TrimSpace(slug)
 }
 
 func slugifyCategoryName(name string) string {
