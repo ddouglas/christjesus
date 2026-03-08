@@ -322,3 +322,16 @@ type ProfileDonationSummary struct {
 type AdminDashboardPageData struct {
 	BasePageData
 }
+
+type AdminNeedsPageData struct {
+	BasePageData
+	Needs []*AdminNeedQueueItem
+}
+
+type AdminNeedQueueItem struct {
+	NeedID      string
+	Status      NeedStatus
+	CreatedAt   string
+	SubmittedAt string
+	ReviewHref  string
+}

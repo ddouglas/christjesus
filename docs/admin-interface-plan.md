@@ -91,7 +91,14 @@ Action events to persist:
 
 1. `need_progress_events` (or new `admin_events` table)
 - Ensure event records include actor user ID and event metadata.
-- Confirm current model can represent moderation actions; extend if needed.
+- Decision: reuse `need_progress_events` for moderation timeline events.
+- Extend current model as needed so moderation actions can be represented without adding a second events table.
+- Constraint: do not store moderation detail content (approval/reject reasons, note bodies) directly in `need_progress_events`.
+- Store detail content in a dedicated moderation detail table and keep only references/IDs in timeline events.
+
+1a. `need_moderation_actions` (new table)
+- Stores moderation detail payloads (reason text, note text, optional document context, actor, timestamps).
+- `need_progress_events` stores an action reference (`moderation_action_id`) so timeline can resolve details when needed.
 
 2. Optional moderation fields on `needs`
 - `reviewed_by_user_id`
@@ -163,6 +170,74 @@ Action events to persist:
 - M4: Document verification + review notes.
 - M5: Admin group management + soft-delete/restore controls.
 
+## Implementation Roadmap
+
+### Issue Mapping
+
+- `#11` M1 Admin auth shell: completed.
+- `#12` Moderation event schema and persistence: next in progress target.
+- `#13` M2 Needs queue page (`/admin/needs`).
+- `#14` M3 Need review page + moderation actions.
+- `#15` M4 Document verification actions.
+- `#16` M5 Access management + soft-delete/restore controls.
+
+### Execution Order
+
+1. Implement `#12` first to establish canonical event writes/reads.
+2. Implement `#13` queue page on top of current admin shell.
+3. Implement `#14` review detail page + approve/reject/request-changes.
+4. Implement `#15` document verification actions and timeline events.
+5. Implement `#16` access management and soft-delete/restore.
+
+### File-Level Plan
+
+`#12` Moderation events backbone:
+- `migrations/need_progress_events.pg.hcl`: extend schema for actor and moderation action reference fields.
+- `migrations/need_moderation_actions.pg.hcl`: add dedicated table for moderation detail content.
+- `pkg/types/need_progress_event.go` (or existing types file): add typed moderation event model/constants.
+- `pkg/types/need_moderation_action.go` (or existing types file): add typed moderation action model.
+- `internal/store/need_progress.go`: add repository writes and ordered timeline reads.
+- `internal/store/need_moderation_action.go`: add create/get methods for moderation detail records.
+- `internal/server/`: introduce a small service helper for writing moderation events consistently.
+
+`#13` Needs queue page:
+- `internal/server/routes.go`: add `admin.needs` route constant/pattern.
+- `internal/server/server.go`: wire admin queue GET route under `RequireAdmin`.
+- `internal/server/admin_needs.go`: queue handler.
+- `pkg/types/page_data.go`: typed queue page data structs.
+- `internal/server/templates/pages/admin-needs.html`: queue template.
+- `internal/store/need.go` (or relevant repo): moderation queue query.
+
+`#14` Need review + moderation actions:
+- `internal/server/routes.go`: add detail/action routes for `/admin/needs/:id`.
+- `internal/server/admin_need_review.go`: GET detail + POST moderation action handlers.
+- `pkg/types/page_data.go`: review page data + timeline item types.
+- `internal/server/templates/pages/admin-need-review.html`: detail and action UI.
+- `internal/store/need.go`: status transition helpers with safeguards.
+- `internal/store/need_progress.go`: timeline read + moderation event writes.
+
+`#15` Document verification:
+- `internal/server/admin_need_review.go` (or split file): verify/reject document POST handlers.
+- `internal/store/document.go`: verification status update methods.
+- `internal/store/need_progress.go`: write `document_verified`/`document_rejected` events.
+- `internal/server/templates/pages/admin-need-review.html`: document action controls.
+
+`#16` Access management + soft-delete:
+- `internal/server/routes.go`: admin user/access routes + soft-delete routes.
+- `internal/server/admin_users.go`: Cognito group membership handlers.
+- `internal/server/admin_needs_delete.go`: soft-delete/restore handlers.
+- `internal/store/need.go`: soft-delete/restore persistence and queries.
+- `migrations/needs.pg.hcl`: add soft-delete columns if approved unchanged.
+
+### Sprint 1 Definition (Start Now)
+
+- Goal: complete `#12` and begin `#13` in same branch.
+- Done criteria for Sprint 1:
+  - Moderation event schema is implemented on `need_progress_events`.
+  - Repository read/write tests for moderation events pass.
+  - `/admin/needs` route and minimal list rendering works behind `RequireAdmin`.
+  - `go test ./...` passes.
+
 ## Decision Log
 
 | ID | Date | Topic | Decision | Status | Notes |
@@ -176,6 +251,8 @@ Action events to persist:
 | ADM-007 | 2026-03-08 | Delete behavior | Soft-delete/restore in UI; no hard delete in UI | Accepted | Hard delete remains manual ops path only |
 | ADM-008 | 2026-03-08 | Edit permissions boundary | Admins may edit users/access controls, but may not edit submitted need content | Accepted | Keeps moderation auditable while preserving submitter-authored need integrity |
 | ADM-009 | 2026-03-08 | Audit visibility in moderation | Need review page must display moderation timeline | Accepted | Review decisions require full moderation context |
+| ADM-010 | 2026-03-08 | Event storage model | Reuse `need_progress_events` for moderation events | Accepted | Avoids joining across multiple event tables |
+| ADM-011 | 2026-03-08 | Moderation detail storage boundary | Keep detailed moderation content in dedicated table and reference it from events | Accepted | Prevents storing rich approval/rejection content directly in timeline events |
 
 ## Resolved Questions (2026-03-08)
 
@@ -198,4 +275,4 @@ Action events to persist:
 
 1. Confirm exact Cognito group name(s), claim shape, and middleware mapping.
 2. Confirm soft-delete schema shape and restore UX rules.
-3. Lock moderation event schema (event type + payload) and begin coding.
+3. Define moderation event payload fields on `need_progress_events` and begin coding.

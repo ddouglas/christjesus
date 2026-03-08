@@ -76,8 +76,59 @@ type UserAddress struct {
 }
 
 type NeedProgressEvent struct {
-	ID        string    `db:"id"`
-	NeedID    string    `db:"need_id"`
-	Step      string    `db:"step"`
-	CreatedAt time.Time `db:"created_at"`
+	ID                 string                  `db:"id"`
+	NeedID             string                  `db:"need_id"`
+	Step               string                  `db:"step"`
+	EventSource        NeedProgressEventSource `db:"event_source"`
+	ActorUserID        *string                 `db:"actor_user_id"`
+	ModerationActionID *string                 `db:"moderation_action_id"`
+	CreatedAt          time.Time               `db:"created_at"`
+}
+
+type NeedProgressEventSource string
+
+const (
+	NeedProgressEventSourceUser   NeedProgressEventSource = "user"
+	NeedProgressEventSourceAdmin  NeedProgressEventSource = "admin"
+	NeedProgressEventSourceSystem NeedProgressEventSource = "system"
+)
+
+type NeedProgressEventStep string
+
+const (
+	NeedProgressEventStepReviewStarted    NeedProgressEventStep = "review_started"
+	NeedProgressEventStepReviewNoteAdded  NeedProgressEventStep = "review_note_added"
+	NeedProgressEventStepChangesRequested NeedProgressEventStep = "changes_requested"
+	NeedProgressEventStepReviewApproved   NeedProgressEventStep = "review_approved"
+	NeedProgressEventStepReviewRejected   NeedProgressEventStep = "review_rejected"
+	NeedProgressEventStepDocumentVerified NeedProgressEventStep = "document_verified"
+	NeedProgressEventStepDocumentRejected NeedProgressEventStep = "document_rejected"
+)
+
+type NeedModerationAction struct {
+	ID          string                    `db:"id"`
+	NeedID      string                    `db:"need_id"`
+	ActionType  NeedModerationActionType  `db:"action_type"`
+	ActorUserID string                    `db:"actor_user_id"`
+	Reason      *string                   `db:"reason"`
+	Note        *string                   `db:"note"`
+	DocumentID  *string                   `db:"document_id"`
+	CreatedAt   time.Time                 `db:"created_at"`
+}
+
+type NeedModerationActionType string
+
+const (
+	NeedModerationActionTypeReviewStarted    NeedModerationActionType = "review_started"
+	NeedModerationActionTypeReviewNoteAdded  NeedModerationActionType = "review_note_added"
+	NeedModerationActionTypeChangesRequested NeedModerationActionType = "changes_requested"
+	NeedModerationActionTypeReviewApproved   NeedModerationActionType = "review_approved"
+	NeedModerationActionTypeReviewRejected   NeedModerationActionType = "review_rejected"
+	NeedModerationActionTypeDocumentVerified NeedModerationActionType = "document_verified"
+	NeedModerationActionTypeDocumentRejected NeedModerationActionType = "document_rejected"
+)
+
+type NeedModerationTimelineEvent struct {
+	Event  *NeedProgressEvent
+	Action *NeedModerationAction
 }
