@@ -27,15 +27,15 @@
     {{end}}
   </div>
   {{else}}
-  <div class="mt-10 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border p-10 text-center">
-    <p class="text-sm font-semibold text-foreground">No needs posted for this category yet.</p>
-    <p class="text-sm text-muted-foreground">Browse all verified needs or check back soon.</p>
-    <a href="{{.BrowseHref}}"
-      class="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
-      Browse all needs
-    </a>
-  </div>
-  {{end}}
+    <div class="mt-10 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border p-10 text-center">
+      <p class="text-sm font-semibold text-foreground">No needs posted for this category yet.</p>
+      <p class="text-sm text-muted-foreground">Browse all verified needs or check back soon.</p>
+      <a href="{{.BrowseHref}}"
+        class="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
+        Browse all needs
+      </a>
+    </div>
+    {{end}}
 </div>
 
 {{template "footer" .}}

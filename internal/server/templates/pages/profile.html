@@ -113,7 +113,8 @@
                   <div class="flex items-center gap-3">
                     <a href="{{route "need.detail" (dict "id" .NeedID)}}" class="font-medium text-[color:var(--cj-primary)] hover:underline">View need</a>
                     {{if .IsFinalized}}
-                    <a href="{{route "profile.donation.receipt" (dict "intentID" .IntentID)}}" target="_blank" rel="noopener noreferrer" class="font-medium text-[color:var(--cj-primary)] hover:underline">View receipt</a>
+                    <a href="{{route "profile.donation.receipt" (dict "intentID" .IntentID)}}" target="_blank" rel="noopener noreferrer"
+                      class="font-medium text-[color:var(--cj-primary)] hover:underline">View receipt</a>
                     {{else}}
                       <span class="text-muted-foreground">Receipt pending</span>
                       {{end}}
