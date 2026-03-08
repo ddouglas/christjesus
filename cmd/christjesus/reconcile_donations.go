@@ -186,17 +186,71 @@ func resolveDonationStatusFromStripe(ctx context.Context, stripeClient *stripe.C
 			return "skip", nil, nil, "", fmt.Errorf("retrieve stripe checkout session %s: %w", checkoutSessionIDValue, retrieveErr)
 		}
 
-		checkoutSessionID = &checkoutSessionIDValue
-		if session.PaymentIntent != nil && strings.TrimSpace(session.PaymentIntent.ID) != "" {
-			paymentIntentIDValue := strings.TrimSpace(session.PaymentIntent.ID)
-			paymentIntentID = &paymentIntentIDValue
+		return resolveFromCheckoutSession(ctx, stripeClient, session, checkoutSessionIDValue)
+	}
+
+	if strings.TrimSpace(intent.ID) != "" {
+		params := &stripe.CheckoutSessionListParams{}
+		params.Limit = stripe.Int64(100)
+		params.CreatedRange = &stripe.RangeQueryParams{GreaterThanOrEqual: intent.CreatedAt.Unix()}
+
+		for session, listErr := range stripeClient.V1CheckoutSessions.List(ctx, params) {
+			if listErr != nil {
+				return "skip", nil, nil, "", fmt.Errorf("list stripe checkout sessions for intent %s: %w", intent.ID, listErr)
+			}
+			if session == nil {
+				continue
+			}
+			if strings.TrimSpace(session.ClientReferenceID) != strings.TrimSpace(intent.ID) {
+				continue
+			}
+
+			checkoutSessionIDValue := strings.TrimSpace(session.ID)
+			action, checkoutSessionID, paymentIntentID, reason, err = resolveFromCheckoutSession(ctx, stripeClient, session, checkoutSessionIDValue)
+			if err != nil {
+				return "skip", nil, nil, "", err
+			}
+			if reason != "" {
+				reason = "matched checkout session by client_reference_id; " + reason
+			}
+			return action, checkoutSessionID, paymentIntentID, reason, nil
+		}
+	}
+
+	return "skip", nil, nil, "no stripe IDs available for reconciliation or lookup", nil
+}
+
+func resolveFromCheckoutSession(ctx context.Context, stripeClient *stripe.Client, session *stripe.CheckoutSession, sessionID string) (action string, checkoutSessionID *string, paymentIntentID *string, reason string, err error) {
+	if session == nil {
+		return "skip", nil, nil, "checkout session not found", nil
+	}
+
+	trimmedSessionID := strings.TrimSpace(sessionID)
+	if trimmedSessionID == "" {
+		trimmedSessionID = strings.TrimSpace(session.ID)
+	}
+	if trimmedSessionID != "" {
+		checkoutSessionID = &trimmedSessionID
+	}
+
+	if session.PaymentIntent != nil && strings.TrimSpace(session.PaymentIntent.ID) != "" {
+		paymentIntentIDValue := strings.TrimSpace(session.PaymentIntent.ID)
+		paymentIntentID = &paymentIntentIDValue
+
+		paymentIntent, retrieveErr := stripeClient.V1PaymentIntents.Retrieve(ctx, paymentIntentIDValue, nil)
+		if retrieveErr != nil {
+			return "skip", checkoutSessionID, paymentIntentID, "", fmt.Errorf("retrieve stripe payment intent %s from checkout session: %w", paymentIntentIDValue, retrieveErr)
 		}
 
-		action, reason = mapCheckoutSessionToAction(session)
+		action, reason = mapPaymentIntentStatusToAction(string(paymentIntent.Status))
+		if reason != "" {
+			reason = "payment intent lookup from checkout session; " + reason
+		}
 		return action, checkoutSessionID, paymentIntentID, reason, nil
 	}
 
-	return "skip", nil, nil, "no stripe IDs available for reconciliation", nil
+	action, reason = mapCheckoutSessionToAction(session)
+	return action, checkoutSessionID, paymentIntentID, reason, nil
 }
 
 func mapPaymentIntentStatusToAction(status string) (action string, reason string) {
