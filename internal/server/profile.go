@@ -269,13 +269,13 @@ func (s *Service) handlePostProfileNeedDelete(w http.ResponseWriter, r *http.Req
 func (s *Service) redirectProfileWithNotice(w http.ResponseWriter, r *http.Request, notice string) {
 	v := url.Values{}
 	v.Set("notice", notice)
-	http.Redirect(w, r, "/profile?"+v.Encode(), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfile, nil, v), http.StatusSeeOther)
 }
 
 func (s *Service) redirectProfileWithError(w http.ResponseWriter, r *http.Request, msg string) {
 	v := url.Values{}
 	v.Set("error", msg)
-	http.Redirect(w, r, "/profile?"+v.Encode(), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfile, nil, v), http.StatusSeeOther)
 }
 
 func formatUSDFromCents(cents int) string {

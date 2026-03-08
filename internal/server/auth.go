@@ -4,7 +4,6 @@ import (
 	"christjesus/internal"
 	"christjesus/pkg/types"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,7 +19,7 @@ func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 	_, err := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
 	if err == nil {
 		s.logger.Info("user is already logged in, redirecting to Browse Needs")
-		http.Redirect(w, r, "/browse", http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteBrowse, nil), http.StatusSeeOther)
 		return
 	}
 
@@ -89,7 +88,7 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 			s.setRegisterConfirmCookie(w, email, 30*time.Minute)
 			v := url.Values{}
 			v.Set("email", email)
-			http.Redirect(w, r, fmt.Sprintf("/register/confirm?%s", v.Encode()), http.StatusSeeOther)
+			http.Redirect(w, r, s.routeWithQuery(RouteRegisterConfirm, nil, v), http.StatusSeeOther)
 			return
 		case errors.As(err, &notAuthorized), errors.As(err, &userNotFound):
 			data.Error = "Invalid email or password."
@@ -164,7 +163,7 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Redirect back to the homepage
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
 }
 
 func (s *Service) setRedirectCookie(w http.ResponseWriter, path string, age time.Duration) {
@@ -207,5 +206,5 @@ func (s *Service) handlePostLogout(w http.ResponseWriter, r *http.Request) {
 	s.clearAccessTokenCookie(w)
 	s.clearRedirectCookie(w)
 	s.clearRegisterConfirmCookie(w)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
 }

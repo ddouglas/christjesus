@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -142,26 +143,26 @@ func (s *Service) buildRouter(r *flow.Mux) {
 	r.Use(s.LoggingMiddleware)
 	r.Use(s.AttachAuthContext)
 
-	r.HandleFunc("/", s.handleHome, http.MethodGet)
+	r.HandleFunc(RoutePattern(RouteHome), s.handleHome, http.MethodGet)
 
-	r.HandleFunc("/register", s.handleGetRegister, http.MethodGet)
-	r.HandleFunc("/register", s.handlePostRegister, http.MethodPost)
-	r.HandleFunc("/register/confirm", s.handleGetRegisterConfirm, http.MethodGet)
-	r.HandleFunc("/register/confirm", s.handlePostRegisterConfirm, http.MethodPost)
-	r.HandleFunc("/register/confirm/resend", s.handlePostRegisterConfirmResend, http.MethodPost)
-	r.HandleFunc("/login", s.handleGetLogin, http.MethodGet)
-	r.HandleFunc("/login", s.handlePostLogin, http.MethodPost)
-	r.HandleFunc("/logout", s.handlePostLogout, http.MethodPost)
+	r.HandleFunc(RoutePattern(RouteRegister), s.handleGetRegister, http.MethodGet)
+	r.HandleFunc(RoutePattern(RouteRegister), s.handlePostRegister, http.MethodPost)
+	r.HandleFunc(RoutePattern(RouteRegisterConfirm), s.handleGetRegisterConfirm, http.MethodGet)
+	r.HandleFunc(RoutePattern(RouteRegisterConfirm), s.handlePostRegisterConfirm, http.MethodPost)
+	r.HandleFunc(RoutePattern(RouteRegisterConfirmResend), s.handlePostRegisterConfirmResend, http.MethodPost)
+	r.HandleFunc(RoutePattern(RouteLogin), s.handleGetLogin, http.MethodGet)
+	r.HandleFunc(RoutePattern(RouteLogin), s.handlePostLogin, http.MethodPost)
+	r.HandleFunc(RoutePattern(RouteLogout), s.handlePostLogout, http.MethodPost)
 
 	r.Group(func(r *flow.Mux) {
 		r.Use(s.RequireAuth)
 
-		r.HandleFunc("/profile", s.handleGetProfile, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteProfile), s.handleGetProfile, http.MethodGet)
 		r.HandleFunc("/profile/needs/:needID/delete", s.handlePostProfileNeedDelete, http.MethodPost)
 		r.HandleFunc("/profile/donations/:intentID/receipt", s.handleGetProfileDonationReceipt, http.MethodGet)
 
-		r.HandleFunc("/onboarding", s.handleGetOnboarding, http.MethodGet)
-		r.HandleFunc("/onboarding", s.handlePostOnboarding, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteOnboarding), s.handleGetOnboarding, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteOnboarding), s.handlePostOnboarding, http.MethodPost)
 
 		r.HandleFunc("/onboarding/need/:needID/welcome", s.handleGetOnboardingNeedWelcome, http.MethodGet)
 		r.HandleFunc("/onboarding/need/:needID/welcome", s.handlePostOnboardingNeedWelcome, http.MethodPost)
@@ -181,10 +182,10 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc("/onboarding/need/:needID/confirmation", s.handleGetOnboardingNeedConfirmation, http.MethodGet)
 
 		// Donor onboarding flow
-		r.HandleFunc("/onboarding/donor/welcome", s.handleGetOnboardingDonorWelcome, http.MethodGet)
-		r.HandleFunc("/onboarding/donor/preferences", s.handleGetOnboardingDonorPreferences, http.MethodGet)
-		r.HandleFunc("/onboarding/donor/preferences", s.handlePostOnboardingDonorPreferences, http.MethodPost)
-		r.HandleFunc("/onboarding/donor/confirmation", s.handleGetOnboardingDonorConfirmation, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteOnboardingDonorWelcome), s.handleGetOnboardingDonorWelcome, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteOnboardingDonorPreferences), s.handleGetOnboardingDonorPreferences, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteOnboardingDonorPreferences), s.handlePostOnboardingDonorPreferences, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteOnboardingDonorConfirmation), s.handleGetOnboardingDonorConfirmation, http.MethodGet)
 
 		r.HandleFunc("/need/:id/donate", s.handleGetNeedDonate, http.MethodGet)
 		r.HandleFunc("/need/:id/donate", s.handlePostNeedDonate, http.MethodPost)
@@ -196,11 +197,11 @@ func (s *Service) buildRouter(r *flow.Mux) {
 	// r.HandleFunc("/onboarding/sponsor/individual/welcome", s.handleGetOnboardingSponsorIndividualWelcome, http.MethodGet)
 	// r.HandleFunc("/onboarding/sponsor/organization/welcome", s.handleGetOnboardingSponsorOrganizationWelcome, http.MethodGet)
 
-	r.HandleFunc("/browse", s.handleBrowse, http.MethodGet)
-	r.HandleFunc("/categories", s.handleCategories, http.MethodGet)
+	r.HandleFunc(RoutePattern(RouteBrowse), s.handleBrowse, http.MethodGet)
+	r.HandleFunc(RoutePattern(RouteCategories), s.handleCategories, http.MethodGet)
 	r.HandleFunc("/category/:slug", s.handleCategoryNeeds, http.MethodGet)
 	r.HandleFunc("/need/:id", s.handleNeedDetail, http.MethodGet)
-	r.HandleFunc("/webhooks/stripe", s.handlePostStripeWebhook, http.MethodPost)
+	r.HandleFunc(RoutePattern(RouteStripeWebhook), s.handlePostStripeWebhook, http.MethodPost)
 	// r.HandleFunc("/forms/prayer", s.handlePrayerRequestSubmit, http.MethodPost)
 	// r.HandleFunc("/forms/signup", s.handleEmailSignupSubmit, http.MethodPost)
 	// r.HandleFunc("/healthz", s.handleHealth, http.MethodGet)
@@ -272,6 +273,45 @@ func loadTemplates() (*template.Template, error) {
 				return false
 			}
 			return values[key]
+		},
+		"route": func(name string, params map[string]string) string {
+			path, err := BuildRoute(RouteName(strings.TrimSpace(name)), params)
+			if err != nil {
+				return "#"
+			}
+			return path
+		},
+		"routeq": func(name string, params map[string]string, query map[string]string) string {
+			values := url.Values{}
+			for key, value := range query {
+				trimmedKey := strings.TrimSpace(key)
+				if trimmedKey == "" {
+					continue
+				}
+				values.Set(trimmedKey, value)
+			}
+
+			path, err := BuildRouteWithQuery(RouteName(strings.TrimSpace(name)), params, values)
+			if err != nil {
+				return "#"
+			}
+			return path
+		},
+		"dict": func(values ...string) map[string]string {
+			result := make(map[string]string)
+			if len(values)%2 != 0 {
+				return result
+			}
+
+			for i := 0; i < len(values); i += 2 {
+				key := strings.TrimSpace(values[i])
+				if key == "" {
+					continue
+				}
+				result[key] = values[i+1]
+			}
+
+			return result
 		},
 	}
 

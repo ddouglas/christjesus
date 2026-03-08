@@ -24,15 +24,15 @@
 
     <div class="mt-6 flex flex-wrap gap-3">
       {{if .ShowRetryCTA}}
-      <a href="/need/{{.NeedID}}/donate"
+      <a href="{{route "need.donate" (dict "id" .NeedID)}}"
         class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
         Try Donation Again
       </a>
       {{end}}
-      <a href="/need/{{.NeedID}}" class="inline-flex h-9 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+      <a href="{{route "need.detail" (dict "id" .NeedID)}}" class="inline-flex h-9 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
         Back to Need Details
       </a>
-      <a href="/browse" class="inline-flex h-9 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+      <a href="{{route "browse" nil}}" class="inline-flex h-9 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
         Browse More Needs
       </a>
     </div>
