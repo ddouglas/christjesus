@@ -19,7 +19,7 @@
   </div>
   {{end}}
 
-  <form method="POST" action="/register/confirm" class="mt-8 space-y-6">
+  <form method="POST" action="{{route "register.confirm" nil}}" class="mt-8 space-y-6">
 
     {{if .Email}}
     <input type="hidden" name="email" value="{{.Email}}" />
@@ -43,7 +43,7 @@
 
   <div class="mt-6 text-center text-sm text-muted-foreground">
     <p>Didn’t get a code?</p>
-    <form method="POST" action="/register/confirm/resend" class="mt-2">
+    <form method="POST" action="{{route "register.confirm.resend" nil}}" class="mt-2">
       <input type="hidden" name="email" value="{{.Email}}" />
       <button type="submit" class="font-medium text-[color:var(--cj-accent)] hover:underline">
         Request a new code

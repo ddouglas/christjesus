@@ -20,14 +20,17 @@ const (
 	RouteProfileNeedDelete      RouteName = "profile.need.delete"
 	RouteProfileDonationReceipt RouteName = "profile.donation.receipt"
 
-	RouteOnboarding                  RouteName = "onboarding"
-	RouteOnboardingDonorWelcome      RouteName = "onboarding.donor.welcome"
-	RouteOnboardingDonorPreferences  RouteName = "onboarding.donor.preferences"
-	RouteOnboardingDonorConfirmation RouteName = "onboarding.donor.confirmation"
+	RouteOnboarding                    RouteName = "onboarding"
+	RouteOnboardingDonorWelcome        RouteName = "onboarding.donor.welcome"
+	RouteOnboardingDonorPreferences    RouteName = "onboarding.donor.preferences"
+	RouteOnboardingDonorConfirmation   RouteName = "onboarding.donor.confirmation"
+	RouteOnboardingSponsorIndividual   RouteName = "onboarding.sponsor.individual.welcome"
+	RouteOnboardingSponsorOrganization RouteName = "onboarding.sponsor.organization.welcome"
 
 	RouteOnboardingNeedWelcome         RouteName = "onboarding.need.welcome"
 	RouteOnboardingNeedLocation        RouteName = "onboarding.need.location"
 	RouteOnboardingNeedCategories      RouteName = "onboarding.need.categories"
+	RouteOnboardingNeedDetails         RouteName = "onboarding.need.details"
 	RouteOnboardingNeedStory           RouteName = "onboarding.need.story"
 	RouteOnboardingNeedDocuments       RouteName = "onboarding.need.documents"
 	RouteOnboardingNeedDocumentsUpload RouteName = "onboarding.need.documents.upload"
@@ -65,9 +68,12 @@ var routePatterns = map[RouteName]string{
 	RouteOnboardingDonorWelcome:        "/onboarding/donor/welcome",
 	RouteOnboardingDonorPreferences:    "/onboarding/donor/preferences",
 	RouteOnboardingDonorConfirmation:   "/onboarding/donor/confirmation",
+	RouteOnboardingSponsorIndividual:   "/onboarding/sponsor/individual/welcome",
+	RouteOnboardingSponsorOrganization: "/onboarding/sponsor/organization/welcome",
 	RouteOnboardingNeedWelcome:         "/onboarding/need/{needID}/welcome",
 	RouteOnboardingNeedLocation:        "/onboarding/need/{needID}/location",
 	RouteOnboardingNeedCategories:      "/onboarding/need/{needID}/categories",
+	RouteOnboardingNeedDetails:         "/onboarding/need/{needID}/details",
 	RouteOnboardingNeedStory:           "/onboarding/need/{needID}/story",
 	RouteOnboardingNeedDocuments:       "/onboarding/need/{needID}/documents",
 	RouteOnboardingNeedDocumentsUpload: "/onboarding/need/{needID}/documents/upload",

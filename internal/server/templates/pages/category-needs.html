@@ -3,7 +3,7 @@
 
 <div class="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
   <div class="mb-6 text-sm text-muted-foreground">
-    <a href="/">Home</a> / <a href="{{.BackHref}}">Categories</a> / <span class="text-foreground">{{.Category.Name}}</span>
+    <a href="{{route "home" nil}}">Home</a> / <a href="{{.BackHref}}">Categories</a> / <span class="text-foreground">{{.Category.Name}}</span>
   </div>
 
   <div class="mb-8 overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 text-white">

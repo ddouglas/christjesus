@@ -18,7 +18,7 @@
 {{end}}
 
 {{define "component.browse-results"}}
-<div id="browse-results" class="" {{if .LoadResultsOnRender}}hx-get="/browse" hx-trigger="load" hx-target="this" hx-select="#browse-results" hx-swap="outerHTML" hx-indicator="#browse-loading"
+<div id="browse-results" class="" {{if .LoadResultsOnRender}}hx-get="{{route "browse" nil}}" hx-trigger="load" hx-target="this" hx-select="#browse-results" hx-swap="outerHTML" hx-indicator="#browse-loading"
   hx-include="#browse-filter-form" {{end}}>
   <div id="browse-loading" class="htmx-indicator rounded-xl border border-border bg-card px-6 py-10 text-center text-card-foreground shadow-sm">
     <div class="mx-auto inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -75,13 +75,13 @@
           <div class="inline-flex items-center rounded-md border border-border bg-white p-1 text-sm">
             <button type="button"
               class="inline-flex h-8 items-center justify-center rounded px-3 transition-colors {{if eq .Filters.ViewMode "grid"}}bg-[color:var(--cj-primary)] text-white{{else}}text-foreground hover:bg-muted{{end}}"
-              hx-get="/browse" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading" hx-include="#browse-filter-form"
+              hx-get="{{route "browse" nil}}" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading" hx-include="#browse-filter-form"
               hx-on:click="document.getElementById('browse-view-input').value='grid'">
               Grid View
             </button>
             <button type="button"
               class="inline-flex h-8 items-center justify-center rounded px-3 transition-colors {{if eq .Filters.ViewMode "list"}}bg-[color:var(--cj-primary)] text-white{{else}}text-foreground hover:bg-muted{{end}}"
-              hx-get="/browse" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading" hx-include="#browse-filter-form"
+              hx-get="{{route "browse" nil}}" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading" hx-include="#browse-filter-form"
               hx-on:click="document.getElementById('browse-view-input').value='list'">
               List View
             </button>
@@ -89,7 +89,7 @@
 
           <select id="browse-sort-select"
             class="flex h-9 min-w-[190px] items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            hx-get="/browse" hx-trigger="change" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading"
+            hx-get="{{route "browse" nil}}" hx-trigger="change" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading"
             hx-include="#browse-filter-form" hx-on:change="document.getElementById('browse-sort-input').value=this.value">
             <option value="urgency" {{if eq .Filters.SortBy "urgency"}}selected{{end}}>Most urgent</option>
             <option value="newest" {{if eq .Filters.SortBy "newest"}}selected{{end}}>Newest first</option>
