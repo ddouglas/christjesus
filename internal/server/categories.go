@@ -45,9 +45,10 @@ func (s *Service) handleCategories(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		slug := strings.TrimSpace(category.Slug)
+		slug := normalizedCategorySlug(category)
 		if slug == "" {
-			slug = slugifyCategoryName(category.Name)
+			s.logger.WithField("category_id", category.ID).Warn("skipping category with empty slug")
+			continue
 		}
 
 		items = append(items, &types.CategoryListItem{
@@ -57,11 +58,11 @@ func (s *Service) handleCategories(w http.ResponseWriter, r *http.Request) {
 			Description: category.Description,
 			Icon:        category.Icon,
 			NeedCount:   countsByCategoryID[category.ID],
-			Href:        "/category/" + slug + cityQuery,
+			Href:        s.route(RouteCategoryNeeds, map[string]string{"slug": slug}) + cityQuery,
 		})
 	}
 
-	browseHref := "/browse"
+	browseHref := s.route(RouteBrowse, nil)
 	if cityQuery != "" {
 		browseHref += cityQuery
 	}
@@ -114,8 +115,8 @@ func (s *Service) handleCategoryNeeds(w http.ResponseWriter, r *http.Request) {
 		cityQuery = "?city=" + url.QueryEscape(city)
 	}
 
-	backHref := "/categories"
-	browseHref := "/browse"
+	backHref := s.route(RouteCategories, nil)
+	browseHref := s.route(RouteBrowse, nil)
 	if cityQuery != "" {
 		backHref += cityQuery
 		browseHref += cityQuery
@@ -134,6 +135,19 @@ func (s *Service) handleCategoryNeeds(w http.ResponseWriter, r *http.Request) {
 		s.internalServerError(w)
 		return
 	}
+}
+
+func normalizedCategorySlug(category *types.NeedCategory) string {
+	if category == nil {
+		return ""
+	}
+
+	slug := strings.TrimSpace(category.Slug)
+	if slug == "" {
+		slug = slugifyCategoryName(category.Name)
+	}
+
+	return strings.TrimSpace(slug)
 }
 
 func slugifyCategoryName(name string) string {

@@ -146,7 +146,7 @@
             <div class="text-xs font-medium text-muted-foreground">{{.FundingPercent}}% funded</div>
           </div>
 
-          <a href="/need/{{.ID}}/donate"
+          <a href="{{route "need.donate" (dict "id" .ID)}}"
             class="inline-flex h-10 w-full items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
             Donate to this Need
           </a>
@@ -200,7 +200,7 @@
     {{else}}
       <div class="rounded-xl border border-border bg-card px-6 py-8 text-center text-card-foreground shadow-sm">
         <p class="text-sm text-muted-foreground">No related needs found right now.</p>
-        <a href="/browse"
+        <a href="{{route "browse" nil}}"
           class="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
           Browse Other Needs
         </a>

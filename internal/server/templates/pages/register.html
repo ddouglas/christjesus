@@ -15,7 +15,7 @@
   {{end}}
   {{end}}
 
-  <form method="POST" action="/register" class="mt-8 space-y-6">
+  <form method="POST" action="{{route "register" nil}}" class="mt-8 space-y-6">
     <div class="space-y-2">
       <label for="given_name" class="text-sm font-medium text-foreground">
         First Name
@@ -105,7 +105,7 @@
 
   <p class="mt-6 text-center text-sm text-muted-foreground">
     Already have an account?
-    <a href="/login" class="font-medium text-[color:var(--cj-accent)] hover:underline">Log in</a>
+    <a href="{{route "login" nil}}" class="font-medium text-[color:var(--cj-accent)] hover:underline">Log in</a>
   </p>
 </div>
 

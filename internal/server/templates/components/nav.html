@@ -1,14 +1,14 @@
 {{define "component.nav"}}
 <header class="border-b border-border bg-white/80 backdrop-blur">
   <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 md:px-6">
-    <a href="/" class="flex items-center gap-2">
+    <a href="{{route "home" nil}}" class="flex items-center gap-2">
       <span class="text-xl font-semibold text-[color:var(--cj-primary)]">ChristJesus.app</span>
     </a>
     <nav class="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-      <a href="/browse" class="transition-colors hover:text-foreground">Browse Needs</a>
-      <a href="/categories" class="transition-colors hover:text-foreground">Categories</a>
-      <a href="/map" class="transition-colors hover:text-foreground">Map</a>
-      <a href="/guidelines" class="transition-colors hover:text-foreground">Guidelines</a>
+      <a href="{{route "browse" nil}}" class="transition-colors hover:text-foreground">Browse Needs</a>
+      <a href="{{route "categories" nil}}" class="transition-colors hover:text-foreground">Categories</a>
+      <a href="{{route "map" nil}}" class="transition-colors hover:text-foreground">Map</a>
+      <a href="{{route "guidelines" nil}}" class="transition-colors hover:text-foreground">Guidelines</a>
     </nav>
     <div class="flex items-center gap-3">
       {{if .Navbar.IsAuthenticated}}
@@ -19,20 +19,20 @@
             <img src="{{.Navbar.AvatarURL}}" alt="Profile" class="h-full w-full object-cover" />
           </summary>
           <div class="absolute right-0 z-20 mt-2 w-44 rounded-md border border-border bg-[color:var(--popover)] p-1 opacity-100 shadow-lg">
-            <a href="/profile" class="block rounded px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted">Profile</a>
+            <a href="{{route "profile" nil}}" class="block rounded px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted">Profile</a>
             <div class="my-1 border-t border-border"></div>
-            <form method="POST" action="/logout">
+            <form method="POST" action="{{route "logout" nil}}">
               <button type="submit" class="block w-full rounded px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted">Log Out</button>
             </form>
           </div>
         </details>
       </div>
       {{else}}
-        <a href="/login" class="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex">Sign In</a>
+        <a href="{{route "login" nil}}" class="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex">Sign In</a>
         {{end}}
 
         <!--
-      <a href="/share"
+      <a href="{{route "share" nil}}"
         class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">Share
         Your Story</a>
       -->

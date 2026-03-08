@@ -172,9 +172,14 @@ func buildDonationReceiptPDF(summary types.ProfileDonationSummary, donorName, do
 	pdf.CellFormat(0, 8, "Need", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 11)
 	pdf.MultiCell(0, 7, safeNeedLabel, "", "L", false)
-	needURL := strings.TrimRight(strings.TrimSpace(appBaseURL), "/") + "/need/" + summary.NeedID
-	if strings.TrimSpace(appBaseURL) == "" {
-		needURL = "/need/" + summary.NeedID
+	needPath, err := BuildRoute(RouteNeedDetail, map[string]string{"id": summary.NeedID})
+	if err != nil {
+		needPath = "/need/" + summary.NeedID
+	}
+
+	needURL := needPath
+	if baseURL := strings.TrimRight(strings.TrimSpace(appBaseURL), "/"); baseURL != "" {
+		needURL = baseURL + needPath
 	}
 	pdf.SetTextColor(20, 20, 20)
 	pdf.CellFormat(22, 7, "Need Link:", "", 0, "L", false, 0, "")

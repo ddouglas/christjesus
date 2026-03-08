@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -107,7 +108,7 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	}
 	if donorUserID == nil {
 		s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
 	}
 
@@ -146,8 +147,10 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	successURL := fmt.Sprintf("%s/need/%s/donate/confirmation?intent_id=%s", strings.TrimRight(s.config.AppBaseURL, "/"), needID, intent.ID)
-	cancelURL := fmt.Sprintf("%s/need/%s/donate", strings.TrimRight(s.config.AppBaseURL, "/"), needID)
+	successQuery := make(url.Values)
+	successQuery.Set("intent_id", intent.ID)
+	successURL := s.absoluteRoute(RouteNeedDonateConfirmation, map[string]string{"id": needID}, successQuery)
+	cancelURL := s.absoluteRoute(RouteNeedDonate, map[string]string{"id": needID}, nil)
 
 	donorEmail := s.resolveDonorCheckoutEmail(ctx, r, donorUserID)
 
@@ -233,7 +236,7 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 	needID := r.PathValue("id")
 	intentID := strings.TrimSpace(r.URL.Query().Get("intent_id"))
 	if intentID == "" {
-		http.Redirect(w, r, fmt.Sprintf("/need/%s/donate", needID), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteNeedDonate, map[string]string{"id": needID}), http.StatusSeeOther)
 		return
 	}
 

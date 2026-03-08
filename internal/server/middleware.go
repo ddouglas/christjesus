@@ -142,7 +142,7 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		userID, ok := r.Context().Value(contextKeyUserID).(string)
 		if !ok || userID == "" {
 			s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 			return
 		}
 

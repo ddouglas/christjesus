@@ -58,7 +58,7 @@
             <p class="mt-1 text-sm text-muted-foreground">Current step: {{.CurrentStep}}</p>
             <p class="text-sm text-muted-foreground">Status: {{.Status}}</p>
             {{if .CanDelete}}
-            <form method="POST" action="/profile/needs/{{.NeedID}}/delete" class="mt-3">
+            <form method="POST" action="{{route "profile.need.delete" (dict "needID" .NeedID)}}" class="mt-3">
               <button type="submit"
                 class="inline-flex h-8 items-center justify-center rounded-md border border-[color:var(--cj-error)]/40 px-3 text-xs font-medium text-[color:var(--cj-error)] transition-colors hover:bg-[color:var(--cj-error)]/10">
                 Delete Draft
@@ -111,9 +111,10 @@
                 <td class="px-4 py-3 text-sm text-muted-foreground">{{.CreatedAt}}</td>
                 <td class="px-4 py-3 text-sm">
                   <div class="flex items-center gap-3">
-                    <a href="/need/{{.NeedID}}" class="font-medium text-[color:var(--cj-primary)] hover:underline">View need</a>
+                    <a href="{{route "need.detail" (dict "id" .NeedID)}}" class="font-medium text-[color:var(--cj-primary)] hover:underline">View need</a>
                     {{if .IsFinalized}}
-                    <a href="/profile/donations/{{.IntentID}}/receipt" target="_blank" rel="noopener noreferrer" class="font-medium text-[color:var(--cj-primary)] hover:underline">View receipt</a>
+                    <a href="{{route "profile.donation.receipt" (dict "intentID" .IntentID)}}" target="_blank" rel="noopener noreferrer"
+                      class="font-medium text-[color:var(--cj-primary)] hover:underline">View receipt</a>
                     {{else}}
                       <span class="text-muted-foreground">Receipt pending</span>
                       {{end}}

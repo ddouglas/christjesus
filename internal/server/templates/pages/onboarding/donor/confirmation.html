@@ -25,11 +25,11 @@
       </div>
 
       <div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-        <a href="/browse?onboarding=true"
+        <a href="{{routeq "browse" nil (dict "onboarding" "true")}}"
           class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">
           Browse Needs
         </a>
-        <a href="/onboarding/donor/preferences"
+        <a href="{{route "onboarding.donor.preferences" nil}}"
           class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">
           Edit Preferences
         </a>

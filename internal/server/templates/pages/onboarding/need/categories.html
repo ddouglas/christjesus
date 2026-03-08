@@ -21,7 +21,7 @@
 
   <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
     {{if .Categories}}
-    <form id="categories-form" action="/onboarding/need/{{.Need.ID}}/categories" method="post" class="space-y-6 px-6">
+    <form id="categories-form" action="{{route "onboarding.need.categories" (dict "needID" .Need.ID)}}" method="post" class="space-y-6 px-6">
       <div class="space-y-3">
         <p class="text-sm font-semibold text-foreground">Primary category</p>
         <div class="grid gap-3 md:grid-cols-2">
@@ -65,7 +65,7 @@
   </div>
 
   <div class="mt-6 flex items-center justify-between">
-    <a href="/onboarding/need/{{.Need.ID}}/location"
+    <a href="{{route "onboarding.need.location" (dict "needID" .Need.ID)}}"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
       Back
     </a>

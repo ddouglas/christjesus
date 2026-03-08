@@ -4,7 +4,6 @@ import (
 	"christjesus/internal"
 	"christjesus/pkg/types"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/mail"
 	"net/url"
@@ -23,7 +22,7 @@ func (s *Service) handleGetRegister(w http.ResponseWriter, r *http.Request) {
 	_, err := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
 	if err == nil {
 		s.logger.Info("user is already logged in, redirecting to home")
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
 		return
 	}
 
@@ -99,7 +98,7 @@ func (s *Service) handlePostRegister(w http.ResponseWriter, r *http.Request) {
 	s.setRegisterConfirmCookie(w, email, 30*time.Minute)
 
 	// Redirect to onboarding
-	http.Redirect(w, r, fmt.Sprintf("/register/confirm?%s", v.Encode()), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteRegisterConfirm, nil, v), http.StatusSeeOther)
 
 }
 
@@ -115,7 +114,7 @@ func (s *Service) handleGetRegisterConfirm(w http.ResponseWriter, r *http.Reques
 	if email == "" {
 		v := url.Values{}
 		v.Set("confirm_required", "true")
-		http.Redirect(w, r, fmt.Sprintf("/login?%s", v.Encode()), http.StatusSeeOther)
+		http.Redirect(w, r, s.routeWithQuery(RouteLogin, nil, v), http.StatusSeeOther)
 		return
 	}
 
@@ -151,7 +150,7 @@ func (s *Service) handlePostRegisterConfirm(w http.ResponseWriter, r *http.Reque
 	if email == "" {
 		v := url.Values{}
 		v.Set("confirm_required", "true")
-		http.Redirect(w, r, fmt.Sprintf("/login?%s", v.Encode()), http.StatusSeeOther)
+		http.Redirect(w, r, s.routeWithQuery(RouteLogin, nil, v), http.StatusSeeOther)
 		return
 	}
 
@@ -189,7 +188,9 @@ func (s *Service) handlePostRegisterConfirm(w http.ResponseWriter, r *http.Reque
 
 	// Redirect to login after successful confirmation
 	s.clearRegisterConfirmCookie(w)
-	http.Redirect(w, r, "/login?confirmed=true", http.StatusSeeOther)
+	v := url.Values{}
+	v.Set("confirmed", "true")
+	http.Redirect(w, r, s.routeWithQuery(RouteLogin, nil, v), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostRegisterConfirmResend(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +209,7 @@ func (s *Service) handlePostRegisterConfirmResend(w http.ResponseWriter, r *http
 	if email == "" {
 		v := url.Values{}
 		v.Set("confirm_required", "true")
-		http.Redirect(w, r, fmt.Sprintf("/login?%s", v.Encode()), http.StatusSeeOther)
+		http.Redirect(w, r, s.routeWithQuery(RouteLogin, nil, v), http.StatusSeeOther)
 		return
 	}
 
@@ -250,7 +251,7 @@ func (s *Service) handlePostRegisterConfirmResend(w http.ResponseWriter, r *http
 	v := url.Values{}
 	v.Set("email", email)
 	v.Set("resent", "true")
-	http.Redirect(w, r, fmt.Sprintf("/register/confirm?%s", v.Encode()), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteRegisterConfirm, nil, v), http.StatusSeeOther)
 }
 
 func (s *Service) setRegisterConfirmCookie(w http.ResponseWriter, email string, age time.Duration) {

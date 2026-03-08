@@ -41,7 +41,7 @@ func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
 			s.redirectNeedOnboarding(ctx, w, r, userID)
 			return
 		case string(types.UserTypeDonor):
-			http.Redirect(w, r, "/onboarding/donor/preferences", http.StatusSeeOther)
+			http.Redirect(w, r, s.route(RouteOnboardingDonorPreferences, nil), http.StatusSeeOther)
 			return
 		}
 	}
@@ -97,7 +97,7 @@ func (s *Service) handlePostOnboarding(w http.ResponseWriter, r *http.Request) {
 			s.internalServerError(w)
 			return
 		}
-		http.Redirect(w, r, "/onboarding/donor/welcome", http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboardingDonorWelcome, nil), http.StatusSeeOther)
 		return
 	}
 
@@ -133,7 +133,7 @@ func (s *Service) handleCreateNeed(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/welcome", need.ID), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedWelcome, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 }
 
 func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWriter, r *http.Request, userID string) {
@@ -155,7 +155,7 @@ func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWri
 	}
 
 	if need.Status == types.NeedStatusSubmitted {
-		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/confirmation", need.ID), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 		return
 	}
 
@@ -177,7 +177,20 @@ func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWri
 		stepPath = "confirmation"
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/%s", need.ID, stepPath), http.StatusSeeOther)
+	nextRouteByStep := map[string]RouteName{
+		"welcome":      RouteOnboardingNeedWelcome,
+		"location":     RouteOnboardingNeedLocation,
+		"categories":   RouteOnboardingNeedCategories,
+		"story":        RouteOnboardingNeedStory,
+		"documents":    RouteOnboardingNeedDocuments,
+		"review":       RouteOnboardingNeedReview,
+		"confirmation": RouteOnboardingNeedConfirmation,
+	}
+	nextRoute, ok := nextRouteByStep[stepPath]
+	if !ok {
+		nextRoute = RouteOnboardingNeedWelcome
+	}
+	http.Redirect(w, r, s.route(nextRoute, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 }
 
 func (s *Service) setUserType(ctx context.Context, userType string) error {
@@ -208,7 +221,7 @@ func (s *Service) redirectIfNeedSubmitted(w http.ResponseWriter, r *http.Request
 		return false
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/confirmation", need.ID), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 	return true
 }
 
@@ -257,7 +270,7 @@ func (s *Service) handlePostOnboardingNeedWelcome(w http.ResponseWriter, r *http
 	}
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepWelcome)
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/location", need.ID), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedLocation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 
 }
 
@@ -462,7 +475,7 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepLocation)
 
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/categories", need.ID), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedCategories, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 }
 
 func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *http.Request) {
@@ -605,7 +618,7 @@ func (s *Service) handlePostOnboardingNeedCategories(w http.ResponseWriter, r *h
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepCategories)
 
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/story", need.ID), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedStory, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 }
 
 func (s *Service) handleGetOnboardingNeedStory(w http.ResponseWriter, r *http.Request) {
@@ -860,13 +873,13 @@ func (s *Service) handleFile(ctx context.Context, needID, userID string, fileHea
 func (s *Service) redirectDocsWithError(w http.ResponseWriter, r *http.Request, needID, msg string) {
 	q := url.Values{}
 	q.Set("error", msg)
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/documents?%s", needID, q.Encode()), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedDocuments, map[string]string{"needID": needID}, q), http.StatusSeeOther)
 }
 
 func (s *Service) redirectDocsWithNotice(w http.ResponseWriter, r *http.Request, needID, msg string) {
 	q := url.Values{}
 	q.Set("notice", msg)
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/documents?%s", needID, q.Encode()), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedDocuments, map[string]string{"needID": needID}, q), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostOnboardingNeedDocuments(w http.ResponseWriter, r *http.Request) {
@@ -913,7 +926,7 @@ func (s *Service) handlePostOnboardingNeedDocuments(w http.ResponseWriter, r *ht
 	}
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepDocuments)
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/review", needID), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedReview, map[string]string{"needID": needID}), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostOnboardingNeedDocumentMetadata(w http.ResponseWriter, r *http.Request) {
@@ -1320,7 +1333,7 @@ func (s *Service) handlePostOnboardingNeedStory(w http.ResponseWriter, r *http.R
 	// Record progress
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepStory)
 
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/documents", need.ID), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedDocuments, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostOnboardingNeedReview(w http.ResponseWriter, r *http.Request) {
@@ -1336,7 +1349,7 @@ func (s *Service) handlePostOnboardingNeedReview(w http.ResponseWriter, r *http.
 	if r.FormValue("agreeTerms") != "on" || r.FormValue("agreeVerification") != "on" {
 		q := url.Values{}
 		q.Set("error", "Please agree to the terms and verification statements before submitting.")
-		http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/review?%s", needID, q.Encode()), http.StatusSeeOther)
+		http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedReview, map[string]string{"needID": needID}, q), http.StatusSeeOther)
 		return
 	}
 
@@ -1364,7 +1377,7 @@ func (s *Service) handlePostOnboardingNeedReview(w http.ResponseWriter, r *http.
 	}
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepReview)
-	http.Redirect(w, r, fmt.Sprintf("/onboarding/need/%s/confirmation", needID), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": needID}), http.StatusSeeOther)
 }
 
 // Donor onboarding handlers
@@ -1550,7 +1563,7 @@ func (s *Service) handlePostOnboardingDonorPreferences(w http.ResponseWriter, r 
 		return
 	}
 
-	http.Redirect(w, r, "/onboarding/donor/confirmation", http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingDonorConfirmation, nil), http.StatusSeeOther)
 }
 
 func (s *Service) handleGetOnboardingDonorConfirmation(w http.ResponseWriter, r *http.Request) {

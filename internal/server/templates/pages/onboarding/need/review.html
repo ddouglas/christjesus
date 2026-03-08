@@ -39,7 +39,7 @@
             <p class="text-sm font-semibold text-foreground">Location</p>
             <p class="text-xs text-muted-foreground">How your location and contact preferences appear</p>
           </div>
-          <a href="/onboarding/need/{{.ID}}/location" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
+          <a href="{{route "onboarding.need.location" (dict "needID" .ID)}}" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
         </div>
         <div class="mt-4 space-y-3 border-t border-border px-5 pt-4 text-sm">
           <div>
@@ -92,7 +92,7 @@
             <p class="text-sm font-semibold text-foreground">Categories</p>
             <p class="text-xs text-muted-foreground">Primary and secondary need categories</p>
           </div>
-          <a href="/onboarding/need/{{.ID}}/categories" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
+          <a href="{{route "onboarding.need.categories" (dict "needID" .ID)}}" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
         </div>
         <div class="mt-4 space-y-3 border-t border-border px-5 pt-4 text-sm">
           <div>
@@ -125,7 +125,7 @@
           <p class="text-sm font-semibold text-foreground">Amount & Story</p>
           <p class="text-xs text-muted-foreground">The request amount and personal context shared</p>
         </div>
-        <a href="/onboarding/need/{{.ID}}/story" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
+        <a href="{{route "onboarding.need.story" (dict "needID" .ID)}}" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
       </div>
       <div class="mt-4 grid gap-4 border-t border-border px-5 pt-4 md:grid-cols-3">
         <div class="rounded-lg border border-border bg-slate-50 p-4 md:col-span-1">
@@ -159,7 +159,7 @@
           <p class="text-sm font-semibold text-foreground">Documents</p>
           <p class="text-xs text-muted-foreground">Supporting files uploaded for review</p>
         </div>
-        <a href="/onboarding/need/{{.ID}}/documents" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
+        <a href="{{route "onboarding.need.documents" (dict "needID" .ID)}}" class="text-xs font-medium text-[color:var(--cj-accent)] hover:underline">Edit</a>
       </div>
       <div class="mt-4 border-t border-border px-5 pt-4">
         {{if .Documents}}
@@ -192,15 +192,15 @@
       </div>
     </section>
 
-    <form id="review-form" action="/onboarding/need/{{.ID}}/review" method="post">
+    <form id="review-form" action="{{route "onboarding.need.review" (dict "needID" .ID)}}" method="post">
       <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
         <div class="space-y-4 px-6">
           <p class="text-sm font-semibold text-foreground">Final acknowledgements</p>
           <p class="text-xs text-muted-foreground">
             Review these before submitting:
-            <a href="/terms" class="text-[color:var(--cj-accent)] hover:underline">Terms of Service</a>
+            <a href="{{route "terms" nil}}" class="text-[color:var(--cj-accent)] hover:underline">Terms of Service</a>
             and
-            <a href="/privacy" class="text-[color:var(--cj-accent)] hover:underline">Privacy Policy</a>
+            <a href="{{route "privacy" nil}}" class="text-[color:var(--cj-accent)] hover:underline">Privacy Policy</a>
           </p>
 
           <label class="flex w-full cursor-pointer items-start gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-muted/50">
@@ -218,7 +218,7 @@
   </div>
 
   <div class="mt-6 flex items-center justify-between">
-    <a href="/onboarding/need/{{.ID}}/documents"
+    <a href="{{route "onboarding.need.documents" (dict "needID" .ID)}}"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
       Back
     </a>
