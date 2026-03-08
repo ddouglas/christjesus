@@ -10,7 +10,7 @@ import (
 func (s *Service) handleGetAdminNeeds(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	needs, err := s.needsRepo.BrowseNeeds(ctx)
+	needs, err := s.needsRepo.ModerationQueueNeeds(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch needs for admin queue")
 		s.internalServerError(w)
@@ -20,10 +20,6 @@ func (s *Service) handleGetAdminNeeds(w http.ResponseWriter, r *http.Request) {
 	items := make([]*types.AdminNeedQueueItem, 0, len(needs))
 	for _, need := range needs {
 		if need == nil {
-			continue
-		}
-
-		if need.Status != types.NeedStatusSubmitted && need.Status != types.NeedStatusUnderReview {
 			continue
 		}
 
