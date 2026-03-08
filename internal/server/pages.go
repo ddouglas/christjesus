@@ -48,8 +48,8 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 		Error:        r.URL.Query().Get("error"),
 		FeaturedNeed: featuredNeed,
 		Needs:        featuredNeeds,
-		Categories:   sampleCategories(),
-		Stats:        getStats(),
+		Categories:   s.buildHomeCategories(ctx),
+		Stats:        s.buildHomeStats(ctx),
 		Steps:        getSteps(),
 	}
 
@@ -59,6 +59,74 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 		s.internalServerError(w)
 		return
 	}
+}
+
+func (s *Service) buildHomeCategories(ctx context.Context) []types.CategoryData {
+	categories, err := s.categoryRepo.Categories(ctx)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to fetch categories for home page")
+		return sampleCategories()
+	}
+
+	categoryIDs := make([]string, 0, len(categories))
+	for _, category := range categories {
+		if category == nil || strings.TrimSpace(category.ID) == "" {
+			continue
+		}
+		categoryIDs = append(categoryIDs, category.ID)
+	}
+
+	countsByCategoryID, err := s.needCategoryAssignmentsRepo.PrimaryNeedCountsByCategoryIDs(ctx, categoryIDs)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to fetch category counts for home page")
+		countsByCategoryID = map[string]int{}
+	}
+
+	homeCategories := make([]types.CategoryData, 0, len(categories))
+	for _, category := range categories {
+		if category == nil {
+			continue
+		}
+
+		icon := "home"
+		if category.Icon != nil && strings.TrimSpace(*category.Icon) != "" {
+			icon = strings.TrimSpace(*category.Icon)
+		}
+
+		homeCategories = append(homeCategories, types.CategoryData{
+			Name:  category.Name,
+			Slug:  strings.TrimSpace(category.Slug),
+			Count: countsByCategoryID[category.ID],
+			Icon:  icon,
+		})
+	}
+
+	if len(homeCategories) == 0 {
+		return sampleCategories()
+	}
+
+	sort.SliceStable(homeCategories, func(i, j int) bool {
+		if homeCategories[i].Count != homeCategories[j].Count {
+			return homeCategories[i].Count > homeCategories[j].Count
+		}
+		return strings.ToLower(homeCategories[i].Name) < strings.ToLower(homeCategories[j].Name)
+	})
+
+	if len(homeCategories) > 4 {
+		homeCategories = homeCategories[:4]
+	}
+
+	return homeCategories
+}
+
+func (s *Service) buildHomeStats(ctx context.Context) types.StatsData {
+	stats, err := s.donationIntentRepo.HomeImpactStats(ctx)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to fetch home impact stats")
+		return types.StatsData{}
+	}
+
+	return stats
 }
 
 func (s *Service) buildHomeNeedCards(ctx context.Context, needs []*types.Need) []*types.BrowseNeedCard {
