@@ -4,6 +4,7 @@ import "time"
 
 type NavbarData struct {
 	IsAuthenticated bool
+	IsAdmin         bool
 	UserID          string
 	UserEmail       string
 	UserName        string
@@ -316,4 +317,8 @@ type ProfileDonationSummary struct {
 	IsFinalized bool
 	IsAnonymous bool
 	CreatedAt   string
+}
+
+type AdminDashboardPageData struct {
+	BasePageData
 }

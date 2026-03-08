@@ -13,3 +13,7 @@ output "issuer_url" {
 output "documents_bucket" {
   value = aws_s3_bucket.documents.bucket
 }
+
+output "cognito_admin_group_name" {
+  value = aws_cognito_user_group.admin.name
+}

@@ -9,6 +9,7 @@
       <a href="{{route "categories" nil}}" class="transition-colors hover:text-foreground">Categories</a>
       <a href="{{route "map" nil}}" class="transition-colors hover:text-foreground">Map</a>
       <a href="{{route "guidelines" nil}}" class="transition-colors hover:text-foreground">Guidelines</a>
+      {{if .Navbar.IsAdmin}}<a href="{{route "admin.dashboard" nil}}" class="transition-colors hover:text-foreground">Admin</a>{{end}}
     </nav>
     <div class="flex items-center gap-3">
       {{if .Navbar.IsAuthenticated}}

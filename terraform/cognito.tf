@@ -60,3 +60,10 @@ resource "aws_cognito_user_pool_client" "pool_client" {
 
 }
 
+resource "aws_cognito_user_group" "admin" {
+  user_pool_id = aws_cognito_user_pool.user_pool.id
+  name         = "admin"
+  description  = "Admin users for ChristJesus app"
+  precedence   = 1
+}
+

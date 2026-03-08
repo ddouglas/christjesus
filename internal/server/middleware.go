@@ -19,11 +19,20 @@ const (
 	contextKeyUserID   contextKey = "user_id"
 	contextKeyEmail    contextKey = "email"
 	contextKeyUserName contextKey = "user_name"
+	contextKeyIsAdmin  contextKey = "is_admin"
 )
 
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
+}
+
+type AuthClaims struct {
+	UserID     string
+	Email      string
+	GivenName  string
+	FamilyName string
+	IsAdmin    bool
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
@@ -49,34 +58,37 @@ func (s *Service) LoggingMiddleware(next http.Handler) http.Handler {
 
 func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID, email, givenName, familyName, ok := s.authClaimsFromRequest(r)
+		claims, ok := s.authClaimsFromRequest(r)
 		if !ok {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		if err := s.userRepo.UpsertIdentity(r.Context(), userID, email, givenName, familyName); err != nil {
-			s.logger.WithError(err).WithField("user_id", userID).Warn("failed to sync user identity from token")
+		if err := s.userRepo.UpsertIdentity(r.Context(), claims.UserID, claims.Email, claims.GivenName, claims.FamilyName); err != nil {
+			s.logger.WithError(err).WithField("user_id", claims.UserID).Warn("failed to sync user identity from token")
 		}
 
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, contextKeyUserID, userID)
-		if email != "" {
-			ctx = context.WithValue(ctx, contextKeyEmail, email)
+		ctx = context.WithValue(ctx, contextKeyUserID, claims.UserID)
+		if claims.Email != "" {
+			ctx = context.WithValue(ctx, contextKeyEmail, claims.Email)
 		}
-		if givenName != "" {
-			ctx = context.WithValue(ctx, contextKeyUserName, givenName)
+		if claims.GivenName != "" {
+			ctx = context.WithValue(ctx, contextKeyUserName, claims.GivenName)
 		}
+		ctx = context.WithValue(ctx, contextKeyIsAdmin, claims.IsAdmin)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, string, string, bool) {
+func (s *Service) authClaimsFromRequest(r *http.Request) (AuthClaims, bool) {
+	empty := AuthClaims{}
+
 	// 1. Get cookie
 	cookie, err := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
 	if err != nil {
-		return "", "", "", "", false
+		return empty, false
 	}
 
 	// 2. Decrypt token
@@ -84,14 +96,14 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, string
 	err = s.cookie.Decode(internal.COOKIE_ACCESS_TOKEN_NAME, cookie.Value, &accessToken)
 	if err != nil {
 		s.logger.WithError(err).Debug("failed to decrypt access token")
-		return "", "", "", "", false
+		return empty, false
 	}
 
 	// 3. Validate token
 	set, err := s.jwksCache.Lookup(r.Context(), s.jwksURL)
 	if err != nil {
 		s.logger.WithError(err).Warn("failed to fetch JWKS")
-		return "", "", "", "", false
+		return empty, false
 	}
 
 	token, err := jwt.Parse(
@@ -103,17 +115,17 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, string
 	)
 	if err != nil {
 		s.logger.WithError(err).Debug("failed to parse JWT")
-		return "", "", "", "", false
+		return empty, false
 	}
 
 	userID, ok := token.Subject()
 	if !ok || userID == "" {
-		return "", "", "", "", false
+		return empty, false
 	}
 
 	var tokenUse string
 	if err := token.Get("token_use", &tokenUse); err != nil || tokenUse != "id" {
-		return "", "", "", "", false
+		return empty, false
 	}
 
 	var email string
@@ -133,7 +145,63 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (string, string, string
 	}
 	familyName = strings.TrimSpace(familyName)
 
-	return userID, email, givenName, familyName, true
+	isAdmin := false
+	if groups, ok := tokenStringSliceClaim(token, "cognito:groups"); ok {
+		adminGroup := strings.TrimSpace(s.config.CognitoAdminGroup)
+		if adminGroup != "" {
+			for _, group := range groups {
+				if strings.EqualFold(strings.TrimSpace(group), adminGroup) {
+					isAdmin = true
+					break
+				}
+			}
+		}
+	}
+
+	return AuthClaims{
+		UserID:     userID,
+		Email:      email,
+		GivenName:  givenName,
+		FamilyName: familyName,
+		IsAdmin:    isAdmin,
+	}, true
+}
+
+func tokenStringSliceClaim(token jwt.Token, claim string) ([]string, bool) {
+	var raw any
+	if err := token.Get(claim, &raw); err != nil {
+		return nil, false
+	}
+
+	switch v := raw.(type) {
+	case []string:
+		if len(v) == 0 {
+			return nil, false
+		}
+		return v, true
+	case []any:
+		out := make([]string, 0, len(v))
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				trimmed := strings.TrimSpace(s)
+				if trimmed != "" {
+					out = append(out, trimmed)
+				}
+			}
+		}
+		if len(out) == 0 {
+			return nil, false
+		}
+		return out, true
+	case string:
+		trimmed := strings.TrimSpace(v)
+		if trimmed == "" {
+			return nil, false
+		}
+		return []string{trimmed}, true
+	default:
+		return nil, false
+	}
 }
 
 // RequireAuth middleware checks for valid access token and adds user to context
@@ -157,6 +225,26 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		// Continue to the next handler
 		next.ServeHTTP(w, r)
 
+	})
+}
+
+// RequireAdmin middleware enforces authenticated admin access.
+func (s *Service) RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := r.Context().Value(contextKeyUserID).(string)
+		if !ok || userID == "" {
+			s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
+			http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+			return
+		}
+
+		isAdmin, ok := r.Context().Value(contextKeyIsAdmin).(bool)
+		if !ok || !isAdmin {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
 

@@ -438,8 +438,8 @@ func (s *Service) resolveDonorCheckoutEmail(ctx context.Context, r *http.Request
 		}
 	}
 
-	if _, email, _, _, ok := s.authClaimsFromRequest(r); ok {
-		trimmed := strings.TrimSpace(email)
+	if claims, ok := s.authClaimsFromRequest(r); ok {
+		trimmed := strings.TrimSpace(claims.Email)
 		if trimmed != "" {
 			return trimmed
 		}
