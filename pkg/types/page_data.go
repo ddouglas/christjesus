@@ -335,3 +335,18 @@ type AdminNeedQueueItem struct {
 	SubmittedAt string
 	ReviewHref  string
 }
+
+type AdminNeedReviewPageData struct {
+	BasePageData
+	Need      *Need
+	Timeline  []*AdminNeedTimelineItem
+	BackHref  string
+	ErrorText string
+}
+
+type AdminNeedTimelineItem struct {
+	When   string
+	Step   string
+	Actor  string
+	Source string
+}

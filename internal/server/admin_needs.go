@@ -33,7 +33,7 @@ func (s *Service) handleGetAdminNeeds(w http.ResponseWriter, r *http.Request) {
 			Status:      need.Status,
 			CreatedAt:   need.CreatedAt.Format(time.DateOnly),
 			SubmittedAt: submittedAt,
-			ReviewHref:  "/admin/needs/" + need.ID,
+			ReviewHref:  s.route(RouteAdminNeedReview, map[string]string{"id": need.ID}),
 		})
 	}
 

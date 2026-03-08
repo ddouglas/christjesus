@@ -1,0 +1,66 @@
+{{define "page.admin.need.review"}}
+{{template "header" .}}
+<section class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
+  <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Admin</p>
+        <h1 class="mt-2 text-2xl font-semibold text-foreground">Need Review</h1>
+      </div>
+      <a href="{{.BackHref}}" class="text-sm text-muted-foreground hover:text-foreground">Back to Queue</a>
+    </div>
+
+    {{if .Need}}
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Need ID</p>
+        <p class="mt-1 font-mono text-xs text-foreground">{{.Need.ID}}</p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Status</p>
+        <p class="mt-1 text-sm text-foreground">{{.Need.Status}}</p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Requested Amount</p>
+        <p class="mt-1 text-sm text-foreground">${{div .Need.AmountNeededCents 100}}</p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Raised Amount</p>
+        <p class="mt-1 text-sm text-foreground">${{div .Need.AmountRaisedCents 100}}</p>
+      </div>
+    </div>
+    {{end}}
+
+    <div class="mt-8">
+      <h2 class="text-lg font-semibold text-foreground">Timeline</h2>
+      {{if .Timeline}}
+      <div class="mt-4 overflow-x-auto">
+        <table class="min-w-full divide-y divide-border text-sm">
+          <thead>
+            <tr class="text-left text-muted-foreground">
+              <th class="py-2 pr-4">When</th>
+              <th class="py-2 pr-4">Event</th>
+              <th class="py-2 pr-4">Source</th>
+              <th class="py-2">Actor</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border">
+            {{range .Timeline}}
+            <tr>
+              <td class="py-3 pr-4">{{.When}}</td>
+              <td class="py-3 pr-4">{{.Step}}</td>
+              <td class="py-3 pr-4">{{.Source}}</td>
+              <td class="py-3">{{.Actor}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <p class="mt-4 text-sm text-muted-foreground">No timeline events found for this need yet.</p>
+      {{end}}
+    </div>
+  </div>
+</section>
+{{template "footer" .}}
+{{end}}

@@ -19,6 +19,7 @@ const (
 	RouteProfile                RouteName = "profile"
 	RouteAdmin                  RouteName = "admin.dashboard"
 	RouteAdminNeeds             RouteName = "admin.needs"
+	RouteAdminNeedReview        RouteName = "admin.need.review"
 	RouteProfileNeedDelete      RouteName = "profile.need.delete"
 	RouteProfileDonationReceipt RouteName = "profile.donation.receipt"
 
@@ -66,6 +67,7 @@ var routePatterns = map[RouteName]string{
 	RouteProfile:                       "/profile",
 	RouteAdmin:                         "/admin",
 	RouteAdminNeeds:                    "/admin/needs",
+	RouteAdminNeedReview:               "/admin/needs/:id",
 	RouteProfileNeedDelete:             "/profile/needs/:needID/delete",
 	RouteProfileDonationReceipt:        "/profile/donations/:intentID/receipt",
 	RouteOnboarding:                    "/onboarding",
