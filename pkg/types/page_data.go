@@ -339,11 +339,20 @@ type AdminNeedQueueItem struct {
 type AdminNeedReviewPageData struct {
 	BasePageData
 	Need             *Need
+	Documents        []*AdminNeedReviewDocument
 	Timeline         []*AdminNeedTimelineItem
 	BackHref         string
 	ModerateAction   string
 	Notice           string
 	Error            string
+}
+
+type AdminNeedReviewDocument struct {
+	ID         string
+	FileName   string
+	TypeLabel  string
+	UploadedAt string
+	Status     string
 }
 
 type AdminNeedTimelineItem struct {

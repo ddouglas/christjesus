@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"christjesus/pkg/types"
@@ -23,17 +24,23 @@ func (s *Service) handleGetAdminNeeds(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		needID := strings.TrimSpace(need.ID)
+		if needID == "" {
+			s.logger.Warn("skipping moderation queue row with empty need id")
+			continue
+		}
+
 		submittedAt := "-"
 		if need.SubmittedAt != nil {
 			submittedAt = need.SubmittedAt.Format(time.DateOnly)
 		}
 
 		items = append(items, &types.AdminNeedQueueItem{
-			NeedID:      need.ID,
+			NeedID:      needID,
 			Status:      need.Status,
 			CreatedAt:   need.CreatedAt.Format(time.DateOnly),
 			SubmittedAt: submittedAt,
-			ReviewHref:  s.route(RouteAdminNeedReview, map[string]string{"id": need.ID}),
+			ReviewHref:  s.route(RouteAdminNeedReview, map[string]string{"id": needID}),
 		})
 	}
 

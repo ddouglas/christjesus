@@ -25,11 +25,11 @@
         <tbody class="divide-y divide-border">
           {{range .Needs}}
           <tr>
-            <td class="py-3 pr-4 font-mono text-xs">{{.NeedID}}</td>
+            <td class="py-3 pr-4 font-mono text-xs"><a href="{{route "admin.need.review" (dict "id" .NeedID)}}" class="hover:underline">{{.NeedID}}</a></td>
             <td class="py-3 pr-4">{{.Status}}</td>
             <td class="py-3 pr-4">{{.SubmittedAt}}</td>
             <td class="py-3 pr-4">{{.CreatedAt}}</td>
-            <td class="py-3"><a href="{{.ReviewHref}}" class="text-[color:var(--cj-primary)] hover:underline">Open</a></td>
+            <td class="py-3"><a href="{{route "admin.need.review" (dict "id" .NeedID)}}" class="text-[color:var(--cj-primary)] hover:underline">Open</a></td>
           </tr>
           {{end}}
         </tbody>
