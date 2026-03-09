@@ -36,24 +36,19 @@
     </div>
 
     <div class="mt-8 rounded-xl border border-border bg-background p-4">
-      <h2 class="text-base font-semibold text-foreground">Moderation Actions</h2>
-      <form method="post" action="{{.ModerateAction}}" class="mt-4 space-y-3">
+      <div class="flex items-center justify-between gap-3">
         <div>
-          <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="reason">Reason</label>
-          <input id="reason" name="reason" type="text" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional summary reason" />
+          <h2 class="text-base font-semibold text-foreground">Moderation Actions</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Submit approve/reject/request changes in a focused modal.</p>
         </div>
-        <div>
-          <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="note">Note</label>
-          <textarea id="note" name="note" rows="3" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional moderation note"></textarea>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <button type="submit" name="action" value="approve"
-            class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-success)] px-4 py-2 text-sm font-medium text-white">Approve</button>
-          <button type="submit" name="action" value="request_changes"
-            class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-warning)] px-4 py-2 text-sm font-medium text-white">Request Changes</button>
-          <button type="submit" name="action" value="reject" class="inline-flex h-9 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white">Reject</button>
-        </div>
-      </form>
+        <button
+          type="button"
+          data-open-modal="need-moderation-modal"
+          class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-primary)]/90"
+        >
+          Submit Need Review
+        </button>
+      </div>
     </div>
 
     <div class="mt-8 rounded-xl border border-border bg-background p-4">
@@ -70,23 +65,17 @@
             <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{{.Status}}</p>
           </div>
 
-          <form method="post" action="{{$.ModerateAction}}" class="mt-3 space-y-3">
-            <input type="hidden" name="document_id" value="{{.ID}}" />
-            <div>
-              <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="reason-{{.ID}}">Reason</label>
-              <input id="reason-{{.ID}}" name="reason" type="text" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional reason" />
-            </div>
-            <div>
-              <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="note-{{.ID}}">Note</label>
-              <textarea id="note-{{.ID}}" name="note" rows="2" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional note"></textarea>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button type="submit" name="action" value="verify_document"
-                class="inline-flex h-8 items-center justify-center rounded-md bg-[color:var(--cj-success)] px-3 text-xs font-medium text-white">Verify</button>
-              <button type="submit" name="action" value="reject_document"
-                class="inline-flex h-8 items-center justify-center rounded-md bg-destructive px-3 text-xs font-medium text-white">Reject</button>
-            </div>
-          </form>
+          <div class="mt-3">
+            <button
+              type="button"
+              data-open-modal="document-review-modal"
+              data-document-id="{{.ID}}"
+              data-document-name="{{.FileName}}"
+              class="inline-flex h-8 items-center justify-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted"
+            >
+              Review File
+            </button>
+          </div>
         </div>
         {{end}}
       </div>
@@ -127,5 +116,99 @@
     </div>
   </div>
 </section>
+
+<dialog id="need-moderation-modal" class="w-full max-w-lg rounded-xl border border-border bg-card p-0 text-foreground shadow-xl backdrop:bg-black/50">
+  <div class="border-b border-border px-5 py-4">
+    <h3 class="text-lg font-semibold">Submit Need Review</h3>
+    <p class="mt-1 text-sm text-muted-foreground">Choose a moderation action and optionally add context.</p>
+  </div>
+  <form method="post" action="{{.ModerateAction}}" class="space-y-4 px-5 py-4">
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="modal-reason">Reason</label>
+      <input id="modal-reason" name="reason" type="text" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional summary reason" />
+    </div>
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="modal-note">Note</label>
+      <textarea id="modal-note" name="note" rows="3" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional moderation note"></textarea>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button type="submit" name="action" value="approve" class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-success)] px-4 py-2 text-sm font-medium text-white">Approve</button>
+      <button type="submit" name="action" value="request_changes" class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-warning)] px-4 py-2 text-sm font-medium text-white">Request Changes</button>
+      <button type="submit" name="action" value="reject" class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-error)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-error)]/90">Reject</button>
+    </div>
+  </form>
+  <div class="border-t border-border px-5 py-3">
+    <button type="button" data-close-modal="need-moderation-modal" class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs text-foreground hover:bg-muted">Cancel</button>
+  </div>
+</dialog>
+
+<dialog id="document-review-modal" class="w-full max-w-lg rounded-xl border border-border bg-card p-0 text-foreground shadow-xl backdrop:bg-black/50">
+  <div class="border-b border-border px-5 py-4">
+    <h3 class="text-lg font-semibold">Review Document</h3>
+    <p class="mt-1 text-sm text-muted-foreground">Add optional context, then verify or reject this file.</p>
+    <p id="document-review-target" class="mt-2 text-xs font-mono text-muted-foreground"></p>
+  </div>
+  <form method="post" action="{{.ModerateAction}}" class="space-y-4 px-5 py-4">
+    <input id="document-review-id" type="hidden" name="document_id" value="" />
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="document-modal-reason">Reason</label>
+      <input id="document-modal-reason" name="reason" type="text" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional reason" />
+    </div>
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="document-modal-note">Note</label>
+      <textarea id="document-modal-note" name="note" rows="3" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional note"></textarea>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button type="submit" name="action" value="verify_document" class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-success)] px-4 py-2 text-sm font-medium text-white">Verify</button>
+      <button type="submit" name="action" value="reject_document" class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-error)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-error)]/90">Reject</button>
+    </div>
+  </form>
+  <div class="border-t border-border px-5 py-3">
+    <button type="button" data-close-modal="document-review-modal" class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs text-foreground hover:bg-muted">Cancel</button>
+  </div>
+</dialog>
+
+<script>
+  (() => {
+    const openButtons = document.querySelectorAll('[data-open-modal]');
+    const closeButtons = document.querySelectorAll('[data-close-modal]');
+    const docModal = document.getElementById('document-review-modal');
+    const docInput = document.getElementById('document-review-id');
+    const docTarget = document.getElementById('document-review-target');
+
+    openButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const modalID = button.getAttribute('data-open-modal');
+        const modal = document.getElementById(modalID);
+        if (!modal || typeof modal.showModal !== 'function') {
+          return;
+        }
+
+        if (modal === docModal) {
+          const documentID = button.getAttribute('data-document-id') || '';
+          const documentName = button.getAttribute('data-document-name') || '';
+          if (docInput) {
+            docInput.value = documentID;
+          }
+          if (docTarget) {
+            docTarget.textContent = documentName ? `File: ${documentName}` : '';
+          }
+        }
+
+        modal.showModal();
+      });
+    });
+
+    closeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const modalID = button.getAttribute('data-close-modal');
+        const modal = document.getElementById(modalID);
+        if (modal && typeof modal.close === 'function') {
+          modal.close();
+        }
+      });
+    });
+  })();
+</script>
 {{template "footer" .}}
 {{end}}
