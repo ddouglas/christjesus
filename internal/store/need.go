@@ -248,6 +248,21 @@ func (r *NeedRepository) UpdateNeed(ctx context.Context, needID string, need *ty
 
 }
 
+func (r *NeedRepository) SetNeedStatus(ctx context.Context, needID string, status types.NeedStatus) error {
+	query, args, err := psql().
+		Update(needTableName).
+		Set("status", status).
+		Set("updated_at", time.Now()).
+		Where(sq.Eq{"id": needID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to generate set need status query for need %s: %w", needID, err)
+	}
+
+	_, err = r.pool.Exec(ctx, query, args...)
+	return utils.ErrorWrapOrNil(err, "failed to set need status")
+}
+
 func (r *NeedRepository) DeleteNeed(ctx context.Context, needID string) error {
 
 	query, args, err := psql().Delete(needTableName).Where(sq.Eq{"id": needID}).ToSql()

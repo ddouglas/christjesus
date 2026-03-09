@@ -11,6 +11,9 @@
     </div>
 
     {{if .Need}}
+    {{if .Notice}}<div class="mt-4 rounded-md border border-[color:var(--cj-success)]/30 bg-[color:var(--cj-success)]/10 px-3 py-2 text-sm text-foreground">{{.Notice}}</div>{{end}}
+    {{if .Error}}<div class="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-foreground">{{.Error}}</div>{{end}}
+
     <div class="mt-6 grid gap-4 md:grid-cols-2">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Need ID</p>
@@ -28,6 +31,25 @@
         <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Raised Amount</p>
         <p class="mt-1 text-sm text-foreground">${{div .Need.AmountRaisedCents 100}}</p>
       </div>
+    </div>
+
+    <div class="mt-8 rounded-xl border border-border bg-background p-4">
+      <h2 class="text-base font-semibold text-foreground">Moderation Actions</h2>
+      <form method="post" action="{{.ModerateAction}}" class="mt-4 space-y-3">
+        <div>
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="reason">Reason</label>
+          <input id="reason" name="reason" type="text" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional summary reason" />
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="note">Note</label>
+          <textarea id="note" name="note" rows="3" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional moderation note"></textarea>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="submit" name="action" value="approve" class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-success)] px-4 py-2 text-sm font-medium text-white">Approve</button>
+          <button type="submit" name="action" value="request_changes" class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-warning)] px-4 py-2 text-sm font-medium text-white">Request Changes</button>
+          <button type="submit" name="action" value="reject" class="inline-flex h-9 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white">Reject</button>
+        </div>
+      </form>
     </div>
     {{end}}
 
@@ -57,8 +79,8 @@
         </table>
       </div>
       {{else}}
-      <p class="mt-4 text-sm text-muted-foreground">No timeline events found for this need yet.</p>
-      {{end}}
+        <p class="mt-4 text-sm text-muted-foreground">No timeline events found for this need yet.</p>
+        {{end}}
     </div>
   </div>
 </section>

@@ -10,6 +10,7 @@ const (
 	NeedStatusDraft       NeedStatus = "DRAFT"
 	NeedStatusSubmitted   NeedStatus = "SUBMITTED"
 	NeedStatusUnderReview NeedStatus = "UNDER_REVIEW"
+	NeedStatusChangesRequested NeedStatus = "CHANGES_REQUESTED"
 	NeedStatusApproved    NeedStatus = "APPROVED"
 	NeedStatusRejected    NeedStatus = "REJECTED"
 	NeedStatusActive      NeedStatus = "ACTIVE"

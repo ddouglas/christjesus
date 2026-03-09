@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 
 	"christjesus/pkg/types"
@@ -56,6 +57,9 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		Need:         need,
 		Timeline:     timeline,
 		BackHref:     s.route(RouteAdminNeeds, nil),
+		ModerateAction: s.route(RouteAdminNeedModerate, map[string]string{"id": needID}),
+		Notice:       strings.TrimSpace(r.URL.Query().Get("notice")),
+		Error:        strings.TrimSpace(r.URL.Query().Get("error")),
 	}
 
 	if err := s.renderTemplate(w, r, "page.admin.need.review", data); err != nil {
@@ -63,4 +67,81 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		s.internalServerError(w)
 		return
 	}
+}
+
+func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Request) {
+	needID := strings.TrimSpace(r.PathValue("id"))
+	if needID == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		s.redirectAdminNeedReviewWithError(w, r, needID, "invalid form submission")
+		return
+	}
+
+	action := strings.TrimSpace(r.FormValue("action"))
+	reason := strings.TrimSpace(r.FormValue("reason"))
+	note := strings.TrimSpace(r.FormValue("note"))
+
+	var newStatus types.NeedStatus
+	var actionType types.NeedModerationActionType
+	var notice string
+
+	switch action {
+	case "approve":
+		newStatus = types.NeedStatusApproved
+		actionType = types.NeedModerationActionTypeReviewApproved
+		notice = "Need approved"
+	case "reject":
+		newStatus = types.NeedStatusRejected
+		actionType = types.NeedModerationActionTypeReviewRejected
+		notice = "Need rejected"
+	case "request_changes":
+		newStatus = types.NeedStatusChangesRequested
+		actionType = types.NeedModerationActionTypeChangesRequested
+		notice = "Changes requested"
+	default:
+		s.redirectAdminNeedReviewWithError(w, r, needID, "unknown moderation action")
+		return
+	}
+
+	actorUserID, ok := r.Context().Value(contextKeyUserID).(string)
+	if !ok || strings.TrimSpace(actorUserID) == "" {
+		s.redirectAdminNeedReviewWithError(w, r, needID, "missing actor identity")
+		return
+	}
+
+	if err := s.needsRepo.SetNeedStatus(r.Context(), needID, newStatus); err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to set need status")
+		s.redirectAdminNeedReviewWithError(w, r, needID, "failed to update need status")
+		return
+	}
+
+	var reasonPtr *string
+	if reason != "" {
+		reasonPtr = &reason
+	}
+
+	var notePtr *string
+	if note != "" {
+		notePtr = &note
+	}
+
+	if _, err := s.progressRepo.RecordModerationActionEvent(r.Context(), needID, actionType, actorUserID, reasonPtr, notePtr, nil); err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to record moderation action event")
+		s.redirectAdminNeedReviewWithError(w, r, needID, "need updated but audit event failed")
+		return
+	}
+
+	v := url.Values{}
+	v.Set("notice", notice)
+	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"id": needID}, v), http.StatusSeeOther)
+}
+
+func (s *Service) redirectAdminNeedReviewWithError(w http.ResponseWriter, r *http.Request, needID, message string) {
+	v := url.Values{}
+	v.Set("error", message)
+	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"id": needID}, v), http.StatusSeeOther)
 }
