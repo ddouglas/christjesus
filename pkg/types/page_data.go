@@ -338,13 +338,18 @@ type AdminNeedQueueItem struct {
 
 type AdminNeedReviewPageData struct {
 	BasePageData
-	Need             *Need
-	Documents        []*AdminNeedReviewDocument
-	Timeline         []*AdminNeedTimelineItem
-	BackHref         string
-	ModerateAction   string
-	Notice           string
-	Error            string
+	Need                 *Need
+	Story                *NeedStory
+	PrimaryCategory      *NeedCategory
+	SecondaryCategories  []*NeedCategory
+	SelectedAddress      *UserAddress
+	CityState            string
+	Documents            []*AdminNeedReviewDocument
+	Timeline             []*AdminNeedTimelineItem
+	BackHref             string
+	ModerateAction       string
+	Notice               string
+	Error                string
 }
 
 type AdminNeedReviewDocument struct {

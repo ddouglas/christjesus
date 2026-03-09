@@ -28,6 +28,85 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	story, err := s.storyRepo.GetStoryByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need story for admin review")
+		s.internalServerError(w)
+		return
+	}
+
+	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need categories for admin review")
+		s.internalServerError(w)
+		return
+	}
+
+	categoryIDs := make([]string, 0, len(assignments))
+	for _, assignment := range assignments {
+		categoryID := strings.TrimSpace(assignment.CategoryID)
+		if categoryID != "" {
+			categoryIDs = append(categoryIDs, categoryID)
+		}
+	}
+
+	categoryByID := make(map[string]*types.NeedCategory)
+	if len(categoryIDs) > 0 {
+		categories, err := s.categoryRepo.CategoriesByIDs(ctx, categoryIDs)
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Error("failed to load category records for admin review")
+			s.internalServerError(w)
+			return
+		}
+
+		for _, category := range categories {
+			if category == nil || strings.TrimSpace(category.ID) == "" {
+				continue
+			}
+			categoryByID[category.ID] = category
+		}
+	}
+
+	var primaryCategory *types.NeedCategory
+	secondaryCategories := make([]*types.NeedCategory, 0)
+	for _, assignment := range assignments {
+		category := categoryByID[assignment.CategoryID]
+		if category == nil {
+			continue
+		}
+
+		if assignment.IsPrimary {
+			primaryCategory = category
+			continue
+		}
+
+		secondaryCategories = append(secondaryCategories, category)
+	}
+
+	var selectedAddress *types.UserAddress
+	if need.UserAddressID != nil {
+		selectedAddressID := strings.TrimSpace(*need.UserAddressID)
+		if selectedAddressID != "" {
+			selectedAddress, err = s.userAddressRepo.ByIDAndUserID(ctx, selectedAddressID, need.UserID)
+			if err != nil {
+				s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch selected address for admin review")
+				s.internalServerError(w)
+				return
+			}
+		}
+	}
+
+	if selectedAddress == nil {
+		selectedAddress, err = s.userAddressRepo.PrimaryByUserID(ctx, need.UserID)
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch primary address for admin review")
+			s.internalServerError(w)
+			return
+		}
+	}
+
+	_, _, cityState := browseCityStateParts(selectedAddress)
+
 	documents, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
 	if err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need documents for admin review")
@@ -103,15 +182,24 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		})
 	}
 
+	for left, right := 0, len(timeline)-1; left < right; left, right = left+1, right-1 {
+		timeline[left], timeline[right] = timeline[right], timeline[left]
+	}
+
 	data := &types.AdminNeedReviewPageData{
-		BasePageData:   types.BasePageData{Title: "Admin Need Review"},
-		Need:           need,
-		Documents:      reviewDocuments,
-		Timeline:       timeline,
-		BackHref:       s.route(RouteAdminNeeds, nil),
-		ModerateAction: s.route(RouteAdminNeedModerate, map[string]string{"id": needID}),
-		Notice:         strings.TrimSpace(r.URL.Query().Get("notice")),
-		Error:          strings.TrimSpace(r.URL.Query().Get("error")),
+		BasePageData:        types.BasePageData{Title: "Admin Need Review"},
+		Need:                need,
+		Story:               story,
+		PrimaryCategory:     primaryCategory,
+		SecondaryCategories: secondaryCategories,
+		SelectedAddress:     selectedAddress,
+		CityState:           cityState,
+		Documents:           reviewDocuments,
+		Timeline:            timeline,
+		BackHref:            s.route(RouteAdminNeeds, nil),
+		ModerateAction:      s.route(RouteAdminNeedModerate, map[string]string{"id": needID}),
+		Notice:              strings.TrimSpace(r.URL.Query().Get("notice")),
+		Error:               strings.TrimSpace(r.URL.Query().Get("error")),
 	}
 
 	if err := s.renderTemplate(w, r, "page.admin.need.review", data); err != nil {
