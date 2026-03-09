@@ -141,6 +141,7 @@
             <tr class="text-left text-muted-foreground">
               <th class="py-2 pr-4">When</th>
               <th class="py-2 pr-4">Event</th>
+              <th class="py-2 pr-4">Details</th>
               <th class="py-2 pr-4">Source</th>
               <th class="py-2">Actor</th>
             </tr>
@@ -150,6 +151,15 @@
             <tr>
               <td class="py-3 pr-4">{{.When}}</td>
               <td class="py-3 pr-4">{{.Step}}</td>
+              <td class="py-3 pr-4">
+                <div class="space-y-1 text-xs text-muted-foreground">
+                  {{if ne .ActionType "-"}}<p>Action: {{.ActionType}}</p>{{end}}
+                  {{if .DocumentID}}<p>Document: <span class="font-mono">{{.DocumentID}}</span></p>{{end}}
+                  {{if .Reason}}<p>Reason: {{.Reason}}</p>{{end}}
+                  {{if .Note}}<p>Note: {{.Note}}</p>{{end}}
+                  {{if and (eq .ActionType "-") (not .DocumentID) (not .Reason) (not .Note)}}<p>-</p>{{end}}
+                </div>
+              </td>
               <td class="py-3 pr-4">{{.Source}}</td>
               <td class="py-3">{{.Actor}}</td>
             </tr>

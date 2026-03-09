@@ -361,8 +361,12 @@ type AdminNeedReviewDocument struct {
 }
 
 type AdminNeedTimelineItem struct {
-	When   string
-	Step   string
-	Actor  string
-	Source string
+	When       string
+	Step       string
+	Actor      string
+	Source     string
+	ActionType string
+	Reason     string
+	Note       string
+	DocumentID string
 }

@@ -156,29 +156,56 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		})
 	}
 
-	events, err := s.progressRepo.EventsByNeed(ctx, needID)
+	moderationTimeline, err := s.progressRepo.ModerationTimelineByNeed(ctx, needID)
 	if err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need timeline for admin review")
 		s.internalServerError(w)
 		return
 	}
 
-	timeline := make([]*types.AdminNeedTimelineItem, 0, len(events))
-	for _, event := range events {
-		if event == nil {
+	timeline := make([]*types.AdminNeedTimelineItem, 0, len(moderationTimeline))
+	for _, item := range moderationTimeline {
+		if item == nil || item.Event == nil {
 			continue
 		}
+
+		event := item.Event
+		action := item.Action
 
 		actor := "-"
 		if event.ActorUserID != nil && strings.TrimSpace(*event.ActorUserID) != "" {
 			actor = *event.ActorUserID
 		}
+		if action != nil && strings.TrimSpace(action.ActorUserID) != "" {
+			actor = action.ActorUserID
+		}
+
+		actionType := "-"
+		reason := ""
+		note := ""
+		documentID := ""
+		if action != nil {
+			actionType = string(action.ActionType)
+			if action.Reason != nil {
+				reason = strings.TrimSpace(*action.Reason)
+			}
+			if action.Note != nil {
+				note = strings.TrimSpace(*action.Note)
+			}
+			if action.DocumentID != nil {
+				documentID = strings.TrimSpace(*action.DocumentID)
+			}
+		}
 
 		timeline = append(timeline, &types.AdminNeedTimelineItem{
-			When:   event.CreatedAt.Format("2006-01-02 15:04"),
-			Step:   event.Step,
-			Actor:  actor,
-			Source: string(event.EventSource),
+			When:       event.CreatedAt.Format("2006-01-02 15:04"),
+			Step:       event.Step,
+			Actor:      actor,
+			Source:     string(event.EventSource),
+			ActionType: actionType,
+			Reason:     reason,
+			Note:       note,
+			DocumentID: documentID,
 		})
 	}
 
