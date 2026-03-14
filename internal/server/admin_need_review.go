@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"christjesus/internal/store"
 	"christjesus/pkg/types"
+	"github.com/jackc/pgx/v5"
 )
 
 func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Request) {
@@ -331,14 +333,6 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if newStatus != nil {
-		if err := s.needsRepo.SetNeedStatus(r.Context(), needID, *newStatus); err != nil {
-			s.logger.WithError(err).WithField("need_id", needID).Error("failed to set need status")
-			s.redirectAdminNeedReviewWithError(w, r, needID, "failed to update need status")
-			return
-		}
-	}
-
 	var reasonPtr *string
 	if reason != "" {
 		reasonPtr = &reason
@@ -349,9 +343,18 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 		notePtr = &note
 	}
 
-	if _, err := s.progressRepo.RecordModerationActionEvent(r.Context(), needID, actionType, actorUserID, reasonPtr, notePtr, moderationDocumentID); err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to record moderation action event")
-		s.redirectAdminNeedReviewWithError(w, r, needID, "moderation action failed to record")
+	if err := store.WithTx(r.Context(), s.needsRepo, func(tx pgx.Tx) error {
+		if newStatus != nil {
+			if err := s.needsRepo.SetNeedStatusTx(r.Context(), tx, needID, *newStatus); err != nil {
+				return err
+			}
+		}
+
+		_, err := s.progressRepo.RecordModerationActionEventTx(r.Context(), tx, needID, actionType, actorUserID, reasonPtr, notePtr, moderationDocumentID)
+		return err
+	}); err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to atomically apply moderation action")
+		s.redirectAdminNeedReviewWithError(w, r, needID, "moderation action failed")
 		return
 	}
 

@@ -72,12 +72,33 @@ func (r *NeedProgressRepository) RecordModerationActionEvent(
 	note *string,
 	documentID *string,
 ) (*types.NeedModerationAction, error) {
-	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	var action *types.NeedModerationAction
+	err := WithTx(ctx, r, func(tx pgx.Tx) error {
+		var innerErr error
+		action, innerErr = r.RecordModerationActionEventTx(ctx, tx, needID, actionType, actorUserID, reason, note, documentID)
+		return innerErr
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to begin moderation event tx: %w", err)
+		return nil, err
 	}
-	defer tx.Rollback(ctx)
 
+	return action, nil
+}
+
+func (r *NeedProgressRepository) BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx, error) {
+	return r.pool.BeginTx(ctx, txOptions)
+}
+
+func (r *NeedProgressRepository) RecordModerationActionEventTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	needID string,
+	actionType types.NeedModerationActionType,
+	actorUserID string,
+	reason *string,
+	note *string,
+	documentID *string,
+) (*types.NeedModerationAction, error) {
 	action := &types.NeedModerationAction{
 		ID:          utils.NanoID(),
 		NeedID:      needID,
@@ -113,10 +134,6 @@ func (r *NeedProgressRepository) RecordModerationActionEvent(
 
 	if _, err := tx.Exec(ctx, eventQuery, eventArgs...); err != nil {
 		return nil, utils.ErrorWrapOrNil(err, "failed to record moderation event")
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit moderation event tx: %w", err)
 	}
 
 	return action, nil

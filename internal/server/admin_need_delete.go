@@ -5,7 +5,9 @@ import (
 	"net/url"
 	"strings"
 
+	"christjesus/internal/store"
 	"christjesus/pkg/types"
+	"github.com/jackc/pgx/v5"
 )
 
 func (s *Service) handlePostAdminNeedDelete(w http.ResponseWriter, r *http.Request) {
@@ -61,16 +63,17 @@ func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *h
 			return
 		}
 
-		if err := s.needsRepo.SoftDeleteNeed(r.Context(), needID, actorUserID, reason); err != nil {
-			s.logger.WithError(err).WithField("need_id", needID).Error("failed to soft-delete need")
-			s.redirectAdminNeedReviewWithError(w, r, needID, "failed to delete need")
-			return
-		}
-
 		reasonPtr := reason
-		if _, err := s.progressRepo.RecordModerationActionEvent(r.Context(), needID, types.NeedModerationActionTypeSoftDeleted, actorUserID, &reasonPtr, nil, nil); err != nil {
-			s.logger.WithError(err).WithField("need_id", needID).Error("failed to record need delete event")
-			s.redirectAdminNeedReviewWithError(w, r, needID, "need was deleted but audit event failed")
+		if err := store.WithTx(r.Context(), s.needsRepo, func(tx pgx.Tx) error {
+			if err := s.needsRepo.SoftDeleteNeedTx(r.Context(), tx, needID, actorUserID, reason); err != nil {
+				return err
+			}
+
+			_, err := s.progressRepo.RecordModerationActionEventTx(r.Context(), tx, needID, types.NeedModerationActionTypeSoftDeleted, actorUserID, &reasonPtr, nil, nil)
+			return err
+		}); err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Error("failed to atomically delete need and record audit event")
+			s.redirectAdminNeedReviewWithError(w, r, needID, "failed to delete need")
 			return
 		}
 
@@ -85,16 +88,17 @@ func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *h
 		return
 	}
 
-	if err := s.needsRepo.RestoreNeed(r.Context(), needID); err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to restore need")
-		s.redirectAdminNeedReviewWithError(w, r, needID, "failed to restore need")
-		return
-	}
-
 	reasonPtr := reason
-	if _, err := s.progressRepo.RecordModerationActionEvent(r.Context(), needID, types.NeedModerationActionTypeRestored, actorUserID, &reasonPtr, nil, nil); err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to record need restore event")
-		s.redirectAdminNeedReviewWithError(w, r, needID, "need was restored but audit event failed")
+	if err := store.WithTx(r.Context(), s.needsRepo, func(tx pgx.Tx) error {
+		if err := s.needsRepo.RestoreNeedTx(r.Context(), tx, needID); err != nil {
+			return err
+		}
+
+		_, err := s.progressRepo.RecordModerationActionEventTx(r.Context(), tx, needID, types.NeedModerationActionTypeRestored, actorUserID, &reasonPtr, nil, nil)
+		return err
+	}); err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to atomically restore need and record audit event")
+		s.redirectAdminNeedReviewWithError(w, r, needID, "failed to restore need")
 		return
 	}
 

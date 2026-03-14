@@ -9,6 +9,8 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -20,8 +22,16 @@ type NeedRepository struct {
 	pool *pgxpool.Pool
 }
 
+type needExecer interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+}
+
 func NewNeedRepository(pool *pgxpool.Pool) *NeedRepository {
 	return &NeedRepository{pool: pool}
+}
+
+func (r *NeedRepository) BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx, error) {
+	return r.pool.BeginTx(ctx, txOptions)
 }
 
 func (r *NeedRepository) Need(ctx context.Context, needID string) (*types.Need, error) {
@@ -286,6 +296,14 @@ func (r *NeedRepository) UpdateNeed(ctx context.Context, needID string, need *ty
 }
 
 func (r *NeedRepository) SetNeedStatus(ctx context.Context, needID string, status types.NeedStatus) error {
+	return r.setNeedStatusWithExec(ctx, r.pool, needID, status)
+}
+
+func (r *NeedRepository) SetNeedStatusTx(ctx context.Context, tx pgx.Tx, needID string, status types.NeedStatus) error {
+	return r.setNeedStatusWithExec(ctx, tx, needID, status)
+}
+
+func (r *NeedRepository) setNeedStatusWithExec(ctx context.Context, execer needExecer, needID string, status types.NeedStatus) error {
 	query, args, err := psql().
 		Update(needTableName).
 		Set("status", status).
@@ -296,11 +314,19 @@ func (r *NeedRepository) SetNeedStatus(ctx context.Context, needID string, statu
 		return fmt.Errorf("failed to generate set need status query for need %s: %w", needID, err)
 	}
 
-	_, err = r.pool.Exec(ctx, query, args...)
+	_, err = execer.Exec(ctx, query, args...)
 	return utils.ErrorWrapOrNil(err, "failed to set need status")
 }
 
 func (r *NeedRepository) SoftDeleteNeed(ctx context.Context, needID, actorUserID, reason string) error {
+	return r.softDeleteNeedWithExec(ctx, r.pool, needID, actorUserID, reason)
+}
+
+func (r *NeedRepository) SoftDeleteNeedTx(ctx context.Context, tx pgx.Tx, needID, actorUserID, reason string) error {
+	return r.softDeleteNeedWithExec(ctx, tx, needID, actorUserID, reason)
+}
+
+func (r *NeedRepository) softDeleteNeedWithExec(ctx context.Context, execer needExecer, needID, actorUserID, reason string) error {
 	now := time.Now()
 	query, args, err := psql().
 		Update(needTableName).
@@ -314,11 +340,19 @@ func (r *NeedRepository) SoftDeleteNeed(ctx context.Context, needID, actorUserID
 		return fmt.Errorf("failed to generate soft-delete need query for need %s: %w", needID, err)
 	}
 
-	_, err = r.pool.Exec(ctx, query, args...)
+	_, err = execer.Exec(ctx, query, args...)
 	return utils.ErrorWrapOrNil(err, "failed to soft-delete need")
 }
 
 func (r *NeedRepository) RestoreNeed(ctx context.Context, needID string) error {
+	return r.restoreNeedWithExec(ctx, r.pool, needID)
+}
+
+func (r *NeedRepository) RestoreNeedTx(ctx context.Context, tx pgx.Tx, needID string) error {
+	return r.restoreNeedWithExec(ctx, tx, needID)
+}
+
+func (r *NeedRepository) restoreNeedWithExec(ctx context.Context, execer needExecer, needID string) error {
 	now := time.Now()
 	query, args, err := psql().
 		Update(needTableName).
@@ -332,7 +366,7 @@ func (r *NeedRepository) RestoreNeed(ctx context.Context, needID string) error {
 		return fmt.Errorf("failed to generate restore need query for need %s: %w", needID, err)
 	}
 
-	_, err = r.pool.Exec(ctx, query, args...)
+	_, err = execer.Exec(ctx, query, args...)
 	return utils.ErrorWrapOrNil(err, "failed to restore need")
 }
 
