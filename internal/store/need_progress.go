@@ -43,53 +43,6 @@ func (r *NeedProgressRepository) RecordStepCompletion(ctx context.Context, needI
 	return utils.ErrorWrapOrNil(err, "failed to record progress event")
 }
 
-func (r *NeedProgressRepository) RecordModerationEvent(
-	ctx context.Context,
-	needID string,
-	step types.NeedProgressEventStep,
-	actorUserID string,
-	moderationActionID *string,
-) error {
-	id := utils.NanoID()
-
-	query, args, err := psql().
-		Insert(needProgressEventsTableName).
-		Columns("id", "need_id", "step", "event_source", "actor_user_id", "moderation_action_id").
-		Values(id, needID, step, types.NeedProgressEventSourceAdmin, actorUserID, moderationActionID).
-		ToSql()
-	if err != nil {
-		return fmt.Errorf("failed to generate insert moderation event query: %w", err)
-	}
-
-	_, err = r.pool.Exec(ctx, query, args...)
-	return utils.ErrorWrapOrNil(err, "failed to record moderation event")
-}
-
-func (r *NeedProgressRepository) CreateModerationAction(ctx context.Context, action *types.NeedModerationAction) (string, error) {
-	if action == nil {
-		return "", fmt.Errorf("action is required")
-	}
-
-	id := utils.NanoID()
-	action.ID = id
-
-	query, args, err := psql().
-		Insert(needModerationActionsTableName).
-		Columns("id", "need_id", "action_type", "actor_user_id", "reason", "note", "document_id").
-		Values(action.ID, action.NeedID, action.ActionType, action.ActorUserID, action.Reason, action.Note, action.DocumentID).
-		ToSql()
-	if err != nil {
-		return "", fmt.Errorf("failed to generate create moderation action query: %w", err)
-	}
-
-	_, err = r.pool.Exec(ctx, query, args...)
-	if err != nil {
-		return "", utils.ErrorWrapOrNil(err, "failed to create moderation action")
-	}
-
-	return id, nil
-}
-
 func (r *NeedProgressRepository) ModerationActionsByNeed(ctx context.Context, needID string) ([]*types.NeedModerationAction, error) {
 	query, args, err := psql().
 		Select(needModerationActionsColumns...).
