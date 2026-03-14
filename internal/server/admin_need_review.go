@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -121,38 +122,31 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	documentStatusByID := make(map[string]string)
-	for _, action := range actions {
-		if action == nil || action.DocumentID == nil {
-			continue
-		}
-
-		documentID := strings.TrimSpace(*action.DocumentID)
-		if documentID == "" {
-			continue
-		}
-
-		switch action.ActionType {
-		case types.NeedModerationActionTypeDocumentVerified:
-			documentStatusByID[documentID] = "Verified"
-		case types.NeedModerationActionTypeDocumentRejected:
-			documentStatusByID[documentID] = "Rejected"
-		}
-	}
+	documentStatusByID := latestDocumentStatuses(actions)
 
 	reviewDocuments := make([]*types.AdminNeedReviewDocument, 0, len(documents))
 	for _, document := range documents {
+		documentParams := map[string]string{"id": needID, "documentID": document.ID}
+
 		status := "Pending Review"
 		if value, ok := documentStatusByID[document.ID]; ok {
 			status = value
 		}
 
+		mimeType := strings.TrimSpace(document.MimeType)
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+
 		reviewDocuments = append(reviewDocuments, &types.AdminNeedReviewDocument{
-			ID:         document.ID,
-			FileName:   document.FileName,
-			TypeLabel:  documentTypeLabel(document.DocumentType),
-			UploadedAt: document.UploadedAt.Format("2006-01-02 15:04"),
-			Status:     status,
+			ID:          document.ID,
+			FileName:    document.FileName,
+			TypeLabel:   documentTypeLabel(document.DocumentType),
+			UploadedAt:  document.UploadedAt.Format("2006-01-02 15:04"),
+			Status:      status,
+			MimeType:    mimeType,
+			FileSize:    formatFileSize(document.FileSizeBytes),
+			PreviewHref: s.route(RouteAdminNeedDocument, documentParams),
 		})
 	}
 
@@ -348,4 +342,52 @@ func (s *Service) redirectAdminNeedReviewWithError(w http.ResponseWriter, r *htt
 	v := url.Values{}
 	v.Set("error", message)
 	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"id": needID}, v), http.StatusSeeOther)
+}
+
+func formatFileSize(bytes int64) string {
+	if bytes <= 0 {
+		return "0 B"
+	}
+
+	units := []string{"B", "KB", "MB", "GB", "TB"}
+	size := float64(bytes)
+	unit := 0
+	for size >= 1024 && unit < len(units)-1 {
+		size /= 1024
+		unit++
+	}
+
+	if unit == 0 {
+		return fmt.Sprintf("%d %s", bytes, units[unit])
+	}
+
+	return fmt.Sprintf("%.1f %s", size, units[unit])
+}
+
+func latestDocumentStatuses(actions []*types.NeedModerationAction) map[string]string {
+	documentStatusByID := make(map[string]string)
+	for _, action := range actions {
+		if action == nil || action.DocumentID == nil {
+			continue
+		}
+
+		documentID := strings.TrimSpace(*action.DocumentID)
+		if documentID == "" {
+			continue
+		}
+
+		// actions are loaded newest-first; keep the first status seen per document.
+		if _, exists := documentStatusByID[documentID]; exists {
+			continue
+		}
+
+		switch action.ActionType {
+		case types.NeedModerationActionTypeDocumentVerified:
+			documentStatusByID[documentID] = "Verified"
+		case types.NeedModerationActionTypeDocumentRejected:
+			documentStatusByID[documentID] = "Rejected"
+		}
+	}
+
+	return documentStatusByID
 }

@@ -95,7 +95,7 @@ func (r *NeedProgressRepository) ModerationActionsByNeed(ctx context.Context, ne
 		Select(needModerationActionsColumns...).
 		From(needModerationActionsTableName).
 		Where(sq.Eq{"need_id": needID}).
-		OrderBy("created_at ASC").
+		OrderBy("created_at DESC", "id DESC").
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate moderation actions query: %w", err)
