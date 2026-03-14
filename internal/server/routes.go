@@ -15,6 +15,7 @@ const (
 	RouteRegisterConfirm        RouteName = "register.confirm"
 	RouteRegisterConfirmResend  RouteName = "register.confirm.resend"
 	RouteLogin                  RouteName = "login"
+	RouteAuthCallback           RouteName = "auth.callback"
 	RouteLogout                 RouteName = "logout"
 	RouteProfile                RouteName = "profile"
 	RouteAdmin                  RouteName = "admin.dashboard"
@@ -67,6 +68,7 @@ var routePatterns = map[RouteName]string{
 	RouteRegisterConfirm:               "/register/confirm",
 	RouteRegisterConfirmResend:         "/register/confirm/resend",
 	RouteLogin:                         "/login",
+	RouteAuthCallback:                  "/auth/callback",
 	RouteLogout:                        "/logout",
 	RouteProfile:                       "/profile",
 	RouteAdmin:                         "/admin",

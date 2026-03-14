@@ -8,9 +8,9 @@ table "needs" {
   }
 
   column "user_id" {
-    type    = uuid
+    type    = text
     null    = false
-    comment = "References auth.users(id) from Supabase - no FK due to different schema"
+    comment = "References christjesus.users(id)"
   }
 
   column "user_address_id" {
@@ -66,9 +66,9 @@ table "needs" {
   }
 
   column "verified_by" {
-    type    = uuid
+    type    = text
     null    = true
-    comment = "Admin user who verified - no FK"
+    comment = "Admin user id who verified"
   }
 
   # Progress tracking (for draft status)
@@ -112,7 +112,7 @@ table "needs" {
   }
 
   column "deleted_by_user_id" {
-    type    = uuid
+    type    = text
     null    = true
     comment = "Admin user id that soft deleted this need"
   }
@@ -181,12 +181,12 @@ table "needs" {
   # Speeds moderation queue pages, which always filter to non-deleted submitted/review needs.
   index "idx_needs_queue_active" {
     columns = [column.submitted_at, column.created_at]
-    where   = "deleted_at IS NULL AND status IN ('SUBMITTED', 'UNDER_REVIEW')"
+    where   = "((deleted_at IS NULL) AND (status = ANY (ARRAY['SUBMITTED'::text, 'UNDER_REVIEW'::text])))"
   }
 
   # Speeds browse/latest lists that only display non-deleted, non-draft needs by recency.
   index "idx_needs_browse_active" {
     columns = [column.created_at]
-    where   = "deleted_at IS NULL AND status <> 'DRAFT'"
+    where   = "((deleted_at IS NULL) AND (status <> 'DRAFT'::text))"
   }
 }

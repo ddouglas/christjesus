@@ -16,7 +16,6 @@ import (
 	"christjesus/pkg/types"
 
 	"github.com/alexedwards/flow"
-	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-playground/form/v4"
 	"github.com/gorilla/securecookie"
@@ -33,9 +32,8 @@ type Service struct {
 	config *types.Config
 	logger *logrus.Logger
 
-	cognitoClient *cognitoidentityprovider.Client
-	s3Client      *s3.Client
-	stripeClient  *stripe.Client
+	s3Client     *s3.Client
+	stripeClient *stripe.Client
 
 	needsRepo                   *store.NeedRepository
 	progressRepo                *store.NeedProgressRepository
@@ -61,7 +59,6 @@ func New(
 	config *types.Config,
 	logger *logrus.Logger,
 
-	cognitoClient *cognitoidentityprovider.Client,
 	s3Client *s3.Client,
 	stripeClient *stripe.Client,
 
@@ -89,9 +86,8 @@ func New(
 		config: config,
 		logger: logger,
 
-		cognitoClient: cognitoClient,
-		s3Client:      s3Client,
-		stripeClient:  stripeClient,
+		s3Client:     s3Client,
+		stripeClient: stripeClient,
 
 		needsRepo:                   needsRepo,
 		progressRepo:                progressRepo,
@@ -152,6 +148,8 @@ func (s *Service) buildRouter(r *flow.Mux) {
 	r.HandleFunc(RoutePattern(RouteRegisterConfirmResend), s.handlePostRegisterConfirmResend, http.MethodPost)
 	r.HandleFunc(RoutePattern(RouteLogin), s.handleGetLogin, http.MethodGet)
 	r.HandleFunc(RoutePattern(RouteLogin), s.handlePostLogin, http.MethodPost)
+	r.HandleFunc(RoutePattern(RouteAuthCallback), s.handleGetAuthCallback, http.MethodGet)
+	r.HandleFunc(RoutePattern(RouteLogout), s.handlePostLogout, http.MethodGet)
 	r.HandleFunc(RoutePattern(RouteLogout), s.handlePostLogout, http.MethodPost)
 
 	r.Group(func(r *flow.Mux) {

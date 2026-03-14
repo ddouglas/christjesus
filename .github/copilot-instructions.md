@@ -8,7 +8,7 @@
 
 ## Request + Auth Flow
 - Global middleware order: `StripTrailingSlash` → `LoggingMiddleware` → `AttachAuthContext`.
-- `AttachAuthContext` reads encrypted cookie, validates Cognito JWT, and stores `user_id`/`email` in request context.
+- `AttachAuthContext` reads encrypted cookie, validates Auth0 JWT, and stores `user_id`/`email` in request context.
 - `RequireAuth` is used only on protected route groups and expects auth context to already be attached.
 - Login/logout + redirect-intent cookies live in `internal/server/auth.go`.
 
@@ -47,5 +47,5 @@
 
 ## Config + Integrations
 - Config is loaded from env vars with no prefix (`envconfig.Process("", c)`).
-- Required envs include: `DATABASE_URL`, Cognito (`COGNITO_*`), S3 (`S3_BUCKET_NAME`), and cookie encryption keys.
-- External dependencies: AWS Cognito (auth), AWS S3 (document storage), PostgreSQL (app data).
+- Required envs include: `DATABASE_URL`, Auth0 (`AUTH0_*`), S3 (`S3_BUCKET_NAME`), and cookie encryption keys.
+- External dependencies: Auth0 (auth), AWS S3 (document storage), PostgreSQL (app data).

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"christjesus/internal/server"
 	"christjesus/internal/store"
 
-	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/lestrrat-go/httprc/v3"
 	"github.com/lestrrat-go/jwx/v3/jwk"
@@ -46,7 +46,6 @@ func serve(cCtx *cli.Context) error {
 		return err
 	}
 
-	cognitoClient := cognitoidentityprovider.NewFromConfig(awsConfig)
 	s3Client := s3.NewFromConfig(awsConfig)
 	var stripeClient *stripe.Client
 	if config.StripeSecretKey != "" {
@@ -76,7 +75,8 @@ func serve(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to initilaize jwk cache: %w", err)
 	}
 
-	jwksURL := fmt.Sprintf("%s/.well-known/jwks.json", config.CognitoIssuerURL)
+	issuerURL := strings.TrimSuffix(strings.TrimSpace(config.AuthIssuerURL), "/")
+	jwksURL := fmt.Sprintf("%s/.well-known/jwks.json", issuerURL)
 
 	err = jwkCache.Register(context.Background(), jwksURL)
 	if err != nil {
@@ -86,7 +86,6 @@ func serve(cCtx *cli.Context) error {
 	srv, err := server.New(
 		config,
 		logger,
-		cognitoClient,
 		s3Client,
 		stripeClient,
 		needsRepo,

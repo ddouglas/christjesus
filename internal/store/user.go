@@ -113,7 +113,12 @@ func (r *UserRepository) Update(ctx context.Context, userID string, user *types.
 	return nil
 }
 
-func (r *UserRepository) UpsertIdentity(ctx context.Context, userID, email, givenName, familyName string) error {
+func (r *UserRepository) UpsertIdentity(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
+	authSubject = strings.TrimSpace(authSubject)
+	if authSubject == "" {
+		return "", fmt.Errorf("auth subject is required")
+	}
+
 	now := time.Now()
 
 	var emailPtr *string
@@ -134,20 +139,23 @@ func (r *UserRepository) UpsertIdentity(ctx context.Context, userID, email, give
 		familyNamePtr = &trimmedFamilyName
 	}
 
+	newUserID := types.NanoID()
+
 	query, args, err := psql().
 		Insert(userTableName).
-		Columns("id", "email", "given_name", "family_name", "created_at", "updated_at").
-		Values(userID, emailPtr, givenNamePtr, familyNamePtr, now, now).
-		Suffix("ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, given_name = EXCLUDED.given_name, family_name = EXCLUDED.family_name, updated_at = EXCLUDED.updated_at").
+		Columns("id", "auth_subject", "email", "given_name", "family_name", "created_at", "updated_at").
+		Values(newUserID, authSubject, emailPtr, givenNamePtr, familyNamePtr, now, now).
+		Suffix("ON CONFLICT (auth_subject) DO UPDATE SET email = EXCLUDED.email, given_name = EXCLUDED.given_name, family_name = EXCLUDED.family_name, updated_at = EXCLUDED.updated_at RETURNING id").
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to generate upsert identity user query: %w", err)
+		return "", fmt.Errorf("failed to generate upsert identity user query: %w", err)
 	}
 
-	_, err = r.pool.Exec(ctx, query, args...)
+	var userID string
+	err = r.pool.QueryRow(ctx, query, args...).Scan(&userID)
 	if err != nil {
-		return fmt.Errorf("failed to upsert user identity fields: %w", err)
+		return "", fmt.Errorf("failed to upsert user identity fields: %w", err)
 	}
 
-	return nil
+	return userID, nil
 }

@@ -2,11 +2,13 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	"christjesus/internal"
+	"christjesus/pkg/types"
 
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/sirupsen/logrus"
@@ -28,10 +30,11 @@ type responseWriter struct {
 }
 
 type AuthClaims struct {
-	UserID     string
+	Subject    string
 	Email      string
 	GivenName  string
 	FamilyName string
+	Nonce      string
 	IsAdmin    bool
 }
 
@@ -64,12 +67,15 @@ func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 			return
 		}
 
-		if err := s.userRepo.UpsertIdentity(r.Context(), claims.UserID, claims.Email, claims.GivenName, claims.FamilyName); err != nil {
-			s.logger.WithError(err).WithField("user_id", claims.UserID).Warn("failed to sync user identity from token")
+		userID, err := s.userRepo.UpsertIdentity(r.Context(), claims.Subject, claims.Email, claims.GivenName, claims.FamilyName)
+		if err != nil {
+			s.logger.WithError(err).WithField("auth_subject", claims.Subject).Warn("failed to sync user identity from token")
+			next.ServeHTTP(w, r)
+			return
 		}
 
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, contextKeyUserID, claims.UserID)
+		ctx = context.WithValue(ctx, contextKeyUserID, userID)
 		if claims.Email != "" {
 			ctx = context.WithValue(ctx, contextKeyEmail, claims.Email)
 		}
@@ -99,33 +105,38 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (AuthClaims, bool) {
 		return empty, false
 	}
 
-	// 3. Validate token
-	set, err := s.jwksCache.Lookup(r.Context(), s.jwksURL)
+	claims, err := s.authClaimsFromToken(r.Context(), accessToken)
+	if err != nil {
+		return empty, false
+	}
+
+	return claims, true
+}
+
+func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (AuthClaims, error) {
+	empty := AuthClaims{}
+
+	set, err := s.jwksCache.Lookup(ctx, s.jwksURL)
 	if err != nil {
 		s.logger.WithError(err).Warn("failed to fetch JWKS")
-		return empty, false
+		return empty, err
 	}
 
 	token, err := jwt.Parse(
-		[]byte(accessToken),
+		[]byte(tokenString),
 		jwt.WithKeySet(set),
 		jwt.WithValidate(true),
-		jwt.WithIssuer(s.config.CognitoIssuerURL),
-		jwt.WithAudience(s.config.CognitoClientID),
+		jwt.WithIssuer(strings.TrimSpace(s.config.AuthIssuerURL)),
+		jwt.WithAudience(strings.TrimSpace(s.config.AuthClientID)),
 	)
 	if err != nil {
-		s.logger.WithError(err).Debug("failed to parse JWT")
-		return empty, false
+		s.logger.WithError(err).WithField("auth_issuer", strings.TrimSpace(s.config.AuthIssuerURL)).Warn("failed to parse JWT")
+		return empty, err
 	}
 
-	userID, ok := token.Subject()
-	if !ok || userID == "" {
-		return empty, false
-	}
-
-	var tokenUse string
-	if err := token.Get("token_use", &tokenUse); err != nil || tokenUse != "id" {
-		return empty, false
+	subject, ok := token.Subject()
+	if !ok || strings.TrimSpace(subject) == "" {
+		return empty, errors.New("missing subject claim")
 	}
 
 	var email string
@@ -145,12 +156,19 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (AuthClaims, bool) {
 	}
 	familyName = strings.TrimSpace(familyName)
 
+	var nonce string
+	if err := token.Get("nonce", &nonce); err != nil {
+		nonce = ""
+	}
+	nonce = strings.TrimSpace(nonce)
+
 	isAdmin := false
-	if groups, ok := tokenStringSliceClaim(token, "cognito:groups"); ok {
-		adminGroup := strings.TrimSpace(s.config.CognitoAdminGroup)
-		if adminGroup != "" {
+	adminClaim := strings.TrimSpace(s.config.AuthAdminClaim)
+	adminValue := strings.TrimSpace(s.config.AuthAdminValue)
+	if adminClaim != "" {
+		if groups, ok := tokenStringSliceClaim(token, adminClaim); ok {
 			for _, group := range groups {
-				if strings.EqualFold(strings.TrimSpace(group), adminGroup) {
+				if adminValue != "" && strings.EqualFold(strings.TrimSpace(group), adminValue) {
 					isAdmin = true
 					break
 				}
@@ -159,12 +177,13 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (AuthClaims, bool) {
 	}
 
 	return AuthClaims{
-		UserID:     userID,
+		Subject:    subject,
 		Email:      email,
 		GivenName:  givenName,
 		FamilyName: familyName,
+		Nonce:      nonce,
 		IsAdmin:    isAdmin,
-	}, true
+	}, nil
 }
 
 func tokenStringSliceClaim(token jwt.Token, claim string) ([]string, bool) {
@@ -212,6 +231,25 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
 			http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 			return
+		}
+
+		if !strings.HasPrefix(r.URL.Path, RoutePattern(RouteOnboarding)) {
+			user, err := s.userRepo.User(r.Context(), userID)
+			if err != nil {
+				if errors.Is(err, types.ErrUserNotFound) {
+					http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
+					return
+				}
+
+				s.logger.WithError(err).WithField("user_id", userID).Error("failed to load user for auth gate")
+				s.internalServerError(w)
+				return
+			}
+
+			if user.UserType == nil || strings.TrimSpace(*user.UserType) == "" {
+				http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
+				return
+			}
 		}
 
 		email, _ := r.Context().Value(contextKeyEmail).(string)

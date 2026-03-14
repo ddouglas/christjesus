@@ -2,9 +2,9 @@ table "donor_preferences" {
   schema = schema.christjesus
 
   column "user_id" {
-    type    = uuid
+    type    = text
     null    = false
-    comment = "References auth.users(id) from Supabase/Cognito-linked users - no FK due to different schema"
+    comment = "References christjesus.users(id)"
   }
 
   column "zip_code" {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"christjesus/pkg/types"
 
@@ -32,6 +33,22 @@ func loadConfig() (*types.Config, error) {
 	if c.WriteTimeoutSec == 0 {
 		c.WriteTimeoutSec = 15
 	}
+
+	if strings.TrimSpace(c.Auth0Domain) == "" {
+		return nil, fmt.Errorf("set AUTH0_DOMAIN")
+	}
+	if strings.TrimSpace(c.Auth0ClientID) == "" {
+		return nil, fmt.Errorf("set AUTH0_CLIENT_ID")
+	}
+	if strings.TrimSpace(c.Auth0ClientSecret) == "" {
+		return nil, fmt.Errorf("set AUTH0_CLIENT_SECRET")
+	}
+	domain := strings.TrimSpace(c.Auth0Domain)
+	domain = strings.TrimPrefix(domain, "https://")
+	domain = strings.TrimPrefix(domain, "http://")
+	domain = strings.TrimSuffix(domain, "/")
+	c.AuthIssuerURL = "https://" + domain + "/"
+	c.AuthClientID = strings.TrimSpace(c.Auth0ClientID)
 
 	return c, nil
 }

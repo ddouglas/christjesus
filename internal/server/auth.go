@@ -2,20 +2,24 @@ package server
 
 import (
 	"christjesus/internal"
-	"christjesus/pkg/types"
-	"errors"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
-	ctypes "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 )
 
-func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
+type auth0TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	IDToken     string `json:"id_token"`
+	ExpiresIn   int    `json:"expires_in"`
+	TokenType   string `json:"token_type"`
+}
 
+func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 	_, err := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
 	if err == nil {
 		s.logger.Info("user is already logged in, redirecting to Browse Needs")
@@ -23,125 +27,109 @@ func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := &types.LoginPageData{
-		BasePageData: types.BasePageData{Title: "Login"},
-		Email:        strings.TrimSpace(r.URL.Query().Get("email")),
-	}
-
-	// Check if user was redirected here after confirming their email
-	if r.URL.Query().Get("confirmed") == "true" || r.URL.Query().Get("confirmed") == "1" {
-		data.Message = "Your account has been confirmed! You can now log in."
-	}
-
-	if r.URL.Query().Get("confirm_required") == "true" || r.URL.Query().Get("confirm_required") == "1" {
-		if data.Message == "" {
-			data.Message = "Please log in again to continue account confirmation."
-		}
-	}
-
-	err = s.renderTemplate(w, r, "page.login", data)
-	if err != nil {
-		s.logger.WithError(err).Error("failed to render login page")
-		s.internalServerError(w)
-		return
-	}
+	s.startAuth0Authorization(w, r, "")
 }
 
 func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
-	var _ = r.Context()
+	s.startAuth0Authorization(w, r, "")
+}
 
-	email := strings.TrimSpace(r.FormValue("email"))
-	password := r.FormValue("password")
-
-	data := &types.LoginPageData{
-		BasePageData: types.BasePageData{Title: "Login"},
-		Email:        email,
-	}
-
-	if email == "" || password == "" {
-		data.Error = "Email and password are required."
-		err := s.renderTemplate(w, r, "page.login", data)
-		if err != nil {
-			s.logger.WithError(err).Error("failed to render login page with validation errors")
-			s.internalServerError(w)
-		}
+func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) {
+	state := strings.TrimSpace(r.URL.Query().Get("state"))
+	code := strings.TrimSpace(r.URL.Query().Get("code"))
+	if state == "" || code == "" {
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
 	}
 
-	input := &cognitoidentityprovider.InitiateAuthInput{
-		AuthFlow: ctypes.AuthFlowTypeUserPasswordAuth,
-		ClientId: aws.String(s.config.CognitoClientID),
-		AuthParameters: map[string]string{
-			"USERNAME": email,
-			"PASSWORD": password,
-		},
+	stateCookie, err := r.Cookie(internal.COOKIE_AUTH_STATE)
+	if err != nil || !subtleCompare(stateCookie.Value, state) {
+		s.clearAuthFlowCookies(w)
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
+	nonceCookie, err := r.Cookie(internal.COOKIE_AUTH_NONCE)
+	if err != nil || strings.TrimSpace(nonceCookie.Value) == "" {
+		s.clearAuthFlowCookies(w)
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
 	}
 
-	resp, err := s.cognitoClient.InitiateAuth(r.Context(), input)
+	payload := map[string]string{
+		"grant_type":    "authorization_code",
+		"client_id":     s.config.Auth0ClientID,
+		"client_secret": s.config.Auth0ClientSecret,
+		"code":          code,
+		"redirect_uri":  strings.TrimSpace(s.config.Auth0CallbackURL),
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
-		var notAuthorized *ctypes.NotAuthorizedException
-		var userNotFound *ctypes.UserNotFoundException
-		var userNotConfirmed *ctypes.UserNotConfirmedException
-
-		switch {
-		case errors.As(err, &userNotConfirmed):
-			s.setRegisterConfirmCookie(w, email, 30*time.Minute)
-			v := url.Values{}
-			v.Set("email", email)
-			http.Redirect(w, r, s.routeWithQuery(RouteRegisterConfirm, nil, v), http.StatusSeeOther)
-			return
-		case errors.As(err, &notAuthorized), errors.As(err, &userNotFound):
-			data.Error = "Invalid email or password."
-		default:
-			s.logger.WithError(err).Error("failed to login user")
-			data.Error = "Unable to log in right now. Please try again."
-		}
-
-		if renderErr := s.renderTemplate(w, r, "page.login", data); renderErr != nil {
-			s.logger.WithError(renderErr).Error("failed to render login page with auth errors")
-			s.internalServerError(w)
-		}
+		s.logger.WithError(err).Error("failed to marshal auth0 token exchange payload")
+		s.internalServerError(w)
 		return
 	}
 
-	if resp.AuthenticationResult == nil || resp.AuthenticationResult.IdToken == nil {
-		data.Error = "Login failed. Please try again."
-		err := s.renderTemplate(w, r, "page.login", data)
-		if err != nil {
-			s.logger.WithError(err).Error("failed to render login page with missing authentication result")
-			s.internalServerError(w)
-		}
+	tokenURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/oauth/token"
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, tokenURL, strings.NewReader(string(body)))
+	if err != nil {
+		s.logger.WithError(err).Error("failed to create auth0 token exchange request")
+		s.internalServerError(w)
+		return
+	}
+	req.Header.Set("content-type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to exchange authorization code with auth0")
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
+	defer resp.Body.Close()
+
+	var tokenResp auth0TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		s.logger.WithError(err).WithField("status", resp.StatusCode).Error("failed to decode auth0 token response")
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
 	}
 
-	idToken := aws.ToString(resp.AuthenticationResult.IdToken)
-	expiresIn := int(resp.AuthenticationResult.ExpiresIn)
+	if resp.StatusCode >= 400 || strings.TrimSpace(tokenResp.IDToken) == "" {
+		s.logger.WithField("status", resp.StatusCode).Warn("auth0 token exchange returned unsuccessful response")
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
 
-	// // Sign in with Supabase
-	// resp, err := s.supauth.SignInWithEmailPassword(email, password)
+	claims, err := s.authClaimsFromToken(r.Context(), tokenResp.IDToken)
+	if err != nil {
+		s.clearAuthFlowCookies(w)
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
+	if claims.Nonce == "" || !subtleCompare(nonceCookie.Value, claims.Nonce) {
+		s.logger.WithField("auth_subject", claims.Subject).Warn("auth callback nonce mismatch")
+		s.clearAuthFlowCookies(w)
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
 
-	// if err != nil {
-	// 	s.logger.WithError(err).Error("failed to login user")
-	// 	http.Error(w, "Login failed: "+err.Error(), http.StatusUnauthorized)
-	// 	return
-	// }
+	if _, err := s.userRepo.UpsertIdentity(r.Context(), claims.Subject, claims.Email, claims.GivenName, claims.FamilyName); err != nil {
+		s.logger.WithError(err).WithField("auth_subject", claims.Subject).Error("failed to sync user identity in auth callback")
+		s.internalServerError(w)
+		return
+	}
 
-	// // Success! resp contains User and Session with AccessToken
-	// s.logger.WithField("user_id", resp.User.ID).Info("user logged in")
+	expiresIn := tokenResp.ExpiresIn
+	if expiresIn <= 0 {
+		expiresIn = s.config.SessionMaxAgeSec
+	}
 
-	encryptedToken, err := s.cookie.Encode(internal.COOKIE_ACCESS_TOKEN_NAME, idToken)
+	encryptedToken, err := s.cookie.Encode(internal.COOKIE_ACCESS_TOKEN_NAME, tokenResp.IDToken)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to encrypt id token")
-		data.Error = "Login failed. Please try again."
-		err = s.renderTemplate(w, r, "page.login", data)
-		if err != nil {
-			s.logger.WithError(err).Error("failed to render login page after token encryption failure")
-			s.internalServerError(w)
-		}
+		s.internalServerError(w)
 		return
 	}
 
-	// Set httpOnly, secure cookie with access token
 	http.SetCookie(w, &http.Cookie{
 		Name:     internal.COOKIE_ACCESS_TOKEN_NAME,
 		Value:    encryptedToken,
@@ -152,18 +140,112 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 	})
 
-	// Check to see if this login attempt was the result of an unauthed redirect
+	s.clearAuthFlowCookies(w)
+
 	redirectCookie, err := r.Cookie(internal.COOKIE_REDIRECT_NAME)
 	if err == nil {
-		// Cookie found, grab the value, clear the cookie
 		path := redirectCookie.Value
 		s.clearRedirectCookie(w)
 		http.Redirect(w, r, path, http.StatusSeeOther)
 		return
 	}
 
-	// Redirect back to the homepage
 	http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+}
+
+func (s *Service) startAuth0Authorization(w http.ResponseWriter, r *http.Request, screenHint string) {
+	state, err := generateAuthFlowToken()
+	if err != nil {
+		s.logger.WithError(err).Error("failed to generate auth state")
+		s.internalServerError(w)
+		return
+	}
+	nonce, err := generateAuthFlowToken()
+	if err != nil {
+		s.logger.WithError(err).Error("failed to generate auth nonce")
+		s.internalServerError(w)
+		return
+	}
+
+	age := int((5 * time.Minute).Seconds())
+	http.SetCookie(w, &http.Cookie{
+		Name:     internal.COOKIE_AUTH_STATE,
+		Value:    state,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   age,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     internal.COOKIE_AUTH_NONCE,
+		Value:    nonce,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   age,
+	})
+
+	v := url.Values{}
+	v.Set("response_type", "code")
+	v.Set("client_id", s.config.Auth0ClientID)
+	v.Set("redirect_uri", strings.TrimSpace(s.config.Auth0CallbackURL))
+	v.Set("scope", "openid profile email")
+	v.Set("state", state)
+	v.Set("nonce", nonce)
+	if audience := strings.TrimSpace(s.config.Auth0Audience); audience != "" {
+		v.Set("audience", audience)
+	}
+	if hint := strings.TrimSpace(screenHint); hint != "" {
+		v.Set("screen_hint", hint)
+	}
+
+	authorizeURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/authorize?" + v.Encode()
+	http.Redirect(w, r, authorizeURL, http.StatusSeeOther)
+}
+
+func (s *Service) clearAuthFlowCookies(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     internal.COOKIE_AUTH_STATE,
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   -1,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     internal.COOKIE_AUTH_NONCE,
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   -1,
+	})
+}
+
+func generateAuthFlowToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// subtleCompare is for secret callback values (state/nonce).
+// A regular == check can leak timing information about how many leading bytes
+// matched before the first mismatch; this comparison avoids that signal.
+func subtleCompare(a, b string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	var diff byte
+	for i := 0; i < len(a); i++ {
+		diff |= a[i] ^ b[i]
+	}
+	return diff == 0
 }
 
 func (s *Service) setRedirectCookie(w http.ResponseWriter, path string, age time.Duration) {
@@ -206,5 +288,18 @@ func (s *Service) handlePostLogout(w http.ResponseWriter, r *http.Request) {
 	s.clearAccessTokenCookie(w)
 	s.clearRedirectCookie(w)
 	s.clearRegisterConfirmCookie(w)
-	http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+	s.clearAuthFlowCookies(w)
+	logoutURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/v2/logout"
+	v := url.Values{}
+	v.Set("client_id", s.config.Auth0ClientID)
+	v.Set("returnTo", strings.TrimSpace(s.config.Auth0LogoutURL))
+	http.Redirect(w, r, logoutURL+"?"+v.Encode(), http.StatusSeeOther)
+}
+
+func (s *Service) auth0DomainURL() string {
+	domain := strings.TrimSpace(s.config.Auth0Domain)
+	if strings.HasPrefix(domain, "https://") || strings.HasPrefix(domain, "http://") {
+		return strings.TrimRight(domain, "/")
+	}
+	return fmt.Sprintf("https://%s", strings.TrimRight(domain, "/"))
 }
