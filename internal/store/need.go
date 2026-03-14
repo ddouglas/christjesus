@@ -334,13 +334,21 @@ func (r *NeedRepository) softDeleteNeedWithExec(ctx context.Context, execer need
 		Set("deleted_by_user_id", actorUserID).
 		Set("delete_reason", reason).
 		Set("updated_at", now).
-		Where(sq.Eq{"id": needID}).
+		Where(sq.Eq{"id": needID, "deleted_at": nil}).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("failed to generate soft-delete need query for need %s: %w", needID, err)
 	}
 
-	_, err = execer.Exec(ctx, query, args...)
+	tag, err := execer.Exec(ctx, query, args...)
+	if err != nil {
+		return utils.ErrorWrapOrNil(err, "failed to soft-delete need")
+	}
+
+	if tag.RowsAffected() == 0 {
+		return types.ErrNeedAlreadyDeleted
+	}
+
 	return utils.ErrorWrapOrNil(err, "failed to soft-delete need")
 }
 
@@ -361,12 +369,21 @@ func (r *NeedRepository) restoreNeedWithExec(ctx context.Context, execer needExe
 		Set("delete_reason", nil).
 		Set("updated_at", now).
 		Where(sq.Eq{"id": needID}).
+		Where(sq.NotEq{"deleted_at": nil}).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("failed to generate restore need query for need %s: %w", needID, err)
 	}
 
-	_, err = execer.Exec(ctx, query, args...)
+	tag, err := execer.Exec(ctx, query, args...)
+	if err != nil {
+		return utils.ErrorWrapOrNil(err, "failed to restore need")
+	}
+
+	if tag.RowsAffected() == 0 {
+		return types.ErrNeedNotDeleted
+	}
+
 	return utils.ErrorWrapOrNil(err, "failed to restore need")
 }
 

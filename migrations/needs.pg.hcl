@@ -181,12 +181,12 @@ table "needs" {
   # Speeds moderation queue pages, which always filter to non-deleted submitted/review needs.
   index "idx_needs_queue_active" {
     columns = [column.submitted_at, column.created_at]
-    where   = "deleted_at IS NULL AND status IN ('submitted', 'under_review')"
+    where   = "deleted_at IS NULL AND status IN ('SUBMITTED', 'UNDER_REVIEW')"
   }
 
   # Speeds browse/latest lists that only display non-deleted, non-draft needs by recency.
   index "idx_needs_browse_active" {
     columns = [column.created_at]
-    where   = "deleted_at IS NULL AND status <> 'draft'"
+    where   = "deleted_at IS NULL AND status <> 'DRAFT'"
   }
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -73,6 +74,11 @@ func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *h
 			_, err := s.progressRepo.RecordModerationActionEventTx(r.Context(), tx, needID, types.NeedModerationActionTypeSoftDeleted, actorUserID, &reasonPtr, nil, nil)
 			return err
 		}); err != nil {
+			if errors.Is(err, types.ErrNeedAlreadyDeleted) {
+				s.redirectAdminNeedReviewWithError(w, r, needID, "need is already deleted")
+				return
+			}
+
 			s.logger.WithError(err).WithField("need_id", needID).Error("failed to atomically delete need and record audit event")
 			s.redirectAdminNeedReviewWithError(w, r, needID, "failed to delete need")
 			return
@@ -98,6 +104,11 @@ func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *h
 		_, err := s.progressRepo.RecordModerationActionEventTx(r.Context(), tx, needID, types.NeedModerationActionTypeRestored, actorUserID, &reasonPtr, nil, nil)
 		return err
 	}); err != nil {
+		if errors.Is(err, types.ErrNeedNotDeleted) {
+			s.redirectAdminNeedReviewWithError(w, r, needID, "need is not deleted")
+			return
+		}
+
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to atomically restore need and record audit event")
 		s.redirectAdminNeedReviewWithError(w, r, needID, "failed to restore need")
 		return
