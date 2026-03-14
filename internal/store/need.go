@@ -87,7 +87,7 @@ func (r *NeedRepository) ModerationQueueNeedsPage(ctx context.Context, page, pag
 	query, args, err := psql().Select(needColumns...).From(needTableName).
 		Where(sq.Eq{"status": []types.NeedStatus{types.NeedStatusSubmitted, types.NeedStatusUnderReview}}).
 		Where(sq.Eq{"deleted_at": nil}).
-		OrderBy("submitted_at desc", "created_at desc").
+		OrderBy("submitted_at desc nulls last", "created_at desc").
 		Limit(uint64(pageSize)).
 		Offset(offset).
 		ToSql()
