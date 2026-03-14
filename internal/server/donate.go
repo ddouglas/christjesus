@@ -376,6 +376,9 @@ func (s *Service) loadNeedDonateSummary(ctx context.Context, needID string) (*ty
 	if err != nil {
 		return nil, "", "", err
 	}
+	if need.DeletedAt != nil {
+		return nil, "", "", types.ErrNeedNotFound
+	}
 
 	if err := s.applyFinalizedRaisedAmount(ctx, need); err != nil {
 		return nil, "", "", err

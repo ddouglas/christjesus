@@ -325,7 +325,13 @@ type AdminDashboardPageData struct {
 
 type AdminNeedsPageData struct {
 	BasePageData
-	Needs []*AdminNeedQueueItem
+	Needs      []*AdminNeedQueueItem
+	Page       int
+	PageSize   int
+	TotalNeeds int
+	TotalPages int
+	PrevHref   string
+	NextHref   string
 }
 
 type AdminNeedQueueItem struct {
@@ -348,6 +354,12 @@ type AdminNeedReviewPageData struct {
 	Timeline            []*AdminNeedTimelineItem
 	BackHref            string
 	ModerateAction      string
+	DeleteAction        string
+	RestoreAction       string
+	IsDeleted           bool
+	DeletedAt           string
+	DeletedByUserID     string
+	DeleteReason        string
 	Notice              string
 	Error               string
 }

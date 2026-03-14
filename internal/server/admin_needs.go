@@ -2,16 +2,39 @@ package server
 
 import (
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"christjesus/pkg/types"
 )
 
+const adminNeedsPageSize = 20
+
 func (s *Service) handleGetAdminNeeds(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	page := parsePositiveInt(r.URL.Query().Get("page"), 1)
 
-	needs, err := s.needsRepo.ModerationQueueNeeds(ctx)
+	totalNeeds, err := s.needsRepo.ModerationQueueNeedsCount(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to count needs for admin queue")
+		s.internalServerError(w)
+		return
+	}
+
+	totalPages := totalNeeds / adminNeedsPageSize
+	if totalNeeds%adminNeedsPageSize != 0 {
+		totalPages++
+	}
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	if page > totalPages {
+		page = totalPages
+	}
+
+	needs, err := s.needsRepo.ModerationQueueNeedsPage(ctx, page, adminNeedsPageSize)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch needs for admin queue")
 		s.internalServerError(w)
@@ -44,9 +67,29 @@ func (s *Service) handleGetAdminNeeds(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	prevHref := ""
+	if page > 1 {
+		v := url.Values{}
+		v.Set("page", strconv.Itoa(page-1))
+		prevHref = s.routeWithQuery(RouteAdminNeeds, nil, v)
+	}
+
+	nextHref := ""
+	if page < totalPages {
+		v := url.Values{}
+		v.Set("page", strconv.Itoa(page+1))
+		nextHref = s.routeWithQuery(RouteAdminNeeds, nil, v)
+	}
+
 	data := &types.AdminNeedsPageData{
 		BasePageData: types.BasePageData{Title: "Admin Needs"},
 		Needs:        items,
+		Page:         page,
+		PageSize:     adminNeedsPageSize,
+		TotalNeeds:   totalNeeds,
+		TotalPages:   totalPages,
+		PrevHref:     prevHref,
+		NextHref:     nextHref,
 	}
 
 	if err := s.renderTemplate(w, r, "page.admin.needs", data); err != nil {
@@ -54,4 +97,12 @@ func (s *Service) handleGetAdminNeeds(w http.ResponseWriter, r *http.Request) {
 		s.internalServerError(w)
 		return
 	}
+}
+
+func parsePositiveInt(raw string, fallback int) int {
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || value < 1 {
+		return fallback
+	}
+	return value
 }

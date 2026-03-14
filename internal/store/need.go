@@ -51,6 +51,7 @@ func (r *NeedRepository) Need(ctx context.Context, needID string) (*types.Need, 
 func (r *NeedRepository) BrowseNeeds(ctx context.Context) ([]*types.Need, error) {
 	query, args, err := psql().Select(needColumns...).From(needTableName).
 		Where(sq.NotEq{"status": types.NeedStatusDraft}).
+		Where(sq.Eq{"deleted_at": nil}).
 		OrderBy("created_at desc").
 		ToSql()
 	if err != nil {
@@ -70,9 +71,25 @@ func (r *NeedRepository) BrowseNeeds(ctx context.Context) ([]*types.Need, error)
 }
 
 func (r *NeedRepository) ModerationQueueNeeds(ctx context.Context) ([]*types.Need, error) {
+	return r.ModerationQueueNeedsPage(ctx, 1, 500)
+}
+
+func (r *NeedRepository) ModerationQueueNeedsPage(ctx context.Context, page, pageSize int) ([]*types.Need, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+
+	offset := uint64((page - 1) * pageSize)
+
 	query, args, err := psql().Select(needColumns...).From(needTableName).
 		Where(sq.Eq{"status": []types.NeedStatus{types.NeedStatusSubmitted, types.NeedStatusUnderReview}}).
+		Where(sq.Eq{"deleted_at": nil}).
 		OrderBy("submitted_at desc", "created_at desc").
+		Limit(uint64(pageSize)).
+		Offset(offset).
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate moderation queue needs query: %w", err)
@@ -90,6 +107,25 @@ func (r *NeedRepository) ModerationQueueNeeds(ctx context.Context) ([]*types.Nee
 	return needs, nil
 }
 
+func (r *NeedRepository) ModerationQueueNeedsCount(ctx context.Context) (int, error) {
+	query, args, err := psql().
+		Select("COUNT(*)").
+		From(needTableName).
+		Where(sq.Eq{"status": []types.NeedStatus{types.NeedStatusSubmitted, types.NeedStatusUnderReview}}).
+		Where(sq.Eq{"deleted_at": nil}).
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to generate moderation queue needs count query: %w", err)
+	}
+
+	var total int
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("failed to count moderation queue needs: %w", err)
+	}
+
+	return total, nil
+}
+
 func (r *NeedRepository) LatestNeeds(ctx context.Context, limit int) ([]*types.Need, error) {
 	if limit <= 0 {
 		limit = 5
@@ -97,6 +133,7 @@ func (r *NeedRepository) LatestNeeds(ctx context.Context, limit int) ([]*types.N
 
 	query, args, err := psql().Select(needColumns...).From(needTableName).
 		Where(sq.NotEq{"status": types.NeedStatusDraft}).
+		Where(sq.Eq{"deleted_at": nil}).
 		OrderBy("created_at desc").
 		Limit(uint64(limit)).
 		ToSql()
@@ -261,6 +298,42 @@ func (r *NeedRepository) SetNeedStatus(ctx context.Context, needID string, statu
 
 	_, err = r.pool.Exec(ctx, query, args...)
 	return utils.ErrorWrapOrNil(err, "failed to set need status")
+}
+
+func (r *NeedRepository) SoftDeleteNeed(ctx context.Context, needID, actorUserID, reason string) error {
+	now := time.Now()
+	query, args, err := psql().
+		Update(needTableName).
+		Set("deleted_at", now).
+		Set("deleted_by_user_id", actorUserID).
+		Set("delete_reason", reason).
+		Set("updated_at", now).
+		Where(sq.Eq{"id": needID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to generate soft-delete need query for need %s: %w", needID, err)
+	}
+
+	_, err = r.pool.Exec(ctx, query, args...)
+	return utils.ErrorWrapOrNil(err, "failed to soft-delete need")
+}
+
+func (r *NeedRepository) RestoreNeed(ctx context.Context, needID string) error {
+	now := time.Now()
+	query, args, err := psql().
+		Update(needTableName).
+		Set("deleted_at", nil).
+		Set("deleted_by_user_id", nil).
+		Set("delete_reason", nil).
+		Set("updated_at", now).
+		Where(sq.Eq{"id": needID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to generate restore need query for need %s: %w", needID, err)
+	}
+
+	_, err = r.pool.Exec(ctx, query, args...)
+	return utils.ErrorWrapOrNil(err, "failed to restore need")
 }
 
 func (r *NeedRepository) DeleteNeed(ctx context.Context, needID string) error {

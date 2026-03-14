@@ -22,6 +22,8 @@ const (
 	RouteAdminNeedReview        RouteName = "admin.need.review"
 	RouteAdminNeedModerate      RouteName = "admin.need.moderate"
 	RouteAdminNeedDocument      RouteName = "admin.need.document"
+	RouteAdminNeedDelete        RouteName = "admin.need.delete"
+	RouteAdminNeedRestore       RouteName = "admin.need.restore"
 	RouteProfileNeedDelete      RouteName = "profile.need.delete"
 	RouteProfileDonationReceipt RouteName = "profile.donation.receipt"
 
@@ -72,6 +74,8 @@ var routePatterns = map[RouteName]string{
 	RouteAdminNeedReview:               "/admin/needs/:id",
 	RouteAdminNeedModerate:             "/admin/needs/:id/moderate",
 	RouteAdminNeedDocument:             "/admin/needs/:id/documents/:documentID",
+	RouteAdminNeedDelete:               "/admin/needs/:id/delete",
+	RouteAdminNeedRestore:              "/admin/needs/:id/restore",
 	RouteProfileNeedDelete:             "/profile/needs/:needID/delete",
 	RouteProfileDonationReceipt:        "/profile/donations/:intentID/receipt",
 	RouteOnboarding:                    "/onboarding",

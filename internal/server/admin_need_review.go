@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"christjesus/pkg/types"
 )
@@ -219,6 +220,12 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		Timeline:            timeline,
 		BackHref:            s.route(RouteAdminNeeds, nil),
 		ModerateAction:      s.route(RouteAdminNeedModerate, map[string]string{"id": needID}),
+		DeleteAction:        s.route(RouteAdminNeedDelete, map[string]string{"id": needID}),
+		RestoreAction:       s.route(RouteAdminNeedRestore, map[string]string{"id": needID}),
+		IsDeleted:           need.DeletedAt != nil,
+		DeletedAt:           formatOptionalDateTime(need.DeletedAt),
+		DeletedByUserID:     formatOptionalString(need.DeletedByUserID),
+		DeleteReason:        formatOptionalString(need.DeleteReason),
 		Notice:              strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:               strings.TrimSpace(r.URL.Query().Get("error")),
 	}
@@ -239,6 +246,21 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 
 	if err := r.ParseForm(); err != nil {
 		s.redirectAdminNeedReviewWithError(w, r, needID, "invalid form submission")
+		return
+	}
+
+	need, err := s.needsRepo.Need(r.Context(), needID)
+	if err != nil {
+		if err == types.ErrNeedNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need before moderation action")
+		s.internalServerError(w)
+		return
+	}
+	if need.DeletedAt != nil {
+		s.redirectAdminNeedReviewWithError(w, r, needID, "cannot moderate a deleted need; restore it first")
 		return
 	}
 
@@ -390,4 +412,22 @@ func latestDocumentStatuses(actions []*types.NeedModerationAction) map[string]st
 	}
 
 	return documentStatusByID
+}
+
+func formatOptionalDateTime(value *time.Time) string {
+	if value == nil {
+		return "-"
+	}
+	return value.Format("2006-01-02 15:04")
+}
+
+func formatOptionalString(value *string) string {
+	if value == nil {
+		return "-"
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return "-"
+	}
+	return trimmed
 }

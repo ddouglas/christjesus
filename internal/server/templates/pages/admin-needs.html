@@ -11,6 +11,18 @@
     </div>
 
     {{if .Needs}}
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+      <p>Showing page {{.Page}} of {{.TotalPages}} ({{.TotalNeeds}} needs)</p>
+      <div class="flex items-center gap-2">
+        {{if .PrevHref}}
+        <a href="{{.PrevHref}}" class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">Previous</a>
+        {{end}}
+        {{if .NextHref}}
+        <a href="{{.NextHref}}" class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">Next</a>
+        {{end}}
+      </div>
+    </div>
+
     <div class="mt-6 overflow-x-auto">
       <table class="min-w-full divide-y divide-border text-sm">
         <thead>
