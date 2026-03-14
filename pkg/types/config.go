@@ -17,6 +17,7 @@ type Config struct {
 	CognitoUserPoolID string `envconfig:"COGNITO_USER_POOL_ID" required:"true"`
 	CognitoClientID   string `envconfig:"COGNITO_CLIENT_ID" required:"true"`
 	CognitoIssuerURL  string `envconfig:"COGNITO_ISSUER_URL" required:"true"`
+	CognitoAdminGroup string `envconfig:"COGNITO_ADMIN_GROUP" default:"admin"`
 
 	// AWS S3
 	S3BucketName string `envconfig:"S3_BUCKET_NAME" required:"true"`

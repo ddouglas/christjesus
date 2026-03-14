@@ -104,6 +104,25 @@ table "needs" {
     comment = "When user completed onboarding and submitted"
   }
 
+  # Soft delete tracking
+  column "deleted_at" {
+    type    = timestamptz
+    null    = true
+    comment = "When need was soft deleted by admin"
+  }
+
+  column "deleted_by_user_id" {
+    type    = uuid
+    null    = true
+    comment = "Admin user id that soft deleted this need"
+  }
+
+  column "delete_reason" {
+    type    = text
+    null    = true
+    comment = "Required reason captured during admin soft delete"
+  }
+
   # Metadata
   column "created_at" {
     type    = timestamptz
@@ -152,5 +171,22 @@ table "needs" {
 
   index "idx_needs_user_status" {
     columns = [column.user_id, column.status]
+  }
+
+  index "idx_needs_deleted_at" {
+    columns = [column.deleted_at]
+    where   = "deleted_at IS NOT NULL"
+  }
+
+  # Speeds moderation queue pages, which always filter to non-deleted submitted/review needs.
+  index "idx_needs_queue_active" {
+    columns = [column.submitted_at, column.created_at]
+    where   = "deleted_at IS NULL AND status IN ('SUBMITTED', 'UNDER_REVIEW')"
+  }
+
+  # Speeds browse/latest lists that only display non-deleted, non-draft needs by recency.
+  index "idx_needs_browse_active" {
+    columns = [column.created_at]
+    where   = "deleted_at IS NULL AND status <> 'DRAFT'"
   }
 }

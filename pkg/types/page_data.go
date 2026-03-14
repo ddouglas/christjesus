@@ -4,6 +4,7 @@ import "time"
 
 type NavbarData struct {
 	IsAuthenticated bool
+	IsAdmin         bool
 	UserID          string
 	UserEmail       string
 	UserName        string
@@ -316,4 +317,71 @@ type ProfileDonationSummary struct {
 	IsFinalized bool
 	IsAnonymous bool
 	CreatedAt   string
+}
+
+type AdminDashboardPageData struct {
+	BasePageData
+}
+
+type AdminNeedsPageData struct {
+	BasePageData
+	Needs      []*AdminNeedQueueItem
+	Page       int
+	PageSize   int
+	TotalNeeds int
+	TotalPages int
+	PrevHref   string
+	NextHref   string
+}
+
+type AdminNeedQueueItem struct {
+	NeedID      string
+	Status      NeedStatus
+	CreatedAt   string
+	SubmittedAt string
+	ReviewHref  string
+}
+
+type AdminNeedReviewPageData struct {
+	BasePageData
+	Need                *Need
+	Story               *NeedStory
+	PrimaryCategory     *NeedCategory
+	SecondaryCategories []*NeedCategory
+	SelectedAddress     *UserAddress
+	CityState           string
+	Documents           []*AdminNeedReviewDocument
+	Timeline            []*AdminNeedTimelineItem
+	BackHref            string
+	ModerateAction      string
+	DeleteAction        string
+	RestoreAction       string
+	IsDeleted           bool
+	DeletedAt           string
+	DeletedByUserID     string
+	DeleteReason        string
+	Notice              string
+	Error               string
+}
+
+type AdminNeedReviewDocument struct {
+	ID          string
+	FileName    string
+	TypeLabel   string
+	UploadedAt  string
+	Status      string
+	MimeType    string
+	FileSize    string
+	PreviewHref string
+}
+
+type AdminNeedTimelineItem struct {
+	When       string
+	Step       string
+	Actor      string
+	Source     string
+	ActionType string
+	Reason     string
+	Note       string
+	DocumentID string
 }

@@ -192,6 +192,18 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc(RoutePattern(RouteNeedDonateConfirmation), s.handleGetNeedDonateConfirmation, http.MethodGet)
 	})
 
+	r.Group(func(r *flow.Mux) {
+		r.Use(s.RequireAdmin)
+
+		r.HandleFunc(RoutePattern(RouteAdmin), s.handleGetAdminDashboard, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteAdminNeeds), s.handleGetAdminNeeds, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteAdminNeedReview), s.handleGetAdminNeedReview, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteAdminNeedModerate), s.handlePostAdminNeedModerate, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteAdminNeedDocument), s.handleGetAdminNeedDocument, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteAdminNeedDelete), s.handlePostAdminNeedDelete, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteAdminNeedRestore), s.handlePostAdminNeedRestore, http.MethodPost)
+	})
+
 	r.HandleFunc(RoutePattern(RouteBrowse), s.handleBrowse, http.MethodGet)
 	r.HandleFunc(RoutePattern(RouteCategories), s.handleCategories, http.MethodGet)
 	r.HandleFunc(RoutePattern(RouteCategoryNeeds), s.handleCategoryNeeds, http.MethodGet)

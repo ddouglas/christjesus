@@ -654,6 +654,10 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		s.internalServerError(w)
 		return
 	}
+	if need.DeletedAt != nil {
+		http.NotFound(w, r)
+		return
+	}
 
 	if err := s.applyFinalizedRaisedAmount(ctx, need); err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to load finalized donation totals for need detail")

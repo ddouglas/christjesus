@@ -81,6 +81,7 @@ func (r *AssignmentRepository) PrimaryNeedCountsByCategoryIDs(ctx context.Contex
 		Join("christjesus.needs n ON n.id = a.need_id").
 		Where(sq.Eq{"a.category_id": categoryIDs, "a.is_primary": true}).
 		Where(sq.NotEq{"n.status": types.NeedStatusDraft}).
+		Where(sq.Eq{"n.deleted_at": nil}).
 		GroupBy("a.category_id").
 		ToSql()
 	if err != nil {

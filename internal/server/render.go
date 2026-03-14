@@ -10,6 +10,7 @@ func (s *Service) renderTemplate(w http.ResponseWriter, r *http.Request, templat
 	userID, _ := r.Context().Value(contextKeyUserID).(string)
 	userEmail, _ := r.Context().Value(contextKeyEmail).(string)
 	userName, _ := r.Context().Value(contextKeyUserName).(string)
+	isAdmin, _ := r.Context().Value(contextKeyIsAdmin).(bool)
 
 	if userName == "" {
 		userName = displayNameFromEmail(userEmail)
@@ -18,6 +19,7 @@ func (s *Service) renderTemplate(w http.ResponseWriter, r *http.Request, templat
 	if setter, ok := data.(types.NavbarDataSetter); ok {
 		setter.SetNavbarData(types.NavbarData{
 			IsAuthenticated: userID != "",
+			IsAdmin:         isAdmin,
 			UserID:          userID,
 			UserEmail:       userEmail,
 			UserName:        userName,

@@ -1,0 +1,334 @@
+{{define "page.admin.need.review"}}
+{{template "header" .}}
+<section class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
+  <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Admin</p>
+        <h1 class="mt-2 text-2xl font-semibold text-foreground">Need Review</h1>
+      </div>
+      <a href="{{.BackHref}}" class="text-sm text-muted-foreground hover:text-foreground">Back to Queue</a>
+    </div>
+
+    {{if .Need}}
+    {{if .Notice}}
+    <div class="mt-4 rounded-md border border-[color:var(--cj-success)]/30 bg-[color:var(--cj-success)]/10 px-3 py-2 text-sm text-foreground">{{.Notice}}</div>{{end}}
+    {{if .Error}}
+    <div class="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-foreground">{{.Error}}</div>{{end}}
+
+    <div class="mt-6 rounded-xl border border-border bg-background p-4">
+      <h2 class="text-base font-semibold text-foreground">Overview</h2>
+      <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-lg border border-border bg-card p-3">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Need ID</p>
+          <p class="mt-1 font-mono text-xs text-foreground">{{.Need.ID}}</p>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-3">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Status</p>
+          <p class="mt-1 text-sm text-foreground">{{.Need.Status}}{{if .IsDeleted}} • <span class="text-[color:var(--cj-error)]">DELETED</span>{{end}}</p>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-3">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Requested Amount</p>
+          <p class="mt-1 text-sm text-foreground">${{div .Need.AmountNeededCents 100}}</p>
+        </div>
+        <div class="rounded-lg border border-border bg-card p-3">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Raised Amount</p>
+          <p class="mt-1 text-sm text-foreground">${{div .Need.AmountRaisedCents 100}}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 grid gap-4 lg:grid-cols-2">
+      <div class="rounded-xl border border-border bg-background p-4">
+        <h2 class="text-base font-semibold text-foreground">Need Summary</h2>
+        <p class="mt-2 text-sm text-muted-foreground">{{derefOr .Need.ShortDescription "No short description provided."}}</p>
+      </div>
+
+      <div class="rounded-xl border border-border bg-background p-4">
+        <h2 class="text-base font-semibold text-foreground">Location</h2>
+        <p class="mt-2 text-sm text-muted-foreground">{{.CityState}}</p>
+        {{if .SelectedAddress}}
+        <p class="mt-1 text-xs text-muted-foreground">Privacy: {{derefOr .SelectedAddress.PrivacyDisplay "not set"}}</p>
+        {{end}}
+      </div>
+
+      <div class="rounded-xl border border-border bg-background p-4 lg:col-span-2">
+        <h2 class="text-base font-semibold text-foreground">Story</h2>
+        {{if .Story}}
+        <div class="mt-3 space-y-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Current Situation</p>
+            <p class="mt-1 text-sm leading-relaxed text-muted-foreground">{{derefOr .Story.Current "Not provided."}}</p>
+          </div>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Need</p>
+            <p class="mt-1 text-sm leading-relaxed text-muted-foreground">{{derefOr .Story.Need "Not provided."}}</p>
+          </div>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Expected Outcome</p>
+            <p class="mt-1 text-sm leading-relaxed text-muted-foreground">{{derefOr .Story.Outcome "Not provided."}}</p>
+          </div>
+        </div>
+        {{else}}
+          <p class="mt-2 text-sm text-muted-foreground">No story has been submitted for this need.</p>
+          {{end}}
+      </div>
+
+      <div class="rounded-xl border border-border bg-background p-4 lg:col-span-2">
+        <h2 class="text-base font-semibold text-foreground">Categories</h2>
+        <div class="mt-3 flex flex-wrap gap-2">
+          {{if .PrimaryCategory}}
+          <span class="inline-flex items-center rounded-md bg-[color:var(--cj-primary)]/10 px-2 py-1 text-xs font-semibold text-[color:var(--cj-primary)]">Primary: {{.PrimaryCategory.Name}}</span>
+          {{end}}
+          {{range .SecondaryCategories}}
+          <span class="inline-flex items-center rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground">{{.Name}}</span>
+          {{end}}
+          {{if and (not .PrimaryCategory) (not .SecondaryCategories)}}
+          <span class="text-sm text-muted-foreground">No categories assigned.</span>
+          {{end}}
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 rounded-xl border border-border bg-background p-4">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-semibold text-foreground">Moderation Actions</h2>
+          {{if .IsDeleted}}
+          <p class="mt-1 text-sm text-muted-foreground">Need is deleted. Restore first before submitting moderation actions.</p>
+          {{else}}
+            <p class="mt-1 text-sm text-muted-foreground">Submit approve/reject/request changes in a focused modal.</p>
+            {{end}}
+        </div>
+        {{if not .IsDeleted}}
+        <button type="button" data-open-modal="need-moderation-modal"
+          class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-primary)]/90">
+          Submit Need Review
+        </button>
+        {{end}}
+      </div>
+
+      <div class="mt-4 rounded-lg border border-border bg-card p-4">
+        {{if .IsDeleted}}
+        <p class="text-sm text-muted-foreground">Deleted at {{.DeletedAt}} by {{.DeletedByUserID}}. Reason: {{.DeleteReason}}</p>
+        <form method="post" action="{{.RestoreAction}}" class="mt-3 space-y-3">
+          <div>
+            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="restore-reason">Restore Reason</label>
+            <input id="restore-reason" name="reason" type="text" required class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
+              placeholder="Required reason for restoring this need" />
+          </div>
+          <button type="submit" class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-success)] px-4 py-2 text-sm font-medium text-white">Restore Need</button>
+        </form>
+        {{else}}
+          <p class="text-sm text-muted-foreground">Soft-delete hides this need from public surfaces. Hard delete is not available.</p>
+          <form method="post" action="{{.DeleteAction}}" class="mt-3 space-y-3">
+            <div>
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="delete-reason">Delete Reason</label>
+              <input id="delete-reason" name="reason" type="text" required class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
+                placeholder="Required reason for soft-deleting this need" />
+            </div>
+            <button type="submit" class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-error)] px-4 py-2 text-sm font-medium text-white">Delete Need</button>
+          </form>
+          {{end}}
+      </div>
+    </div>
+
+    <div class="mt-8 rounded-xl border border-border bg-background p-4">
+      <h2 class="text-base font-semibold text-foreground">Document Verification</h2>
+      {{if .Documents}}
+      <div class="mt-4 space-y-4">
+        {{range .Documents}}
+        <div class="rounded-lg border border-border bg-card p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium text-foreground">{{.FileName}}</p>
+              <p class="mt-1 text-xs text-muted-foreground">{{.TypeLabel}} • Uploaded {{.UploadedAt}}</p>
+              <p class="mt-1 text-xs text-muted-foreground">{{.MimeType}} • {{.FileSize}}</p>
+            </div>
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{{.Status}}</p>
+          </div>
+
+          <div class="mt-3 flex flex-wrap gap-2">
+            <a href="{{.PreviewHref}}" target="_blank" rel="noopener noreferrer"
+              class="inline-flex h-8 items-center justify-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted">
+              Preview
+            </a>
+            <button type="button" data-open-modal="document-review-modal" data-document-id="{{.ID}}" data-document-name="{{.FileName}}"
+              class="inline-flex h-8 items-center justify-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted">
+              Review Decision
+            </button>
+          </div>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+        <p class="mt-4 text-sm text-muted-foreground">No documents uploaded for this need.</p>
+        {{end}}
+    </div>
+    {{end}}
+
+    <div class="mt-8">
+      <h2 class="text-lg font-semibold text-foreground">Timeline</h2>
+      {{if .Timeline}}
+      <div class="mt-4 overflow-x-auto">
+        <table class="min-w-full divide-y divide-border text-sm">
+          <thead>
+            <tr class="text-left text-muted-foreground">
+              <th class="py-2 pr-4">When</th>
+              <th class="py-2 pr-4">Event</th>
+              <th class="py-2 pr-4">Details</th>
+              <th class="py-2 pr-4">Source</th>
+              <th class="py-2">Actor</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border">
+            {{range .Timeline}}
+            <tr>
+              <td class="py-3 pr-4">{{.When}}</td>
+              <td class="py-3 pr-4">{{.Step}}</td>
+              <td class="py-3 pr-4">
+                <div class="space-y-1 text-xs text-muted-foreground">
+                  {{if ne .ActionType "-"}}
+                  <p>Action: {{.ActionType}}</p>{{end}}
+                  {{if .DocumentID}}
+                  <p>Document: <span class="font-mono">{{.DocumentID}}</span></p>{{end}}
+                  {{if .Reason}}
+                  <p>Reason: {{.Reason}}</p>{{end}}
+                  {{if .Note}}
+                  <p>Note: {{.Note}}</p>{{end}}
+                  {{if and (eq .ActionType "-") (not .DocumentID) (not .Reason) (not .Note)}}
+                  <p>-</p>{{end}}
+                </div>
+              </td>
+              <td class="py-3 pr-4">{{.Source}}</td>
+              <td class="py-3">{{.Actor}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+        <p class="mt-4 text-sm text-muted-foreground">No timeline events found for this need yet.</p>
+        {{end}}
+    </div>
+  </div>
+</section>
+
+<dialog id="need-moderation-modal" class="w-full max-w-lg rounded-xl border border-border bg-card p-0 text-foreground shadow-xl backdrop:bg-black/50">
+  <div class="border-b border-border px-5 py-4">
+    <h3 class="text-lg font-semibold">Submit Need Review</h3>
+    <p class="mt-1 text-sm text-muted-foreground">Choose a moderation action and optionally add context.</p>
+  </div>
+  <form method="post" action="{{.ModerateAction}}" class="space-y-4 px-5 py-4">
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="modal-reason">Reason</label>
+      <input id="modal-reason" name="reason" type="text" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional summary reason" />
+    </div>
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="modal-note">Note</label>
+      <textarea id="modal-note" name="note" rows="3" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional moderation note"></textarea>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button type="submit" name="action" value="approve"
+        class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-success)] px-4 py-2 text-sm font-medium text-white">Approve</button>
+      <button type="submit" name="action" value="request_changes"
+        class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-warning)] px-4 py-2 text-sm font-medium text-white">Request Changes</button>
+      <button type="submit" name="action" value="reject"
+        class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-error)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-error)]/90">Reject</button>
+    </div>
+  </form>
+  <div class="border-t border-border px-5 py-3">
+    <button type="button" data-close-modal="need-moderation-modal"
+      class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs text-foreground hover:bg-muted">Cancel</button>
+  </div>
+</dialog>
+
+<dialog id="document-review-modal" class="w-full max-w-lg rounded-xl border border-border bg-card p-0 text-foreground shadow-xl backdrop:bg-black/50">
+  <div class="border-b border-border px-5 py-4">
+    <h3 class="text-lg font-semibold">Review Document</h3>
+    <p class="mt-1 text-sm text-muted-foreground">Add optional context, then verify or reject this file.</p>
+    <p id="document-review-target" class="mt-2 text-xs font-mono text-muted-foreground"></p>
+  </div>
+  <form method="post" action="{{.ModerateAction}}" class="space-y-4 px-5 py-4">
+    <input id="document-review-id" type="hidden" name="document_id" value="" />
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="document-modal-reason">Reason</label>
+      <input id="document-modal-reason" name="reason" type="text" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional reason" />
+    </div>
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="document-modal-note">Note</label>
+      <textarea id="document-modal-note" name="note" rows="3" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional note"></textarea>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button type="submit" name="action" value="verify_document"
+        class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-success)] px-4 py-2 text-sm font-medium text-white">Verify</button>
+      <button type="submit" name="action" value="reject_document"
+        class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-error)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-error)]/90">Reject</button>
+    </div>
+  </form>
+  <div class="border-t border-border px-5 py-3">
+    <button type="button" data-close-modal="document-review-modal"
+      class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs text-foreground hover:bg-muted">Cancel</button>
+  </div>
+</dialog>
+
+<script>
+  (() => {
+    const modals = document.querySelectorAll('dialog');
+    const openButtons = document.querySelectorAll('[data-open-modal]');
+    const closeButtons = document.querySelectorAll('[data-close-modal]');
+    const docModal = document.getElementById('document-review-modal');
+    const docInput = document.getElementById('document-review-id');
+    const docTarget = document.getElementById('document-review-target');
+
+    openButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const modalID = button.getAttribute('data-open-modal');
+        const modal = document.getElementById(modalID);
+        if (!modal || typeof modal.showModal !== 'function') {
+          return;
+        }
+
+        if (modal === docModal) {
+          const documentID = button.getAttribute('data-document-id') || '';
+          const documentName = button.getAttribute('data-document-name') || '';
+          if (docInput) {
+            docInput.value = documentID;
+          }
+          if (docTarget) {
+            docTarget.textContent = documentName ? `File: ${documentName}` : '';
+          }
+        }
+
+        modal.showModal();
+      });
+    });
+
+    closeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const modalID = button.getAttribute('data-close-modal');
+        const modal = document.getElementById(modalID);
+        if (modal && typeof modal.close === 'function') {
+          modal.close();
+        }
+      });
+    });
+
+    modals.forEach((modal) => {
+      modal.addEventListener('click', (event) => {
+        const rect = modal.getBoundingClientRect();
+        const clickedInDialog =
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom;
+
+        if (!clickedInDialog) {
+          modal.close();
+        }
+      });
+    });
+  })();
+</script>
+{{template "footer" .}}
+{{end}}
