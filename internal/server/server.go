@@ -180,6 +180,8 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc(RoutePattern(RouteProfileNeedDelete), s.handlePostProfileNeedDelete, http.MethodPost)
 		r.HandleFunc(RoutePattern(RouteProfileNeedReview), s.handleGetProfileNeedReview, http.MethodGet)
 		r.HandleFunc(RoutePattern(RouteProfileNeedReviewPost), s.handlePostProfileNeedReviewMessage, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedReviewSetReady), s.handlePostProfileNeedReviewSetReady, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedReviewPullBack), s.handlePostProfileNeedReviewPullBack, http.MethodPost)
 		r.HandleFunc(RoutePattern(RouteProfileNeedDocumentView), s.handleGetProfileNeedDocument, http.MethodGet)
 		r.HandleFunc(RoutePattern(RouteProfileNeedEdit), s.handleGetProfileNeedEdit, http.MethodGet)
 		r.HandleFunc(RoutePattern(RouteProfileNeedEditLocation), s.handleGetProfileNeedEditLocation, http.MethodGet)

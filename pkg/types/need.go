@@ -9,6 +9,7 @@ type NeedStatus string
 const (
 	NeedStatusDraft            NeedStatus = "DRAFT"
 	NeedStatusSubmitted        NeedStatus = "SUBMITTED"
+	NeedStatusReadyForReview   NeedStatus = "READY_FOR_REVIEW"
 	NeedStatusUnderReview      NeedStatus = "UNDER_REVIEW"
 	NeedStatusChangesRequested NeedStatus = "CHANGES_REQUESTED"
 	NeedStatusApproved         NeedStatus = "APPROVED"

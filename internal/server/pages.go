@@ -913,7 +913,7 @@ func browseCityStateParts(address *types.UserAddress) (string, string, string) {
 }
 
 func browseUrgency(status types.NeedStatus, amountNeededCents, amountRaisedCents int) (string, string) {
-	if status == types.NeedStatusSubmitted || status == types.NeedStatusUnderReview {
+	if status == types.NeedStatusSubmitted || status == types.NeedStatusReadyForReview || status == types.NeedStatusUnderReview {
 		return "URGENT", "bg-[color:var(--cj-error)]"
 	}
 

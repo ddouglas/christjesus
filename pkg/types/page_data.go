@@ -361,8 +361,14 @@ type NeedReviewPortalPageData struct {
 	Documents           []NeedReviewDocumentFeedback
 	Messages            []NeedReviewMessageView
 	PostMessageAction   string
+	SetReadyAction      string
+	PullBackAction      string
 	BackHref            string
 	EditNeedHref        string
+	CanEditNeed         bool
+	CanSetReady         bool
+	CanPullBack         bool
+	CanSendMessage      bool
 	Notice              string
 	Error               string
 }
@@ -413,6 +419,9 @@ type AdminNeedReviewPageData struct {
 	Timeline            []*AdminNeedTimelineItem
 	BackHref            string
 	ModerateAction      string
+	AcceptReviewAction  string
+	CanAcceptReview     bool
+	CanSubmitModeration bool
 	DeleteAction        string
 	RestoreAction       string
 	IsDeleted           bool

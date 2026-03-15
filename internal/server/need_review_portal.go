@@ -165,8 +165,14 @@ func (s *Service) handleGetProfileNeedReview(w http.ResponseWriter, r *http.Requ
 		Documents:           docFeedback,
 		Messages:            buildNeedReviewMessageViews(messages, userID),
 		PostMessageAction:   s.route(RouteProfileNeedReviewPost, map[string]string{"needID": needID}),
+		SetReadyAction:      s.route(RouteProfileNeedReviewSetReady, map[string]string{"needID": needID}),
+		PullBackAction:      s.route(RouteProfileNeedReviewPullBack, map[string]string{"needID": needID}),
 		BackHref:            s.route(RouteProfile, nil),
 		EditNeedHref:        s.route(RouteProfileNeedEdit, map[string]string{"needID": needID}),
+		CanEditNeed:         need.Status == types.NeedStatusSubmitted || need.Status == types.NeedStatusChangesRequested,
+		CanSetReady:         need.Status == types.NeedStatusSubmitted || need.Status == types.NeedStatusChangesRequested,
+		CanPullBack:         need.Status == types.NeedStatusReadyForReview,
+		CanSendMessage:      isNeedOwnerMessagingAllowedStatus(need.Status),
 		Notice:              strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:               strings.TrimSpace(r.URL.Query().Get("error")),
 	}
@@ -206,6 +212,11 @@ func (s *Service) handlePostProfileNeedReviewMessage(w http.ResponseWriter, r *h
 
 	if need.UserID != userID {
 		s.redirectProfileWithError(w, r, "You do not have permission to access that need.")
+		return
+	}
+
+	if !isNeedOwnerMessagingAllowedStatus(need.Status) {
+		s.redirectProfileNeedReviewWithError(w, r, needID, "Messages are not available for this need status.")
 		return
 	}
 
@@ -252,6 +263,105 @@ func (s *Service) handlePostProfileNeedReviewMessage(w http.ResponseWriter, r *h
 	}
 
 	s.redirectProfileNeedReviewWithNotice(w, r, needID, "Message sent to admin reviewers.")
+}
+
+func (s *Service) handlePostProfileNeedReviewSetReady(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	needID := strings.TrimSpace(r.PathValue("needID"))
+	if needID == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("user id not found in context")
+		s.internalServerError(w)
+		return
+	}
+
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		if err == types.ErrNeedNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need before ready-for-review transition")
+		s.internalServerError(w)
+		return
+	}
+
+	if need.UserID != userID {
+		http.NotFound(w, r)
+		return
+	}
+
+	if need.Status != types.NeedStatusSubmitted && need.Status != types.NeedStatusChangesRequested {
+		s.redirectProfileNeedReviewWithError(w, r, needID, "This need cannot be marked ready for review in its current status.")
+		return
+	}
+
+	if err := s.needsRepo.SetNeedStatus(ctx, needID, types.NeedStatusReadyForReview); err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to set need status to ready for review")
+		s.internalServerError(w)
+		return
+	}
+
+	s.redirectProfileNeedReviewWithNotice(w, r, needID, "Need marked ready for review.")
+}
+
+func (s *Service) handlePostProfileNeedReviewPullBack(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	needID := strings.TrimSpace(r.PathValue("needID"))
+	if needID == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("user id not found in context")
+		s.internalServerError(w)
+		return
+	}
+
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		if err == types.ErrNeedNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need before pull-back transition")
+		s.internalServerError(w)
+		return
+	}
+
+	if need.UserID != userID {
+		http.NotFound(w, r)
+		return
+	}
+
+	if need.Status != types.NeedStatusReadyForReview {
+		s.redirectProfileNeedReviewWithError(w, r, needID, "This need cannot be pulled back in its current status.")
+		return
+	}
+
+	if err := s.needsRepo.SetNeedStatus(ctx, needID, types.NeedStatusSubmitted); err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to pull need back to submitted")
+		s.internalServerError(w)
+		return
+	}
+
+	s.redirectProfileNeedReviewWithNotice(w, r, needID, "Need pulled back to submitted.")
+}
+
+func isNeedOwnerMessagingAllowedStatus(status types.NeedStatus) bool {
+	switch status {
+	case types.NeedStatusSubmitted, types.NeedStatusReadyForReview, types.NeedStatusUnderReview, types.NeedStatusChangesRequested, types.NeedStatusApproved, types.NeedStatusRejected:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Service) handleGetProfileNeedDocument(w http.ResponseWriter, r *http.Request) {

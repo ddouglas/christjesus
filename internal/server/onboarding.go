@@ -155,8 +155,9 @@ func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWri
 		return
 	}
 
-	if need.Status == types.NeedStatusSubmitted {
-		http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+	// Once a need leaves draft/onboarding workflow, send users to the need review portal.
+	if need.Status != types.NeedStatusDraft {
+		http.Redirect(w, r, s.route(RouteProfileNeedReview, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 		return
 	}
 
@@ -218,12 +219,16 @@ func (s *Service) setUserType(ctx context.Context, userType string) error {
 }
 
 func (s *Service) redirectIfNeedSubmitted(w http.ResponseWriter, r *http.Request, need *types.Need) bool {
-	if need == nil || need.Status != types.NeedStatusSubmitted {
+	if need == nil {
 		return false
 	}
 
-	http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
-	return true
+	if need.Status != types.NeedStatusDraft {
+		http.Redirect(w, r, s.route(RouteProfileNeedReview, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+		return true
+	}
+
+	return false
 }
 
 func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {

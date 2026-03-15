@@ -232,6 +232,9 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		Timeline:            timeline,
 		BackHref:            s.route(RouteAdminNeeds, nil),
 		ModerateAction:      s.route(RouteAdminNeedModerate, map[string]string{"id": needID}),
+		AcceptReviewAction:  s.route(RouteAdminNeedModerate, map[string]string{"id": needID}),
+		CanAcceptReview:     need.Status == types.NeedStatusReadyForReview,
+		CanSubmitModeration: need.Status == types.NeedStatusUnderReview,
 		DeleteAction:        s.route(RouteAdminNeedDelete, map[string]string{"id": needID}),
 		RestoreAction:       s.route(RouteAdminNeedRestore, map[string]string{"id": needID}),
 		IsDeleted:           need.DeletedAt != nil,
@@ -289,22 +292,47 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 	var notice string
 
 	switch action {
+	case "accept_review":
+		if need.Status != types.NeedStatusReadyForReview {
+			s.redirectAdminNeedReviewWithError(w, r, needID, "need must be ready for review before accepting")
+			return
+		}
+		status := types.NeedStatusUnderReview
+		newStatus = &status
+		actionType = types.NeedModerationActionTypeReviewStarted
+		notice = "Review accepted"
 	case "approve":
+		if need.Status != types.NeedStatusUnderReview {
+			s.redirectAdminNeedReviewWithError(w, r, needID, "need must be under review before approval")
+			return
+		}
 		status := types.NeedStatusApproved
 		newStatus = &status
 		actionType = types.NeedModerationActionTypeReviewApproved
 		notice = "Need approved"
 	case "reject":
+		if need.Status != types.NeedStatusUnderReview {
+			s.redirectAdminNeedReviewWithError(w, r, needID, "need must be under review before rejection")
+			return
+		}
 		status := types.NeedStatusRejected
 		newStatus = &status
 		actionType = types.NeedModerationActionTypeReviewRejected
 		notice = "Need rejected"
 	case "request_changes":
+		if need.Status != types.NeedStatusUnderReview {
+			s.redirectAdminNeedReviewWithError(w, r, needID, "need must be under review before requesting changes")
+			return
+		}
 		status := types.NeedStatusChangesRequested
 		newStatus = &status
 		actionType = types.NeedModerationActionTypeChangesRequested
 		notice = "Changes requested"
 	case "verify_document":
+		if need.Status != types.NeedStatusUnderReview {
+			s.redirectAdminNeedReviewWithError(w, r, needID, "need must be under review before document verification")
+			return
+		}
 		if documentID == "" {
 			s.redirectAdminNeedReviewWithError(w, r, needID, "missing document id")
 			return
@@ -320,6 +348,10 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 		moderationDocumentID = &documentID
 		notice = "Document verified"
 	case "reject_document":
+		if need.Status != types.NeedStatusUnderReview {
+			s.redirectAdminNeedReviewWithError(w, r, needID, "need must be under review before document rejection")
+			return
+		}
 		if documentID == "" {
 			s.redirectAdminNeedReviewWithError(w, r, needID, "missing document id")
 			return
