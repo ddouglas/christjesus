@@ -27,6 +27,7 @@
     {{end}}
     {{if .Categories}}
     <form id="categories-form" action="{{.FormAction}}" method="post" class="space-y-6 px-6">
+      {{.CSRFField}}
       <div class="space-y-3">
         <p class="text-sm font-semibold text-foreground">Primary category</p>
         <div class="grid gap-3 md:grid-cols-2">

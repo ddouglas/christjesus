@@ -38,6 +38,7 @@
             {{end}}
             {{if .CanSetReady}}
             <form method="post" action="{{.SetReadyAction}}">
+              {{.CSRFField}}
               <button type="submit"
                 class="inline-flex h-8 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-3 text-xs font-medium text-white hover:bg-[color:var(--cj-primary)]/90">Mark Ready For
                 Review</button>
@@ -45,6 +46,7 @@
             {{end}}
             {{if .CanPullBack}}
             <form method="post" action="{{.PullBackAction}}">
+              {{.CSRFField}}
               <button type="submit" class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">Pull Back To
                 Submitted</button>
             </form>
@@ -115,6 +117,7 @@
 
         {{if .CanSendMessage}}
         <form method="post" action="{{.PostMessageAction}}" class="mt-4 space-y-3">
+          {{.CSRFField}}
           <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="user-review-message">Message</label>
           <textarea id="user-review-message" name="message" rows="4" required class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
             placeholder="Ask a question or describe the updates you made"></textarea>

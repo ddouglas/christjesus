@@ -24,6 +24,7 @@
 
   <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
     <form id="donor-preferences-form" action="{{route "onboarding.donor.preferences" nil}}" method="post" class="space-y-6 px-6">
+      {{.CSRFField}}
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <p class="text-sm font-semibold text-foreground">Your location</p>

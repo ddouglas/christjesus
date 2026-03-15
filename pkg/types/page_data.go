@@ -1,6 +1,9 @@
 package types
 
-import "time"
+import (
+	"html/template"
+	"time"
+)
 
 type NavbarData struct {
 	IsAuthenticated bool
@@ -15,13 +18,22 @@ type NavbarDataSetter interface {
 	SetNavbarData(data NavbarData)
 }
 
+type CSRFFieldSetter interface {
+	SetCSRFField(field template.HTML)
+}
+
 type BasePageData struct {
-	Title  string
-	Navbar NavbarData
+	Title     string
+	Navbar    NavbarData
+	CSRFField template.HTML
 }
 
 func (d *BasePageData) SetNavbarData(data NavbarData) {
 	d.Navbar = data
+}
+
+func (d *BasePageData) SetCSRFField(field template.HTML) {
+	d.CSRFField = field
 }
 
 type HomePageData struct {

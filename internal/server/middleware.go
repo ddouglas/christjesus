@@ -10,6 +10,7 @@ import (
 	"christjesus/internal"
 	"christjesus/pkg/types"
 
+	"github.com/gorilla/csrf"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/sirupsen/logrus"
 )
@@ -371,6 +372,20 @@ func (s *Service) RequireAdmin(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (s *Service) csrfMiddleware(key []byte) func(http.Handler) http.Handler {
+	return csrf.Protect(key,
+		csrf.CookieName("cja_csrf"),
+		csrf.FieldName("csrf_token"),
+		csrf.Secure(true),
+		csrf.SameSite(csrf.SameSiteLaxMode),
+		csrf.Path("/"),
+		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s.logger.WithField("path", r.URL.Path).Warn("CSRF validation failed")
+			http.Error(w, "forbidden", http.StatusForbidden)
+		})),
+	)
 }
 
 func (s *Service) StripTrailingSlash(next http.Handler) http.Handler {

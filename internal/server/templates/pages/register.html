@@ -16,6 +16,7 @@
   {{end}}
 
   <form method="POST" action="{{route "register" nil}}" class="mt-8 space-y-6">
+    {{.CSRFField}}
     <div class="space-y-2">
       <label for="given_name" class="text-sm font-medium text-foreground">
         First Name
