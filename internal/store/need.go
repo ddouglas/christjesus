@@ -22,6 +22,12 @@ type NeedRepository struct {
 	pool *pgxpool.Pool
 }
 
+var adminExplorerStatuses = []types.NeedStatus{
+	types.NeedStatusApproved,
+	types.NeedStatusActive,
+	types.NeedStatusFunded,
+}
+
 type needExecer interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
@@ -131,6 +137,83 @@ func (r *NeedRepository) ModerationQueueNeedsCount(ctx context.Context) (int, er
 	var total int
 	if err := r.pool.QueryRow(ctx, query, args...).Scan(&total); err != nil {
 		return 0, fmt.Errorf("failed to count moderation queue needs: %w", err)
+	}
+
+	return total, nil
+}
+
+func (r *NeedRepository) AdminExplorerNeedsPage(ctx context.Context, page, pageSize int, statusFilter *types.NeedStatus, sortBy string) ([]*types.Need, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+
+	offset := uint64((page - 1) * pageSize)
+
+	queryBuilder := psql().Select(needColumns...).From(needTableName).
+		Where(sq.Eq{"deleted_at": nil})
+
+	if statusFilter != nil {
+		queryBuilder = queryBuilder.Where(sq.Eq{"status": *statusFilter})
+	} else {
+		queryBuilder = queryBuilder.Where(sq.Eq{"status": adminExplorerStatuses})
+	}
+
+	switch sortBy {
+	case "updated_asc":
+		queryBuilder = queryBuilder.OrderBy("updated_at asc")
+	case "raised_desc":
+		queryBuilder = queryBuilder.OrderBy("amount_raised_cents desc", "updated_at desc")
+	case "needed_desc":
+		queryBuilder = queryBuilder.OrderBy("amount_needed_cents desc", "updated_at desc")
+	case "progress_desc":
+		queryBuilder = queryBuilder.OrderBy("CASE WHEN amount_needed_cents > 0 THEN (amount_raised_cents::float / amount_needed_cents::float) ELSE 0 END desc", "updated_at desc")
+	default:
+		queryBuilder = queryBuilder.OrderBy("updated_at desc")
+	}
+
+	query, args, err := queryBuilder.
+		Limit(uint64(pageSize)).
+		Offset(offset).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate admin explorer needs query: %w", err)
+	}
+
+	needs := make([]*types.Need, 0)
+	err = pgxscan.Select(ctx, r.pool, &needs, query, args...)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return needs, nil
+		}
+		return nil, fmt.Errorf("failed to fetch admin explorer needs: %w", err)
+	}
+
+	return needs, nil
+}
+
+func (r *NeedRepository) AdminExplorerNeedsCount(ctx context.Context, statusFilter *types.NeedStatus) (int, error) {
+	queryBuilder := psql().
+		Select("COUNT(*)").
+		From(needTableName).
+		Where(sq.Eq{"deleted_at": nil})
+
+	if statusFilter != nil {
+		queryBuilder = queryBuilder.Where(sq.Eq{"status": *statusFilter})
+	} else {
+		queryBuilder = queryBuilder.Where(sq.Eq{"status": adminExplorerStatuses})
+	}
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to generate admin explorer needs count query: %w", err)
+	}
+
+	var total int
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("failed to count admin explorer needs: %w", err)
 	}
 
 	return total, nil

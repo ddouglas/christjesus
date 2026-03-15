@@ -407,6 +407,43 @@ type AdminNeedQueueItem struct {
 	ReviewHref  string
 }
 
+type AdminNeedExplorerPageData struct {
+	BasePageData
+	Needs             []*AdminNeedExplorerItem
+	Page              int
+	PageSize          int
+	TotalNeeds        int
+	TotalPages        int
+	PrevHref          string
+	NextHref          string
+	SelectedStatus    string
+	SelectedSort      string
+	FilterAction      string
+	StatusOptions     []AdminExplorerOption
+	SortOptions       []AdminExplorerOption
+	BackHref          string
+	QueueHref         string
+	CurrentStatusText string
+}
+
+type AdminExplorerOption struct {
+	Value string
+	Label string
+}
+
+type AdminNeedExplorerItem struct {
+	NeedID            string
+	Status            NeedStatus
+	AmountRaisedCents int
+	AmountNeededCents int
+	FundingPercent    int
+	ActivityLabel     string
+	UpdatedAt         string
+	PublishedAt       string
+	ReviewHref        string
+	DetailHref        string
+}
+
 type AdminNeedReviewPageData struct {
 	BasePageData
 	Need                *Need
