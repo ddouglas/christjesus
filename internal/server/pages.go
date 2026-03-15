@@ -25,12 +25,6 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.applyFinalizedRaisedAmounts(ctx, latestNeeds); err != nil {
-		s.logger.WithError(err).Error("failed to apply finalized raised totals for home page needs")
-		s.internalServerError(w)
-		return
-	}
-
 	homeNeedCards := s.buildHomeNeedCards(ctx, latestNeeds)
 
 	var featuredNeed *types.BrowseNeedCard
@@ -524,10 +518,6 @@ func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.
 		return nil, err
 	}
 
-	if err := s.applyFinalizedRaisedAmounts(ctx, needs); err != nil {
-		return nil, err
-	}
-
 	cards := s.buildNeedCards(ctx, needs, "browse needs")
 
 	categories, err := s.categoryRepo.Categories(ctx)
@@ -609,11 +599,6 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.applyFinalizedRaisedAmount(ctx, need); err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to load finalized donation totals for need detail")
-		s.internalServerError(w)
-		return
-	}
 
 	ownerName := "Anonymous"
 	user, err := s.userRepo.User(ctx, need.UserID)

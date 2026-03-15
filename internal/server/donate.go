@@ -380,10 +380,6 @@ func (s *Service) loadNeedDonateSummary(ctx context.Context, needID string) (*ty
 		return nil, "", "", types.ErrNeedNotFound
 	}
 
-	if err := s.applyFinalizedRaisedAmount(ctx, need); err != nil {
-		return nil, "", "", err
-	}
-
 	ownerName := "Anonymous"
 	user, err := s.userRepo.User(ctx, need.UserID)
 	if err == nil {

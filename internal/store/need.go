@@ -77,10 +77,9 @@ const (
 	browseJoinSelectedAddr = "christjesus.user_addresses sa ON sa.id = n.user_address_id"
 	browseJoinPrimaryAddr  = "christjesus.user_addresses pa ON pa.user_id = n.user_id AND pa.is_primary = true AND n.user_address_id IS NULL"
 	browseJoinPrimaryCategory = "christjesus.need_category_assignments nca ON nca.need_id = n.id AND nca.is_primary = true"
-	browseJoinRaisedAmounts   = "(SELECT need_id, COALESCE(SUM(amount_cents), 0) AS raised FROM christjesus.donation_intents WHERE LOWER(payment_status) = 'finalized' GROUP BY need_id) di ON di.need_id = n.id"
 
-	browseFundingPercentExpr = "CASE WHEN n.amount_needed_cents > 0 THEN (COALESCE(di.raised, 0) * 100 / n.amount_needed_cents) ELSE 0 END"
-	browseUrgencyWeightExpr  = "CASE WHEN n.amount_needed_cents <= 0 THEN 1 WHEN (COALESCE(di.raised, 0) * 100 / n.amount_needed_cents) < 35 THEN 3 WHEN (COALESCE(di.raised, 0) * 100 / n.amount_needed_cents) < 70 THEN 2 ELSE 1 END"
+	browseFundingPercentExpr = "CASE WHEN n.amount_needed_cents > 0 THEN (n.amount_raised_cents * 100 / n.amount_needed_cents) ELSE 0 END"
+	browseUrgencyWeightExpr  = "CASE WHEN n.amount_needed_cents <= 0 THEN 1 WHEN (n.amount_raised_cents * 100 / n.amount_needed_cents) < 35 THEN 3 WHEN (n.amount_raised_cents * 100 / n.amount_needed_cents) < 70 THEN 2 ELSE 1 END"
 )
 
 func browseBaseQuery(columns ...string) sq.SelectBuilder {
@@ -89,7 +88,6 @@ func browseBaseQuery(columns ...string) sq.SelectBuilder {
 		LeftJoin(browseJoinSelectedAddr).
 		LeftJoin(browseJoinPrimaryAddr).
 		LeftJoin(browseJoinPrimaryCategory).
-		LeftJoin(browseJoinRaisedAmounts).
 		Where(sq.Eq{"n.status": []types.NeedStatus{types.NeedStatusActive, types.NeedStatusFunded}}).
 		Where(sq.Eq{"n.deleted_at": nil})
 }
