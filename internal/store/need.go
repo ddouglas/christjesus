@@ -155,15 +155,15 @@ func (r *NeedRepository) AdminExplorerNeedsPage(ctx context.Context, page, pageS
 
 	switch sortBy {
 	case "updated_asc":
-		queryBuilder = queryBuilder.OrderBy("updated_at asc")
+		queryBuilder = queryBuilder.OrderBy("updated_at asc", "id asc")
 	case "raised_desc":
-		queryBuilder = queryBuilder.OrderBy("amount_raised_cents desc", "updated_at desc")
+		queryBuilder = queryBuilder.OrderBy("amount_raised_cents desc", "updated_at desc", "id asc")
 	case "needed_desc":
-		queryBuilder = queryBuilder.OrderBy("amount_needed_cents desc", "updated_at desc")
+		queryBuilder = queryBuilder.OrderBy("amount_needed_cents desc", "updated_at desc", "id asc")
 	case "progress_desc":
-		queryBuilder = queryBuilder.OrderBy("CASE WHEN amount_needed_cents > 0 THEN (amount_raised_cents::float / amount_needed_cents::float) ELSE 0 END desc", "updated_at desc")
+		queryBuilder = queryBuilder.OrderBy("CASE WHEN amount_needed_cents > 0 THEN (amount_raised_cents::float / amount_needed_cents::float) ELSE 0 END desc", "updated_at desc", "id asc")
 	default:
-		queryBuilder = queryBuilder.OrderBy("updated_at desc")
+		queryBuilder = queryBuilder.OrderBy("updated_at desc", "id asc")
 	}
 
 	query, args, err := queryBuilder.

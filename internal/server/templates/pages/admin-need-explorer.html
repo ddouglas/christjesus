@@ -17,7 +17,8 @@
     {{if .StatusCards}}
     <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {{range .StatusCards}}
-      <a href="{{.Href}}" class="rounded-xl border p-4 transition-colors {{if .IsActive}}border-[color:var(--cj-primary)] bg-[color:var(--cj-primary)]/5{{else}}border-border bg-background hover:bg-muted{{end}}">
+      <a href="{{.Href}}"
+        class="rounded-xl border p-4 transition-colors {{if .IsActive}}border-[color:var(--cj-primary)] bg-[color:var(--cj-primary)]/5{{else}}border-border bg-background hover:bg-muted{{end}}">
         <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{{.Label}}</p>
         <p class="mt-2 text-2xl font-semibold text-foreground">{{.Count}}</p>
       </a>
@@ -95,7 +96,11 @@
             <td class="py-3">
               <div class="flex items-center gap-3">
                 <a href="{{.ReviewHref}}" class="text-[color:var(--cj-primary)] hover:underline">Review</a>
+                {{if .CanViewDetail}}
                 <a href="{{.DetailHref}}" class="text-muted-foreground hover:text-foreground hover:underline">Detail</a>
+                {{else}}
+                <span class="text-xs text-muted-foreground">Detail unavailable</span>
+                {{end}}
               </div>
             </td>
           </tr>

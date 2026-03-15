@@ -451,6 +451,7 @@ type AdminNeedExplorerItem struct {
 	PublishedAt       string
 	ReviewHref        string
 	DetailHref        string
+	CanViewDetail     bool
 }
 
 type AdminNeedReviewPageData struct {

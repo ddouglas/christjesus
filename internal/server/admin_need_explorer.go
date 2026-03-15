@@ -18,13 +18,8 @@ const (
 func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	page := parsePositiveInt(r.URL.Query().Get("page"), 1)
-	selectedStatus := strings.TrimSpace(r.URL.Query().Get("status"))
-	selectedSort := strings.TrimSpace(r.URL.Query().Get("sort"))
-	if selectedSort == "" {
-		selectedSort = adminExplorerSortUpdated
-	}
-
-	statusFilter := adminExplorerStatusFilter(selectedStatus)
+	selectedStatus, statusFilter := canonicalAdminExplorerStatus(r.URL.Query().Get("status"))
+	selectedSort := canonicalAdminExplorerSort(r.URL.Query().Get("sort"))
 	statusCounts, err := s.needsRepo.AdminExplorerNeedsCountByStatus(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch grouped status counts for admin explorer")
@@ -57,6 +52,12 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	if err := s.applyFinalizedRaisedAmounts(ctx, needs); err != nil {
+		s.logger.WithError(err).Error("failed to apply finalized raised amounts for admin explorer")
+		s.internalServerError(w)
+		return
+	}
+
 	items := make([]*types.AdminNeedExplorerItem, 0, len(needs))
 	for _, need := range needs {
 		if need == nil {
@@ -73,7 +74,7 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 			publishedAt = need.PublishedAt.Format(time.DateOnly)
 		}
 
-		fundingPercent := needFundingPercent(need.AmountRaisedCents, need.AmountNeededCents)
+		fundingPercent := fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents)
 		items = append(items, &types.AdminNeedExplorerItem{
 			NeedID:            needID,
 			Status:            need.Status,
@@ -85,6 +86,7 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 			PublishedAt:       publishedAt,
 			ReviewHref:        s.route(RouteAdminNeedReview, map[string]string{"id": needID}),
 			DetailHref:        s.route(RouteNeedDetail, map[string]string{"id": needID}),
+			CanViewDetail:     adminExplorerCanViewPublicDetail(need.Status),
 		})
 	}
 
@@ -131,7 +133,7 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 			Label:    option.Label,
 			Count:    count,
 			Href:     s.routeWithQuery(RouteAdminNeedExplorer, nil, v),
-			IsActive: strings.EqualFold(strings.TrimSpace(selectedStatus), option.Value),
+			IsActive: selectedStatus == option.Value,
 		})
 	}
 
@@ -152,7 +154,7 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 		SortOptions:       adminExplorerSortOptions(),
 		BackHref:          s.route(RouteAdmin, nil),
 		QueueHref:         s.route(RouteAdminNeeds, nil),
-		CurrentStatusText: adminExplorerStatusLabel(selectedStatus),
+		CurrentStatusText: adminExplorerStatusLabelByValue(selectedStatus),
 	}
 
 	if err := s.renderTemplate(w, r, "page.admin.need.explorer", data); err != nil {
@@ -196,12 +198,38 @@ func adminExplorerStatusFilter(raw string) *types.NeedStatus {
 	}
 }
 
-func adminExplorerStatusLabel(raw string) string {
+func canonicalAdminExplorerStatus(raw string) (string, *types.NeedStatus) {
 	status := adminExplorerStatusFilter(raw)
 	if status == nil {
-		return "All statuses"
+		return "", nil
 	}
-	return string(*status)
+
+	canonical := string(*status)
+	return canonical, status
+}
+
+func canonicalAdminExplorerSort(raw string) string {
+	selected := strings.TrimSpace(raw)
+	if selected == "" {
+		return adminExplorerSortUpdated
+	}
+
+	for _, option := range adminExplorerSortOptions() {
+		if option.Value == selected {
+			return selected
+		}
+	}
+
+	return adminExplorerSortUpdated
+}
+
+func adminExplorerStatusLabelByValue(value string) string {
+	for _, option := range adminExplorerStatusOptions() {
+		if option.Value == value {
+			return option.Label
+		}
+	}
+	return "All statuses"
 }
 
 func adminExplorerStatusOptions() []types.AdminExplorerOption {
@@ -229,18 +257,13 @@ func adminExplorerSortOptions() []types.AdminExplorerOption {
 	}
 }
 
-func needFundingPercent(raisedCents, neededCents int) int {
-	if neededCents <= 0 {
-		return 0
+func adminExplorerCanViewPublicDetail(status types.NeedStatus) bool {
+	switch status {
+	case types.NeedStatusActive, types.NeedStatusFunded:
+		return true
+	default:
+		return false
 	}
-	percent := (raisedCents * 100) / neededCents
-	if percent < 0 {
-		return 0
-	}
-	if percent > 100 {
-		return 100
-	}
-	return percent
 }
 
 func fundingActivityLabel(percent int) string {
