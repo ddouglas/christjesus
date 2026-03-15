@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -984,7 +985,7 @@ func needDocumentIDs(documents []types.NeedDocument) []string {
 }
 
 func (s *Service) handleProfileEditableNeedError(w http.ResponseWriter, r *http.Request, needID string, err error) {
-	if err == types.ErrNeedNotFound {
+	if errors.Is(err, types.ErrNeedNotFound) {
 		http.NotFound(w, r)
 		return
 	}

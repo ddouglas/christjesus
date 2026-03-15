@@ -44,7 +44,7 @@ func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *h
 
 	need, err := s.needsRepo.Need(r.Context(), needID)
 	if err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}

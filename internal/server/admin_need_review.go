@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -24,7 +25,7 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -268,7 +269,7 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 
 	need, err := s.needsRepo.Need(r.Context(), needID)
 	if err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -440,7 +441,7 @@ func (s *Service) handlePostAdminNeedMessage(w http.ResponseWriter, r *http.Requ
 	}
 
 	if _, err := s.needsRepo.Need(r.Context(), needID); err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}
