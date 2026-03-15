@@ -2,18 +2,17 @@ package types
 
 import gonanoid "github.com/matoous/go-nanoid/v2"
 
-var (
-	NanoidSize     = 32
-	nanoidAlphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-)
+const NanoIDDefaultSize = 32
+
+var nanoidAlphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func NanoID() string {
-	return NanoIDSize(NanoidSize)
+	return NanoIDSize(NanoIDDefaultSize)
 }
 
 func NanoIDSize(size int) string {
-	if size == 0 {
-		size = NanoidSize
+	if size <= 0 {
+		size = NanoIDDefaultSize
 	}
 
 	return gonanoid.MustGenerate(nanoidAlphabet, size)
