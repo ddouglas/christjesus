@@ -178,15 +178,26 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 
 	s.clearAuthFlowCookies(w)
 
+	s.clearRedirectCookie(w)
+
 	redirectCookie, err := r.Cookie(internal.COOKIE_REDIRECT_NAME)
-	if err == nil {
-		path := redirectCookie.Value
-		s.clearRedirectCookie(w)
-		http.Redirect(w, r, path, http.StatusSeeOther)
+	if err != nil {
+		http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+	var path string
+	if err := s.cookie.Decode(internal.COOKIE_REDIRECT_NAME, redirectCookie.Value, &path); err != nil {
+		http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+		return
+	}
+
+	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+		http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, path, http.StatusSeeOther)
 }
 
 func (s *Service) startAuth0Authorization(w http.ResponseWriter, r *http.Request, screenHint string) {
@@ -297,9 +308,15 @@ func subtleCompare(a, b string) bool {
 }
 
 func (s *Service) setRedirectCookie(w http.ResponseWriter, path string, age time.Duration) {
+	encoded, err := s.cookie.Encode(internal.COOKIE_REDIRECT_NAME, path)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to encode redirect cookie")
+		return
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     internal.COOKIE_REDIRECT_NAME,
-		Value:    path,
+		Value:    encoded,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
