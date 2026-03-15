@@ -1,0 +1,460 @@
+package server
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+	"unicode/utf8"
+
+	"christjesus/pkg/types"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/jackc/pgx/v5"
+)
+
+const userNeedReviewMessageCooldown = time.Minute
+
+func (s *Service) handleGetProfileNeedReview(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	needID := strings.TrimSpace(r.PathValue("needID"))
+	if needID == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("user id not found in context")
+		s.internalServerError(w)
+		return
+	}
+
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		if err == types.ErrNeedNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need for review portal")
+		s.internalServerError(w)
+		return
+	}
+
+	if need.UserID != userID {
+		s.redirectProfileWithError(w, r, "You do not have permission to access that need.")
+		return
+	}
+
+	story, err := s.storyRepo.GetStoryByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch story for review portal")
+		s.internalServerError(w)
+		return
+	}
+
+	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch category assignments for review portal")
+		s.internalServerError(w)
+		return
+	}
+
+	categoryIDs := make([]string, 0, len(assignments))
+	for _, assignment := range assignments {
+		categoryID := strings.TrimSpace(assignment.CategoryID)
+		if categoryID != "" {
+			categoryIDs = append(categoryIDs, categoryID)
+		}
+	}
+
+	categoryByID := make(map[string]*types.NeedCategory)
+	if len(categoryIDs) > 0 {
+		categories, err := s.categoryRepo.CategoriesByIDs(ctx, categoryIDs)
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch categories for review portal")
+			s.internalServerError(w)
+			return
+		}
+
+		for _, category := range categories {
+			if category == nil {
+				continue
+			}
+			categoryByID[category.ID] = category
+		}
+	}
+
+	var primaryCategory *types.NeedCategory
+	secondaryCategories := make([]*types.NeedCategory, 0)
+	for _, assignment := range assignments {
+		category := categoryByID[assignment.CategoryID]
+		if category == nil {
+			continue
+		}
+
+		if assignment.IsPrimary {
+			primaryCategory = category
+			continue
+		}
+
+		secondaryCategories = append(secondaryCategories, category)
+	}
+
+	actions, err := s.progressRepo.ModerationActionsByNeed(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch moderation actions for review portal")
+		s.internalServerError(w)
+		return
+	}
+
+	rejectionReason, rejectionNote, rejectedDocumentByID := latestRejectedFeedback(actions)
+	documentStatusByID := latestDocumentStatuses(actions)
+
+	docs, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch documents for review portal")
+		s.internalServerError(w)
+		return
+	}
+
+	docFeedback := make([]types.NeedReviewDocumentFeedback, 0, len(docs))
+	for _, doc := range docs {
+		status := "Pending Review"
+		if value, ok := documentStatusByID[doc.ID]; ok {
+			status = value
+		}
+
+		reason := ""
+		note := ""
+		if feedback, ok := rejectedDocumentByID[doc.ID]; ok {
+			reason = feedback.reason
+			note = feedback.note
+		}
+
+		docFeedback = append(docFeedback, types.NeedReviewDocumentFeedback{
+			DocumentID: doc.ID,
+			FileName:   doc.FileName,
+			TypeLabel:  documentTypeLabel(doc.DocumentType),
+			Status:     status,
+			Reason:     reason,
+			Note:       note,
+			ViewHref:   s.route(RouteProfileNeedDocumentView, map[string]string{"needID": needID, "documentID": doc.ID}),
+		})
+	}
+
+	messages, err := s.needReviewMessageRepo.MessagesByNeed(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need review messages")
+		s.internalServerError(w)
+		return
+	}
+
+	data := &types.NeedReviewPortalPageData{
+		BasePageData:        types.BasePageData{Title: "Need Review Portal"},
+		Need:                need,
+		Story:               story,
+		PrimaryCategory:     primaryCategory,
+		SecondaryCategories: secondaryCategories,
+		RejectionReason:     rejectionReason,
+		RejectionNote:       rejectionNote,
+		Documents:           docFeedback,
+		Messages:            buildNeedReviewMessageViews(messages, userID),
+		PostMessageAction:   s.route(RouteProfileNeedReviewPost, map[string]string{"needID": needID}),
+		BackHref:            s.route(RouteProfile, nil),
+		EditNeedHref:        s.route(RouteProfileNeedEdit, map[string]string{"needID": needID}),
+		Notice:              strings.TrimSpace(r.URL.Query().Get("notice")),
+		Error:               strings.TrimSpace(r.URL.Query().Get("error")),
+	}
+
+	if err := s.renderTemplate(w, r, "page.profile.need.review", data); err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to render need review portal")
+		s.internalServerError(w)
+		return
+	}
+}
+
+func (s *Service) handlePostProfileNeedReviewMessage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	needID := strings.TrimSpace(r.PathValue("needID"))
+	if needID == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("user id not found in context")
+		s.internalServerError(w)
+		return
+	}
+
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		if err == types.ErrNeedNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need before posting review message")
+		s.internalServerError(w)
+		return
+	}
+
+	if need.UserID != userID {
+		s.redirectProfileWithError(w, r, "You do not have permission to access that need.")
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		s.redirectProfileNeedReviewWithError(w, r, needID, "Invalid form submission.")
+		return
+	}
+
+	body, validationErr := validateNeedReviewMessageBody(r.FormValue("message"))
+	if validationErr != nil {
+		s.redirectProfileNeedReviewWithError(w, r, needID, validationErr.Error())
+		return
+	}
+
+	latestMessage, err := s.needReviewMessageRepo.LatestMessageByNeedAndSender(ctx, needID, userID, types.NeedReviewMessageSenderRoleUser)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).WithField("user_id", userID).Error("failed to check user message cooldown")
+		s.internalServerError(w)
+		return
+	}
+	if latestMessage != nil {
+		elapsed := time.Since(latestMessage.CreatedAt)
+		if elapsed < userNeedReviewMessageCooldown {
+			remaining := int((userNeedReviewMessageCooldown - elapsed).Round(time.Second).Seconds())
+			if remaining < 1 {
+				remaining = 1
+			}
+			s.logger.WithField("need_id", needID).WithField("user_id", userID).WithField("cooldown_seconds_remaining", remaining).Info("need review message blocked by user cooldown")
+			s.redirectProfileNeedReviewWithError(w, r, needID, "Please wait before sending another message.")
+			return
+		}
+	}
+
+	err = s.needReviewMessageRepo.CreateMessage(ctx, &types.NeedReviewMessage{
+		NeedID:       needID,
+		SenderUserID: userID,
+		SenderRole:   types.NeedReviewMessageSenderRoleUser,
+		Body:         body,
+	})
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to create need review message")
+		s.internalServerError(w)
+		return
+	}
+
+	s.redirectProfileNeedReviewWithNotice(w, r, needID, "Message sent to admin reviewers.")
+}
+
+func (s *Service) handleGetProfileNeedDocument(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	needID := strings.TrimSpace(r.PathValue("needID"))
+	documentID := strings.TrimSpace(r.PathValue("documentID"))
+	if needID == "" || documentID == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	userID, err := s.userIDFromContext(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("user id not found in context")
+		s.internalServerError(w)
+		return
+	}
+
+	need, err := s.needsRepo.Need(ctx, needID)
+	if err != nil {
+		if err == types.ErrNeedNotFound {
+			http.NotFound(w, r)
+			return
+		}
+
+		s.logger.WithError(err).
+			WithField("need_id", needID).
+			Error("failed to fetch need for profile document view")
+		s.internalServerError(w)
+		return
+	}
+
+	if need.UserID != userID {
+		http.NotFound(w, r)
+		return
+	}
+
+	doc, err := s.documentRepo.DocumentByNeedIDAndID(ctx, needID, documentID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.NotFound(w, r)
+			return
+		}
+
+		s.logger.WithError(err).
+			WithField("need_id", needID).
+			WithField("document_id", documentID).
+			Error("failed to fetch profile document record")
+		s.internalServerError(w)
+		return
+	}
+
+	storageKey := strings.TrimSpace(doc.StorageKey)
+	if storageKey == "" {
+		s.logger.WithField("need_id", needID).
+			WithField("document_id", documentID).
+			Error("profile document record missing storage key")
+		s.internalServerError(w)
+		return
+	}
+
+	response, err := s.s3Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.config.S3BucketName),
+		Key:    aws.String(storageKey),
+	})
+	if err != nil {
+		if isS3NotFoundError(err) {
+			http.NotFound(w, r)
+			return
+		}
+
+		s.logger.WithError(err).
+			WithField("need_id", needID).
+			WithField("document_id", documentID).
+			WithField("storage_key", storageKey).
+			Error("failed to fetch profile document from s3")
+		s.internalServerError(w)
+		return
+	}
+	defer response.Body.Close()
+
+	contentType := strings.TrimSpace(doc.MimeType)
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	s.logger.WithField("need_id", needID).
+		WithField("document_id", documentID).
+		WithField("user_id", userID).
+		Info("profile need document viewed")
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", safeContentDispositionFilename(doc.FileName, doc.ID)))
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.WriteHeader(http.StatusOK)
+	if _, err := io.Copy(w, response.Body); err != nil {
+		s.logger.WithError(err).
+			WithField("need_id", needID).
+			WithField("document_id", documentID).
+			Warn("failed to stream profile document response")
+	}
+}
+
+func (s *Service) redirectProfileNeedReviewWithNotice(w http.ResponseWriter, r *http.Request, needID, notice string) {
+	v := url.Values{}
+	v.Set("notice", notice)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
+}
+
+func (s *Service) redirectProfileNeedReviewWithError(w http.ResponseWriter, r *http.Request, needID, message string) {
+	v := url.Values{}
+	v.Set("error", message)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
+}
+
+type rejectedDocumentFeedback struct {
+	reason string
+	note   string
+}
+
+func latestRejectedFeedback(actions []*types.NeedModerationAction) (string, string, map[string]rejectedDocumentFeedback) {
+	needReason := ""
+	needNote := ""
+	rejectedDocuments := make(map[string]rejectedDocumentFeedback)
+
+	for _, action := range actions {
+		if action == nil {
+			continue
+		}
+
+		reason := ""
+		note := ""
+		if action.Reason != nil {
+			reason = strings.TrimSpace(*action.Reason)
+		}
+		if action.Note != nil {
+			note = strings.TrimSpace(*action.Note)
+		}
+
+		switch action.ActionType {
+		case types.NeedModerationActionTypeReviewRejected, types.NeedModerationActionTypeChangesRequested:
+			if needReason == "" && needNote == "" {
+				needReason = reason
+				needNote = note
+			}
+		case types.NeedModerationActionTypeDocumentRejected:
+			if action.DocumentID == nil {
+				continue
+			}
+
+			documentID := strings.TrimSpace(*action.DocumentID)
+			if documentID == "" {
+				continue
+			}
+			if _, exists := rejectedDocuments[documentID]; exists {
+				continue
+			}
+			rejectedDocuments[documentID] = rejectedDocumentFeedback{reason: reason, note: note}
+		}
+	}
+
+	return needReason, needNote, rejectedDocuments
+}
+
+func buildNeedReviewMessageViews(messages []*types.NeedReviewMessage, viewerUserID string) []types.NeedReviewMessageView {
+	views := make([]types.NeedReviewMessageView, 0, len(messages))
+	for _, message := range messages {
+		if message == nil {
+			continue
+		}
+
+		if message.SenderRole != types.NeedReviewMessageSenderRoleAdmin && message.SenderRole != types.NeedReviewMessageSenderRoleUser {
+			continue
+		}
+
+		isAdmin := message.SenderRole == types.NeedReviewMessageSenderRoleAdmin
+		author := "Need Owner"
+		if isAdmin {
+			author = "Admin Reviewer"
+		}
+
+		views = append(views, types.NeedReviewMessageView{
+			ID:           message.ID,
+			AuthorLabel:  author,
+			Body:         message.Body,
+			CreatedAt:    message.CreatedAt.Format("2006-01-02 15:04"),
+			IsFromAdmin:  isAdmin,
+			IsFromViewer: message.SenderUserID == viewerUserID,
+		})
+	}
+
+	return views
+}
+
+func validateNeedReviewMessageBody(raw string) (string, error) {
+	body := strings.TrimSpace(raw)
+	if body == "" {
+		return "", fmt.Errorf("message cannot be empty")
+	}
+
+	if utf8.RuneCountInString(body) > types.NeedReviewMessageMaxChars {
+		return "", fmt.Errorf("message cannot exceed %d characters", types.NeedReviewMessageMaxChars)
+	}
+
+	return body, nil
+}

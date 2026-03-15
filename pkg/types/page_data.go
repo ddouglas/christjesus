@@ -186,8 +186,13 @@ type NeedWelcomePageData struct {
 
 type NeedCategoriesPageData struct {
 	BasePageData
-	Need       *Need
-	Categories []*NeedCategory
+	Need                         *Need
+	Categories                   []*NeedCategory
+	SelectedPrimaryCategoryID    string
+	SelectedSecondaryCategoryIDs map[string]bool
+	FormAction                   string
+	BackHref                     string
+	Error                        string
 }
 
 type NeedStoryPageData struct {
@@ -196,6 +201,8 @@ type NeedStoryPageData struct {
 	AmountNeededCents int
 	PrimaryCategory   *NeedCategory
 	Story             *NeedStory
+	FormAction        string
+	BackHref          string
 }
 
 type NeedDocumentsPageData struct {
@@ -206,6 +213,11 @@ type NeedDocumentsPageData struct {
 	Notice              string
 	Error               string
 	DocumentTypeOptions []any
+	MetadataAction      string
+	UploadAction        string
+	ContinueAction      string
+	BackHref            string
+	DeleteActions       map[string]string
 }
 
 type ReviewDocument struct {
@@ -225,6 +237,13 @@ type NeedReviewPageData struct {
 	PrimaryCategory     *NeedCategory
 	SecondaryCategories []*NeedCategory
 	Documents           []ReviewDocument
+	EditLocationHref    string
+	EditCategoriesHref  string
+	EditStoryHref       string
+	EditDocumentsHref   string
+	SubmitAction        string
+	BackHref            string
+	SubmitLabel         string
 	Notice              string
 	Error               string
 }
@@ -248,6 +267,8 @@ type NeedLocationPageData struct {
 	SelectedAddressID string
 	ShowSetPrimary    bool
 	NewAddress        *UserAddressForm
+	FormAction        string
+	BackHref          string
 }
 
 type NeedSubmittedPageData struct {
@@ -306,6 +327,44 @@ type ProfileNeedSummary struct {
 	CurrentStep         string
 	Status              NeedStatus
 	CanDelete           bool
+	NeedsAttention      bool
+	ReviewPortalHref    string
+}
+
+type NeedReviewMessageView struct {
+	ID           string
+	AuthorLabel  string
+	Body         string
+	CreatedAt    string
+	IsFromAdmin  bool
+	IsFromViewer bool
+}
+
+type NeedReviewDocumentFeedback struct {
+	DocumentID string
+	FileName   string
+	TypeLabel  string
+	Status     string
+	Reason     string
+	Note       string
+	ViewHref   string
+}
+
+type NeedReviewPortalPageData struct {
+	BasePageData
+	Need                *Need
+	Story               *NeedStory
+	PrimaryCategory     *NeedCategory
+	SecondaryCategories []*NeedCategory
+	RejectionReason     string
+	RejectionNote       string
+	Documents           []NeedReviewDocumentFeedback
+	Messages            []NeedReviewMessageView
+	PostMessageAction   string
+	BackHref            string
+	EditNeedHref        string
+	Notice              string
+	Error               string
 }
 
 type ProfileDonationSummary struct {
@@ -360,6 +419,8 @@ type AdminNeedReviewPageData struct {
 	DeletedAt           string
 	DeletedByUserID     string
 	DeleteReason        string
+	Messages            []NeedReviewMessageView
+	MessageAction       string
 	Notice              string
 	Error               string
 }

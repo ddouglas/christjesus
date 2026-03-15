@@ -44,6 +44,7 @@ type Service struct {
 	needCategoryAssignmentsRepo *store.AssignmentRepository
 	storyRepo                   *store.StoryRepository
 	documentRepo                *store.DocumentRepository
+	needReviewMessageRepo       *store.NeedReviewMessageRepository
 	userAddressRepo             *store.UserAddressRepository
 	userRepo                    *store.UserRepository
 	donorPreferenceRepo         *store.DonorPreferenceRepository
@@ -78,6 +79,7 @@ func New(
 	needCategoryAssignmentsRepo *store.AssignmentRepository,
 	storyRepo *store.StoryRepository,
 	documentRepo *store.DocumentRepository,
+	needReviewMessageRepo *store.NeedReviewMessageRepository,
 	userAddressRepo *store.UserAddressRepository,
 	userRepo *store.UserRepository,
 	donorPreferenceRepo *store.DonorPreferenceRepository,
@@ -105,6 +107,7 @@ func New(
 		categoryRepo:                categoryRepo,
 		needCategoryAssignmentsRepo: needCategoryAssignmentsRepo,
 		documentRepo:                documentRepo,
+		needReviewMessageRepo:       needReviewMessageRepo,
 		userAddressRepo:             userAddressRepo,
 		userRepo:                    userRepo,
 		donorPreferenceRepo:         donorPreferenceRepo,
@@ -175,6 +178,23 @@ func (s *Service) buildRouter(r *flow.Mux) {
 
 		r.HandleFunc(RoutePattern(RouteProfile), s.handleGetProfile, http.MethodGet)
 		r.HandleFunc(RoutePattern(RouteProfileNeedDelete), s.handlePostProfileNeedDelete, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedReview), s.handleGetProfileNeedReview, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteProfileNeedReviewPost), s.handlePostProfileNeedReviewMessage, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedDocumentView), s.handleGetProfileNeedDocument, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEdit), s.handleGetProfileNeedEdit, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditLocation), s.handleGetProfileNeedEditLocation, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditLocation), s.handlePostProfileNeedEditLocation, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditCategories), s.handleGetProfileNeedEditCategories, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditCategories), s.handlePostProfileNeedEditCategories, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditStory), s.handleGetProfileNeedEditStory, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditStory), s.handlePostProfileNeedEditStory, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditDocs), s.handleGetProfileNeedEditDocuments, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditDocs), s.handlePostProfileNeedEditDocuments, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditUpload), s.handlePostProfileNeedEditDocumentsUpload, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditMeta), s.handlePostProfileNeedEditDocumentMetadata, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditDelete), s.handlePostProfileNeedEditDocumentDelete, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditReview), s.handleGetProfileNeedEditReview, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteProfileNeedEditReview), s.handlePostProfileNeedEditReview, http.MethodPost)
 		r.HandleFunc(RoutePattern(RouteProfileDonationReceipt), s.handleGetProfileDonationReceipt, http.MethodGet)
 
 		r.HandleFunc(RoutePattern(RouteOnboarding), s.handleGetOnboarding, http.MethodGet)
@@ -218,6 +238,7 @@ func (s *Service) buildRouter(r *flow.Mux) {
 		r.HandleFunc(RoutePattern(RouteAdminNeedDocument), s.handleGetAdminNeedDocument, http.MethodGet)
 		r.HandleFunc(RoutePattern(RouteAdminNeedDelete), s.handlePostAdminNeedDelete, http.MethodPost)
 		r.HandleFunc(RoutePattern(RouteAdminNeedRestore), s.handlePostAdminNeedRestore, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteAdminNeedMessage), s.handlePostAdminNeedMessage, http.MethodPost)
 	})
 
 	r.HandleFunc(RoutePattern(RouteBrowse), s.handleBrowse, http.MethodGet)

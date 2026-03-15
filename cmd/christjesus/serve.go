@@ -77,6 +77,7 @@ func serve(cCtx *cli.Context) error {
 	needCategoryAssignmentsRepo := store.NewAssignmentRepository(pool)
 	storyRepo := store.NewStoryRepository(pool)
 	documentRepo := store.NewDocumentRepository(pool)
+	needReviewMessageRepo := store.NewNeedReviewMessageRepository(pool)
 	userAddressRepo := store.NewUserAddressRepository(pool)
 	userRepo := store.NewUserRepository(pool)
 	donorPreferenceRepo := store.NewDonorPreferenceRepository(pool)
@@ -107,6 +108,7 @@ func serve(cCtx *cli.Context) error {
 		needCategoryAssignmentsRepo,
 		storyRepo,
 		documentRepo,
+		needReviewMessageRepo,
 		userAddressRepo,
 		userRepo,
 		donorPreferenceRepo,

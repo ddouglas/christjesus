@@ -329,6 +329,8 @@ func (s *Service) handleGetOnboardingNeedLocation(w http.ResponseWriter, r *http
 		SelectedAddressID: selectedAddressID,
 		ShowSetPrimary:    showSetSelectedPrimary,
 		NewAddress:        &types.UserAddressForm{},
+		FormAction:        s.route(RouteOnboardingNeedLocation, map[string]string{"needID": needID}),
+		BackHref:          s.route(RouteOnboardingNeedWelcome, map[string]string{"needID": needID}),
 	}
 
 	err = s.renderTemplate(w, r, "page.onboarding.need.location", data)
@@ -505,10 +507,22 @@ func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *ht
 		s.logger.Warn("no categories found in database - run 'just seed' to populate categories")
 	}
 
+	selectedPrimaryCategoryID, selectedSecondaryCategoryIDs, err := s.selectedNeedCategories(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to load selected categories")
+		s.internalServerError(w)
+		return
+	}
+
 	data := &types.NeedCategoriesPageData{
-		BasePageData: types.BasePageData{Title: "Select Categories"},
-		Need:         need,
-		Categories:   categories,
+		BasePageData:                 types.BasePageData{Title: "Select Categories"},
+		Need:                         need,
+		Categories:                   categories,
+		SelectedPrimaryCategoryID:    selectedPrimaryCategoryID,
+		SelectedSecondaryCategoryIDs: selectedSecondaryCategoryIDs,
+		FormAction:                   s.route(RouteOnboardingNeedCategories, map[string]string{"needID": needID}),
+		BackHref:                     s.route(RouteOnboardingNeedLocation, map[string]string{"needID": needID}),
+		Error:                        strings.TrimSpace(r.URL.Query().Get("error")),
 	}
 
 	err = s.renderTemplate(w, r, "page.onboarding.need.categories", data)
@@ -541,8 +555,7 @@ func (s *Service) handlePostOnboardingNeedCategories(w http.ResponseWriter, r *h
 	}
 
 	if len(r.Form["primary"]) != 1 {
-		s.logger.WithError(err).Error("0 or multiple values submitted for primary category")
-		s.internalServerError(w)
+		s.redirectOnboardingNeedCategoriesWithError(w, r, needID, "Please select exactly one primary category.")
 		return
 	}
 
@@ -622,6 +635,38 @@ func (s *Service) handlePostOnboardingNeedCategories(w http.ResponseWriter, r *h
 	http.Redirect(w, r, s.route(RouteOnboardingNeedStory, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 }
 
+func (s *Service) selectedNeedCategories(ctx context.Context, needID string) (string, map[string]bool, error) {
+	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
+	if err != nil {
+		return "", nil, err
+	}
+
+	primaryCategoryID := ""
+	secondaryCategoryIDs := make(map[string]bool)
+	for _, assignment := range assignments {
+		if assignment == nil {
+			continue
+		}
+		categoryID := strings.TrimSpace(assignment.CategoryID)
+		if categoryID == "" {
+			continue
+		}
+		if assignment.IsPrimary {
+			primaryCategoryID = categoryID
+			continue
+		}
+		secondaryCategoryIDs[categoryID] = true
+	}
+
+	return primaryCategoryID, secondaryCategoryIDs, nil
+}
+
+func (s *Service) redirectOnboardingNeedCategoriesWithError(w http.ResponseWriter, r *http.Request, needID, message string) {
+	v := url.Values{}
+	v.Set("error", message)
+	http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedCategories, map[string]string{"needID": needID}, v), http.StatusSeeOther)
+}
+
 func (s *Service) handleGetOnboardingNeedStory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	needID := r.PathValue("needID")
@@ -673,6 +718,8 @@ func (s *Service) handleGetOnboardingNeedStory(w http.ResponseWriter, r *http.Re
 		AmountNeededCents: need.AmountNeededCents,
 		PrimaryCategory:   primaryCategory,
 		Story:             story,
+		FormAction:        s.route(RouteOnboardingNeedStory, map[string]string{"needID": needID}),
+		BackHref:          s.route(RouteOnboardingNeedCategories, map[string]string{"needID": needID}),
 	}
 
 	err = s.renderTemplate(w, r, "page.onboarding.need.story", data)
@@ -720,6 +767,11 @@ func (s *Service) handleGetOnboardingNeedDocuments(w http.ResponseWriter, r *htt
 		Notice:              r.URL.Query().Get("notice"),
 		Error:               r.URL.Query().Get("error"),
 		DocumentTypeOptions: optionViews,
+		MetadataAction:      s.route(RouteOnboardingNeedDocumentsMeta, map[string]string{"needID": needID}),
+		UploadAction:        s.route(RouteOnboardingNeedDocumentsUpload, map[string]string{"needID": needID}),
+		ContinueAction:      s.route(RouteOnboardingNeedDocuments, map[string]string{"needID": needID}),
+		BackHref:            s.route(RouteOnboardingNeedStory, map[string]string{"needID": needID}),
+		DeleteActions:       s.needDocumentDeleteActions(RouteOnboardingNeedDocumentDelete, needID, needDocumentIDs(documents)),
 	}
 
 	err = s.renderTemplate(w, r, "page.onboarding.need.documents", data)
@@ -1140,101 +1192,29 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	story, err := s.storyRepo.GetStoryByNeedID(ctx, needID)
+	core, err := s.loadNeedReviewCoreData(ctx, needID)
 	if err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch story")
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to load need review core data")
 		s.internalServerError(w)
 		return
-	}
-
-	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
-	if err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch category assignments")
-		s.internalServerError(w)
-		return
-	}
-
-	ids := make([]string, 0, len(assignments))
-	for _, assignment := range assignments {
-		ids = append(ids, assignment.CategoryID)
-	}
-
-	categoryByID := make(map[string]*types.NeedCategory)
-	if len(ids) > 0 {
-		categories, err := s.categoryRepo.CategoriesByIDs(ctx, ids)
-		if err != nil {
-			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch categories")
-			s.internalServerError(w)
-			return
-		}
-
-		for _, category := range categories {
-			categoryByID[category.ID] = category
-		}
-	}
-
-	var primaryCategory *types.NeedCategory
-	secondaryCategories := make([]*types.NeedCategory, 0)
-	for _, assignment := range assignments {
-		category, ok := categoryByID[assignment.CategoryID]
-		if !ok {
-			continue
-		}
-
-		if assignment.IsPrimary {
-			primaryCategory = category
-			continue
-		}
-
-		secondaryCategories = append(secondaryCategories, category)
-	}
-
-	var selectedAddress *types.UserAddress
-	if need.UserAddressID != nil && *need.UserAddressID != "" {
-		selectedAddress, err = s.userAddressRepo.ByIDAndUserID(ctx, *need.UserAddressID, need.UserID)
-		if err != nil {
-			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch selected address for review")
-			s.internalServerError(w)
-			return
-		}
-	}
-
-	if selectedAddress == nil {
-		selectedAddress, err = s.userAddressRepo.PrimaryByUserID(ctx, need.UserID)
-		if err != nil {
-			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch primary address for review")
-			s.internalServerError(w)
-			return
-		}
-	}
-
-	docs, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
-	if err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch documents")
-		s.internalServerError(w)
-		return
-	}
-
-	reviewDocs := make([]types.ReviewDocument, 0, len(docs))
-	for _, doc := range docs {
-		reviewDocs = append(reviewDocs, types.ReviewDocument{
-			ID:         doc.ID,
-			FileName:   doc.FileName,
-			TypeLabel:  documentTypeLabel(doc.DocumentType),
-			SizeBytes:  doc.FileSizeBytes,
-			UploadedAt: doc.UploadedAt,
-		})
 	}
 
 	data := &types.NeedReviewPageData{
 		BasePageData:        types.BasePageData{Title: "Review Need"},
 		ID:                  needID,
-		Need:                need,
-		SelectedAddress:     selectedAddress,
-		Story:               story,
-		PrimaryCategory:     primaryCategory,
-		SecondaryCategories: secondaryCategories,
-		Documents:           reviewDocs,
+		Need:                core.Need,
+		SelectedAddress:     core.SelectedAddress,
+		Story:               core.Story,
+		PrimaryCategory:     core.PrimaryCategory,
+		SecondaryCategories: core.SecondaryCategories,
+		Documents:           core.Documents,
+		EditLocationHref:    s.route(RouteOnboardingNeedLocation, map[string]string{"needID": needID}),
+		EditCategoriesHref:  s.route(RouteOnboardingNeedCategories, map[string]string{"needID": needID}),
+		EditStoryHref:       s.route(RouteOnboardingNeedStory, map[string]string{"needID": needID}),
+		EditDocumentsHref:   s.route(RouteOnboardingNeedDocuments, map[string]string{"needID": needID}),
+		SubmitAction:        s.route(RouteOnboardingNeedReview, map[string]string{"needID": needID}),
+		BackHref:            s.route(RouteOnboardingNeedDocuments, map[string]string{"needID": needID}),
+		SubmitLabel:         "Submit Profile",
 		Notice:              r.URL.Query().Get("notice"),
 		Error:               r.URL.Query().Get("error"),
 	}

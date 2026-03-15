@@ -165,6 +165,37 @@
         <p class="mt-4 text-sm text-muted-foreground">No documents uploaded for this need.</p>
         {{end}}
     </div>
+
+    <div class="mt-8 rounded-xl border border-border bg-background p-4">
+      <h2 class="text-base font-semibold text-foreground">Need Owner Messages</h2>
+      <p class="mt-1 text-sm text-muted-foreground">This thread is separate from audit timeline entries and is visible in the user review portal.</p>
+
+      {{if .Messages}}
+      <div class="mt-4 space-y-3">
+        {{range .Messages}}
+        <div class="rounded-lg border border-border bg-card p-3 {{if .IsFromAdmin}}border-l-4 border-l-[color:var(--cj-primary)]{{end}}">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{{.AuthorLabel}}</p>
+            <p class="text-xs text-muted-foreground">{{.CreatedAt}}</p>
+          </div>
+          <p class="mt-2 text-sm text-foreground">{{.Body}}</p>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+        <p class="mt-4 text-sm text-muted-foreground">No user-facing messages yet.</p>
+        {{end}}
+
+        <form method="post" action="{{.MessageAction}}" class="mt-4 space-y-3">
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="admin-need-message">Message to Need Owner</label>
+          <textarea id="admin-need-message" name="message" rows="3" required class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
+            placeholder="Share clear remediation guidance or answer a user question"></textarea>
+          <button type="submit"
+            class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-primary)]/90">
+            Send Message
+          </button>
+        </form>
+    </div>
     {{end}}
 
     <div class="mt-8">
