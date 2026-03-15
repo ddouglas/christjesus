@@ -155,7 +155,8 @@ func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWri
 		return
 	}
 
-	if need.Status == types.NeedStatusSubmitted || need.Status == types.NeedStatusReadyForReview || need.Status == types.NeedStatusUnderReview || need.Status == types.NeedStatusChangesRequested || need.Status == types.NeedStatusApproved || need.Status == types.NeedStatusRejected {
+	// Once a need leaves draft/onboarding workflow, keep onboarding read-only and send users to confirmation.
+	if need.Status != types.NeedStatusDraft {
 		http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 		return
 	}
