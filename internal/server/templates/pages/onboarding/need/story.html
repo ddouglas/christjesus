@@ -20,7 +20,7 @@
   </div>
 
   <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
-    <form id="story-form" action="{{route "onboarding.need.story" (dict "needID" .ID)}}" method="post" class="space-y-6 px-6">
+    <form id="story-form" action="{{.FormAction}}" method="post" class="space-y-6 px-6">
       {{if .PrimaryCategory}}
       <div class="space-y-2 pb-4 border-b border-border">
         <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Primary category</p>
@@ -113,7 +113,7 @@
   </div>
 
   <div class="mt-6 flex items-center justify-between">
-    <a href="{{route "onboarding.need.categories" (dict "needID" .ID)}}"
+    <a href="{{.BackHref}}"
       class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">
       Back
     </a>

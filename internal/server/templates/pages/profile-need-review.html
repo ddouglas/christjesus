@@ -1,0 +1,113 @@
+{{define "page.profile.need.review"}}
+{{template "header" .}}
+
+<section class="mx-auto w-full max-w-5xl px-4 py-10 md:px-6">
+  <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Need Owner Portal</p>
+        <h1 class="mt-2 text-2xl font-semibold text-foreground">Need Review & Remediation</h1>
+        <p class="mt-2 text-sm text-muted-foreground">Use this page to understand review decisions, fix issues, and communicate with admin reviewers.</p>
+      </div>
+      <a href="{{.BackHref}}" class="text-sm text-muted-foreground hover:text-foreground">Back to Profile</a>
+    </div>
+
+    {{if .Notice}}
+    <div class="mt-4 rounded-md border border-[color:var(--cj-success)]/30 bg-[color:var(--cj-success)]/10 px-3 py-2 text-sm text-foreground">{{.Notice}}</div>
+    {{end}}
+    {{if .Error}}
+    <div class="mt-4 rounded-md border border-[color:var(--cj-error)]/30 bg-[color:var(--cj-error)]/10 px-3 py-2 text-sm text-foreground">{{.Error}}</div>
+    {{end}}
+
+    {{if .Need}}
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      <div class="rounded-xl border border-border bg-background p-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Need ID</p>
+        <p class="mt-1 font-mono text-xs text-foreground">{{.Need.ID}}</p>
+        <p class="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Status</p>
+        <p class="mt-1 text-sm text-foreground">{{.Need.Status}}</p>
+      </div>
+      <div class="rounded-xl border border-border bg-background p-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Requested Amount</p>
+        <p class="mt-1 text-sm text-foreground">${{div .Need.AmountNeededCents 100}}</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <a href="{{.EditNeedHref}}" class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">Edit Need</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 rounded-xl border border-border bg-background p-4">
+      <h2 class="text-base font-semibold text-foreground">Need Decision Feedback</h2>
+      {{if or .RejectionReason .RejectionNote}}
+      <div class="mt-3 space-y-2 text-sm text-foreground">
+        {{if .RejectionReason}}
+        <p><span class="font-semibold">Reason:</span> {{.RejectionReason}}</p>{{end}}
+        {{if .RejectionNote}}
+        <p><span class="font-semibold">Note:</span> {{.RejectionNote}}</p>{{end}}
+      </div>
+      {{else}}
+        <p class="mt-3 text-sm text-muted-foreground">No top-level rejection reason is currently available. Review document feedback and message admin for clarification.</p>
+        {{end}}
+    </div>
+
+    <div class="mt-6 rounded-xl border border-border bg-background p-4">
+      <h2 class="text-base font-semibold text-foreground">Document Feedback</h2>
+      {{if .Documents}}
+      <div class="mt-3 space-y-3">
+        {{range .Documents}}
+        <div class="rounded-lg border border-border bg-card p-3">
+          <p class="text-sm font-medium text-foreground">{{.FileName}}</p>
+          <p class="mt-1 text-xs text-muted-foreground">{{.TypeLabel}} • {{.Status}}</p>
+          <div class="mt-2">
+            <a href="{{.ViewHref}}" target="_blank" rel="noopener noreferrer"
+              class="inline-flex h-7 items-center justify-center rounded-md border border-border px-2.5 text-xs font-medium text-foreground hover:bg-muted">View Document</a>
+          </div>
+          {{if .Reason}}
+          <p class="mt-2 text-sm text-foreground"><span class="font-semibold">Reason:</span> {{.Reason}}</p>
+          {{end}}
+          {{if .Note}}
+          <p class="mt-1 text-sm text-foreground"><span class="font-semibold">Note:</span> {{.Note}}</p>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+        <p class="mt-3 text-sm text-muted-foreground">No supporting documents uploaded yet.</p>
+        {{end}}
+    </div>
+
+    <div class="mt-6 rounded-xl border border-border bg-background p-4">
+      <h2 class="text-base font-semibold text-foreground">Secure Messages With Admin</h2>
+      <p class="mt-1 text-sm text-muted-foreground">Messages stay inside the application and are visible only to you and reviewers.</p>
+
+      {{if .Messages}}
+      <div class="mt-4 space-y-3">
+        {{range .Messages}}
+        <div class="rounded-lg border border-border bg-card p-3 {{if .IsFromAdmin}}border-l-4 border-l-[color:var(--cj-primary)]{{else}}border-l-4 border-l-[color:var(--cj-accent)]{{end}}">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{{.AuthorLabel}}</p>
+            <p class="text-xs text-muted-foreground">{{.CreatedAt}}</p>
+          </div>
+          <p class="mt-2 text-sm text-foreground">{{.Body}}</p>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+        <p class="mt-4 text-sm text-muted-foreground">No messages yet. Send the first message if you need clarification.</p>
+        {{end}}
+
+        <form method="post" action="{{.PostMessageAction}}" class="mt-4 space-y-3">
+          <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="user-review-message">Message</label>
+          <textarea id="user-review-message" name="message" rows="4" required class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
+            placeholder="Ask a question or describe the updates you made"></textarea>
+          <button type="submit"
+            class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-primary)]/90">Send
+            Message</button>
+        </form>
+    </div>
+    {{end}}
+  </div>
+</section>
+
+{{template "footer" .}}
+{{end}}

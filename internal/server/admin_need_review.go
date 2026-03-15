@@ -161,6 +161,15 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	messages, err := s.needReviewMessageRepo.MessagesByNeed(ctx, needID)
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need review messages for admin review")
+		s.internalServerError(w)
+		return
+	}
+
+	viewerUserID, _ := r.Context().Value(contextKeyUserID).(string)
+
 	timeline := make([]*types.AdminNeedTimelineItem, 0, len(moderationTimeline))
 	for _, item := range moderationTimeline {
 		if item == nil || item.Event == nil {
@@ -229,6 +238,8 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		DeletedAt:           formatOptionalDateTime(need.DeletedAt),
 		DeletedByUserID:     formatOptionalString(need.DeletedByUserID),
 		DeleteReason:        formatOptionalString(need.DeleteReason),
+		Messages:            buildNeedReviewMessageViews(messages, strings.TrimSpace(viewerUserID)),
+		MessageAction:       s.route(RouteAdminNeedMessage, map[string]string{"id": needID}),
 		Notice:              strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:               strings.TrimSpace(r.URL.Query().Get("error")),
 	}
@@ -367,6 +378,57 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 func (s *Service) redirectAdminNeedReviewWithError(w http.ResponseWriter, r *http.Request, needID, message string) {
 	v := url.Values{}
 	v.Set("error", message)
+	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"id": needID}, v), http.StatusSeeOther)
+}
+
+func (s *Service) handlePostAdminNeedMessage(w http.ResponseWriter, r *http.Request) {
+	needID := strings.TrimSpace(r.PathValue("id"))
+	if needID == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		s.redirectAdminNeedReviewWithError(w, r, needID, "invalid message submission")
+		return
+	}
+
+	body, validationErr := validateNeedReviewMessageBody(r.FormValue("message"))
+	if validationErr != nil {
+		s.redirectAdminNeedReviewWithError(w, r, needID, validationErr.Error())
+		return
+	}
+
+	actorUserID, ok := r.Context().Value(contextKeyUserID).(string)
+	if !ok || strings.TrimSpace(actorUserID) == "" {
+		s.redirectAdminNeedReviewWithError(w, r, needID, "missing actor identity")
+		return
+	}
+
+	if _, err := s.needsRepo.Need(r.Context(), needID); err != nil {
+		if err == types.ErrNeedNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need before creating admin review message")
+		s.internalServerError(w)
+		return
+	}
+
+	err := s.needReviewMessageRepo.CreateMessage(r.Context(), &types.NeedReviewMessage{
+		NeedID:       needID,
+		SenderUserID: actorUserID,
+		SenderRole:   types.NeedReviewMessageSenderRoleAdmin,
+		Body:         body,
+	})
+	if err != nil {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to create admin review message")
+		s.redirectAdminNeedReviewWithError(w, r, needID, "failed to send message")
+		return
+	}
+
+	v := url.Values{}
+	v.Set("notice", "Message sent to need owner")
 	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"id": needID}, v), http.StatusSeeOther)
 }
 

@@ -10,23 +10,36 @@ import (
 type RouteName string
 
 const (
-	RouteHome                   RouteName = "home"
-	RouteRegister               RouteName = "register"
-	RouteRegisterConfirm        RouteName = "register.confirm"
-	RouteRegisterConfirmResend  RouteName = "register.confirm.resend"
-	RouteLogin                  RouteName = "login"
-	RouteAuthCallback           RouteName = "auth.callback"
-	RouteLogout                 RouteName = "logout"
-	RouteProfile                RouteName = "profile"
-	RouteAdmin                  RouteName = "admin.dashboard"
-	RouteAdminNeeds             RouteName = "admin.needs"
-	RouteAdminNeedReview        RouteName = "admin.need.review"
-	RouteAdminNeedModerate      RouteName = "admin.need.moderate"
-	RouteAdminNeedDocument      RouteName = "admin.need.document"
-	RouteAdminNeedDelete        RouteName = "admin.need.delete"
-	RouteAdminNeedRestore       RouteName = "admin.need.restore"
-	RouteProfileNeedDelete      RouteName = "profile.need.delete"
-	RouteProfileDonationReceipt RouteName = "profile.donation.receipt"
+	RouteHome                      RouteName = "home"
+	RouteRegister                  RouteName = "register"
+	RouteRegisterConfirm           RouteName = "register.confirm"
+	RouteRegisterConfirmResend     RouteName = "register.confirm.resend"
+	RouteLogin                     RouteName = "login"
+	RouteAuthCallback              RouteName = "auth.callback"
+	RouteLogout                    RouteName = "logout"
+	RouteProfile                   RouteName = "profile"
+	RouteAdmin                     RouteName = "admin.dashboard"
+	RouteAdminNeeds                RouteName = "admin.needs"
+	RouteAdminNeedReview           RouteName = "admin.need.review"
+	RouteAdminNeedModerate         RouteName = "admin.need.moderate"
+	RouteAdminNeedDocument         RouteName = "admin.need.document"
+	RouteAdminNeedDelete           RouteName = "admin.need.delete"
+	RouteAdminNeedRestore          RouteName = "admin.need.restore"
+	RouteAdminNeedMessage          RouteName = "admin.need.message"
+	RouteProfileNeedDelete         RouteName = "profile.need.delete"
+	RouteProfileNeedReview         RouteName = "profile.need.review"
+	RouteProfileNeedReviewPost     RouteName = "profile.need.review.post"
+	RouteProfileNeedDocumentView   RouteName = "profile.need.document.view"
+	RouteProfileNeedEdit           RouteName = "profile.need.edit"
+	RouteProfileNeedEditLocation   RouteName = "profile.need.edit.location"
+	RouteProfileNeedEditCategories RouteName = "profile.need.edit.categories"
+	RouteProfileNeedEditStory      RouteName = "profile.need.edit.story"
+	RouteProfileNeedEditDocs       RouteName = "profile.need.edit.documents"
+	RouteProfileNeedEditUpload     RouteName = "profile.need.edit.documents.upload"
+	RouteProfileNeedEditMeta       RouteName = "profile.need.edit.documents.meta"
+	RouteProfileNeedEditDelete     RouteName = "profile.need.edit.documents.delete"
+	RouteProfileNeedEditReview     RouteName = "profile.need.edit.review"
+	RouteProfileDonationReceipt    RouteName = "profile.donation.receipt"
 
 	RouteOnboarding                    RouteName = "onboarding"
 	RouteOnboardingDonorWelcome        RouteName = "onboarding.donor.welcome"
@@ -78,7 +91,20 @@ var routePatterns = map[RouteName]string{
 	RouteAdminNeedDocument:             "/admin/needs/:id/documents/:documentID",
 	RouteAdminNeedDelete:               "/admin/needs/:id/delete",
 	RouteAdminNeedRestore:              "/admin/needs/:id/restore",
+	RouteAdminNeedMessage:              "/admin/needs/:id/messages",
 	RouteProfileNeedDelete:             "/profile/needs/:needID/delete",
+	RouteProfileNeedReview:             "/profile/needs/:needID/review",
+	RouteProfileNeedReviewPost:         "/profile/needs/:needID/review/messages",
+	RouteProfileNeedDocumentView:       "/profile/needs/:needID/documents/:documentID",
+	RouteProfileNeedEdit:               "/profile/needs/:needID/edit",
+	RouteProfileNeedEditLocation:       "/profile/needs/:needID/edit/location",
+	RouteProfileNeedEditCategories:     "/profile/needs/:needID/edit/categories",
+	RouteProfileNeedEditStory:          "/profile/needs/:needID/edit/story",
+	RouteProfileNeedEditDocs:           "/profile/needs/:needID/edit/documents",
+	RouteProfileNeedEditUpload:         "/profile/needs/:needID/edit/documents/upload",
+	RouteProfileNeedEditMeta:           "/profile/needs/:needID/edit/documents/metadata",
+	RouteProfileNeedEditDelete:         "/profile/needs/:needID/edit/documents/:documentID/delete",
+	RouteProfileNeedEditReview:         "/profile/needs/:needID/edit/review",
 	RouteProfileDonationReceipt:        "/profile/donations/:intentID/receipt",
 	RouteOnboarding:                    "/onboarding",
 	RouteOnboardingDonorWelcome:        "/onboarding/donor/welcome",

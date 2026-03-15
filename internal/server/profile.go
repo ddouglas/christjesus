@@ -54,6 +54,11 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		} else {
 			myNeeds = needs
 			for _, need := range needs {
+				reviewPortalHref := ""
+				if need.Status != types.NeedStatusDraft {
+					reviewPortalHref = s.route(RouteProfileNeedReview, map[string]string{"needID": need.ID})
+				}
+
 				primaryCategoryName := "Uncategorized"
 
 				assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, need.ID)
@@ -89,6 +94,8 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 					CurrentStep:         formatNeedStepLabel(need.CurrentStep),
 					Status:              need.Status,
 					CanDelete:           need.Status == types.NeedStatusDraft,
+					NeedsAttention:      need.Status == types.NeedStatusChangesRequested || need.Status == types.NeedStatusRejected,
+					ReviewPortalHref:    reviewPortalHref,
 				})
 			}
 		}

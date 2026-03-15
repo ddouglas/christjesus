@@ -49,3 +49,7 @@
 - Config is loaded from env vars with no prefix (`envconfig.Process("", c)`).
 - Required envs include: `DATABASE_URL`, Auth0 (`AUTH0_*`), S3 (`S3_BUCKET_NAME`), and cookie encryption keys.
 - External dependencies: Auth0 (auth), AWS S3 (document storage), PostgreSQL (app data).
+
+## PR Submission Guidelines
+- Create a file in the repo level ./tmp directory, write the PR Body ot that file, then use that file to update/create the PR description
+- This is a rule because everytime you use heredoc or something in the terminal to write the body, some sort terminal interpolation syntax break the terminal and you get stuck in a while loop. 
