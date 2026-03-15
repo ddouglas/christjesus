@@ -4,12 +4,15 @@ import (
 	"christjesus/internal/utils"
 	"christjesus/pkg/types"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -139,23 +142,56 @@ func (r *UserRepository) UpsertIdentity(ctx context.Context, authSubject, email,
 		familyNamePtr = &trimmedFamilyName
 	}
 
-	newUserID := types.NanoID()
-
-	query, args, err := psql().
-		Insert(userTableName).
-		Columns("id", "auth_subject", "email", "given_name", "family_name", "created_at", "updated_at").
-		Values(newUserID, authSubject, emailPtr, givenNamePtr, familyNamePtr, now, now).
-		Suffix("ON CONFLICT (auth_subject) DO UPDATE SET email = EXCLUDED.email, given_name = EXCLUDED.given_name, family_name = EXCLUDED.family_name, updated_at = EXCLUDED.updated_at RETURNING id").
+	updateQuery, updateArgs, err := psql().
+		Update(userTableName).
+		Set("email", emailPtr).
+		Set("given_name", givenNamePtr).
+		Set("family_name", familyNamePtr).
+		Set("updated_at", now).
+		Where(sq.Eq{"auth_subject": authSubject}).
+		Suffix("RETURNING id").
 		ToSql()
 	if err != nil {
-		return "", fmt.Errorf("failed to generate upsert identity user query: %w", err)
+		return "", fmt.Errorf("failed to generate update identity user query: %w", err)
 	}
 
 	var userID string
-	err = r.pool.QueryRow(ctx, query, args...).Scan(&userID)
-	if err != nil {
-		return "", fmt.Errorf("failed to upsert user identity fields: %w", err)
+	err = r.pool.QueryRow(ctx, updateQuery, updateArgs...).Scan(&userID)
+	if err == nil {
+		return userID, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("failed to update existing user identity fields: %w", err)
 	}
 
-	return userID, nil
+	newUserID := types.NanoID()
+
+	insertQuery, insertArgs, err := psql().
+		Insert(userTableName).
+		Columns("id", "auth_subject", "email", "given_name", "family_name", "created_at", "updated_at").
+		Values(newUserID, authSubject, emailPtr, givenNamePtr, familyNamePtr, now, now).
+		Suffix("RETURNING id").
+		ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate insert identity user query: %w", err)
+	}
+
+	err = r.pool.QueryRow(ctx, insertQuery, insertArgs...).Scan(&userID)
+	if err == nil {
+		return userID, nil
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		err = r.pool.QueryRow(ctx, updateQuery, updateArgs...).Scan(&userID)
+		if err == nil {
+			return userID, nil
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", fmt.Errorf("user identity raced during insert but was not found on re-read")
+		}
+		return "", fmt.Errorf("failed to load raced user identity after unique violation: %w", err)
+	}
+
+	return "", fmt.Errorf("failed to insert user identity fields: %w", err)
 }
