@@ -6,7 +6,7 @@
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Admin</p>
         <h1 class="mt-2 text-2xl font-semibold text-foreground">Need Explorer</h1>
-        <p class="mt-2 text-sm text-muted-foreground">Monitor post-approval need performance in one place.</p>
+        <p class="mt-2 text-sm text-muted-foreground">Explore all needs and monitor performance from a single admin surface.</p>
       </div>
       <div class="flex items-center gap-3">
         <a href="{{.QueueHref}}" class="inline-flex h-9 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">Moderation Queue</a>
@@ -32,7 +32,8 @@
         </select>
       </div>
       <div class="md:self-end">
-        <button type="submit" class="inline-flex h-10 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-primary)]/90">Apply</button>
+        <button type="submit"
+          class="inline-flex h-10 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-primary)]/90">Apply</button>
       </div>
     </form>
 
@@ -93,7 +94,7 @@
     </div>
     {{else}}
       <p class="mt-6 text-sm text-muted-foreground">No needs found for this filter combination.</p>
-    {{end}}
+      {{end}}
   </div>
 </section>
 {{template "footer" .}}

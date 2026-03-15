@@ -104,21 +104,21 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 	}
 
 	data := &types.AdminNeedExplorerPageData{
-		BasePageData:     types.BasePageData{Title: "Admin Need Explorer"},
-		Needs:            items,
-		Page:             page,
-		PageSize:         adminNeedExplorerPageSize,
-		TotalNeeds:       totalNeeds,
-		TotalPages:       totalPages,
-		PrevHref:         prevHref,
-		NextHref:         nextHref,
-		SelectedStatus:   selectedStatus,
-		SelectedSort:     selectedSort,
-		FilterAction:     s.route(RouteAdminNeedExplorer, nil),
-		StatusOptions:    adminExplorerStatusOptions(),
-		SortOptions:      adminExplorerSortOptions(),
-		BackHref:         s.route(RouteAdmin, nil),
-		QueueHref:        s.route(RouteAdminNeeds, nil),
+		BasePageData:      types.BasePageData{Title: "Admin Need Explorer"},
+		Needs:             items,
+		Page:              page,
+		PageSize:          adminNeedExplorerPageSize,
+		TotalNeeds:        totalNeeds,
+		TotalPages:        totalPages,
+		PrevHref:          prevHref,
+		NextHref:          nextHref,
+		SelectedStatus:    selectedStatus,
+		SelectedSort:      selectedSort,
+		FilterAction:      s.route(RouteAdminNeedExplorer, nil),
+		StatusOptions:     adminExplorerStatusOptions(),
+		SortOptions:       adminExplorerSortOptions(),
+		BackHref:          s.route(RouteAdmin, nil),
+		QueueHref:         s.route(RouteAdminNeeds, nil),
 		CurrentStatusText: adminExplorerStatusLabel(selectedStatus),
 	}
 
@@ -131,6 +131,24 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 
 func adminExplorerStatusFilter(raw string) *types.NeedStatus {
 	switch strings.ToUpper(strings.TrimSpace(raw)) {
+	case string(types.NeedStatusDraft):
+		status := types.NeedStatusDraft
+		return &status
+	case string(types.NeedStatusSubmitted):
+		status := types.NeedStatusSubmitted
+		return &status
+	case string(types.NeedStatusReadyForReview):
+		status := types.NeedStatusReadyForReview
+		return &status
+	case string(types.NeedStatusUnderReview):
+		status := types.NeedStatusUnderReview
+		return &status
+	case string(types.NeedStatusChangesRequested):
+		status := types.NeedStatusChangesRequested
+		return &status
+	case string(types.NeedStatusRejected):
+		status := types.NeedStatusRejected
+		return &status
 	case string(types.NeedStatusApproved):
 		status := types.NeedStatusApproved
 		return &status
@@ -148,14 +166,20 @@ func adminExplorerStatusFilter(raw string) *types.NeedStatus {
 func adminExplorerStatusLabel(raw string) string {
 	status := adminExplorerStatusFilter(raw)
 	if status == nil {
-		return "All post-approval statuses"
+		return "All statuses"
 	}
 	return string(*status)
 }
 
 func adminExplorerStatusOptions() []types.AdminExplorerOption {
 	return []types.AdminExplorerOption{
-		{Value: "", Label: "All post-approval"},
+		{Value: "", Label: "All statuses"},
+		{Value: string(types.NeedStatusDraft), Label: "Draft"},
+		{Value: string(types.NeedStatusSubmitted), Label: "Submitted"},
+		{Value: string(types.NeedStatusReadyForReview), Label: "Ready For Review"},
+		{Value: string(types.NeedStatusUnderReview), Label: "Under Review"},
+		{Value: string(types.NeedStatusChangesRequested), Label: "Changes Requested"},
+		{Value: string(types.NeedStatusRejected), Label: "Rejected"},
 		{Value: string(types.NeedStatusApproved), Label: "Approved"},
 		{Value: string(types.NeedStatusActive), Label: "Active"},
 		{Value: string(types.NeedStatusFunded), Label: "Funded"},

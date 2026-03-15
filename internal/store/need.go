@@ -22,12 +22,6 @@ type NeedRepository struct {
 	pool *pgxpool.Pool
 }
 
-var adminExplorerStatuses = []types.NeedStatus{
-	types.NeedStatusApproved,
-	types.NeedStatusActive,
-	types.NeedStatusFunded,
-}
-
 type needExecer interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
@@ -157,8 +151,6 @@ func (r *NeedRepository) AdminExplorerNeedsPage(ctx context.Context, page, pageS
 
 	if statusFilter != nil {
 		queryBuilder = queryBuilder.Where(sq.Eq{"status": *statusFilter})
-	} else {
-		queryBuilder = queryBuilder.Where(sq.Eq{"status": adminExplorerStatuses})
 	}
 
 	switch sortBy {
@@ -202,8 +194,6 @@ func (r *NeedRepository) AdminExplorerNeedsCount(ctx context.Context, statusFilt
 
 	if statusFilter != nil {
 		queryBuilder = queryBuilder.Where(sq.Eq{"status": *statusFilter})
-	} else {
-		queryBuilder = queryBuilder.Where(sq.Eq{"status": adminExplorerStatuses})
 	}
 
 	query, args, err := queryBuilder.ToSql()
