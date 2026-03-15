@@ -43,6 +43,11 @@ type BrowsePageData struct {
 	Filters              BrowseFilters
 	LoadResultsOnRender  bool
 	ShowResultsSkeletons bool
+	Page                 int
+	TotalNeeds           int
+	TotalPages           int
+	PrevHref             string
+	NextHref             string
 }
 
 type BrowseFilters struct {
@@ -54,6 +59,8 @@ type BrowseFilters struct {
 	FundingMax      int
 	ViewMode        string
 	SortBy          string
+	Page            int
+	PageSize        int
 }
 
 type BrowseNeedCard struct {
