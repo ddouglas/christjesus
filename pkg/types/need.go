@@ -12,7 +12,6 @@ const (
 	NeedStatusReadyForReview   NeedStatus = "READY_FOR_REVIEW"
 	NeedStatusUnderReview      NeedStatus = "UNDER_REVIEW"
 	NeedStatusChangesRequested NeedStatus = "CHANGES_REQUESTED"
-	NeedStatusApproved         NeedStatus = "APPROVED"
 	NeedStatusRejected         NeedStatus = "REJECTED"
 	NeedStatusActive           NeedStatus = "ACTIVE"
 	NeedStatusFunded           NeedStatus = "FUNDED"

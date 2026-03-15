@@ -57,7 +57,7 @@ table "needs" {
     type    = text
     null    = false
     default = "DRAFT"
-    comment = "DRAFT, SUBMITTED, READY_FOR_REVIEW, UNDER_REVIEW, CHANGES_REQUESTED, APPROVED, REJECTED, ACTIVE, FUNDED, CLOSED"
+    comment = "DRAFT, SUBMITTED, READY_FOR_REVIEW, UNDER_REVIEW, CHANGES_REQUESTED, REJECTED, ACTIVE, FUNDED, CLOSED"
   }
 
   column "verified_at" {

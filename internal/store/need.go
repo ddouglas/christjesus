@@ -60,7 +60,7 @@ func (r *NeedRepository) Need(ctx context.Context, needID string) (*types.Need, 
 
 func (r *NeedRepository) BrowseNeeds(ctx context.Context) ([]*types.Need, error) {
 	query, args, err := psql().Select(needColumns...).From(needTableName).
-		Where(sq.NotEq{"status": types.NeedStatusDraft}).
+		Where(sq.Eq{"status": []types.NeedStatus{types.NeedStatusActive, types.NeedStatusFunded}}).
 		Where(sq.Eq{"deleted_at": nil}).
 		OrderBy("created_at desc").
 		ToSql()
@@ -134,6 +134,111 @@ func (r *NeedRepository) ModerationQueueNeedsCount(ctx context.Context) (int, er
 	}
 
 	return total, nil
+}
+
+func (r *NeedRepository) AdminExplorerNeedsPage(ctx context.Context, page, pageSize int, statusFilter *types.NeedStatus, sortBy string) ([]*types.Need, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+
+	offset := uint64((page - 1) * pageSize)
+
+	queryBuilder := psql().Select(needColumns...).From(needTableName).
+		Where(sq.Eq{"deleted_at": nil})
+
+	if statusFilter != nil {
+		queryBuilder = queryBuilder.Where(sq.Eq{"status": *statusFilter})
+	}
+
+	switch sortBy {
+	case "updated_asc":
+		queryBuilder = queryBuilder.OrderBy("updated_at asc", "id asc")
+	case "raised_desc":
+		queryBuilder = queryBuilder.OrderBy("amount_raised_cents desc", "updated_at desc", "id asc")
+	case "needed_desc":
+		queryBuilder = queryBuilder.OrderBy("amount_needed_cents desc", "updated_at desc", "id asc")
+	case "progress_desc":
+		queryBuilder = queryBuilder.OrderBy("CASE WHEN amount_needed_cents > 0 THEN (amount_raised_cents::float / amount_needed_cents::float) ELSE 0 END desc", "updated_at desc", "id asc")
+	default:
+		queryBuilder = queryBuilder.OrderBy("updated_at desc", "id asc")
+	}
+
+	query, args, err := queryBuilder.
+		Limit(uint64(pageSize)).
+		Offset(offset).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate admin explorer needs query: %w", err)
+	}
+
+	needs := make([]*types.Need, 0)
+	err = pgxscan.Select(ctx, r.pool, &needs, query, args...)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return needs, nil
+		}
+		return nil, fmt.Errorf("failed to fetch admin explorer needs: %w", err)
+	}
+
+	return needs, nil
+}
+
+func (r *NeedRepository) AdminExplorerNeedsCount(ctx context.Context, statusFilter *types.NeedStatus) (int, error) {
+	queryBuilder := psql().
+		Select("COUNT(*)").
+		From(needTableName).
+		Where(sq.Eq{"deleted_at": nil})
+
+	if statusFilter != nil {
+		queryBuilder = queryBuilder.Where(sq.Eq{"status": *statusFilter})
+	}
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to generate admin explorer needs count query: %w", err)
+	}
+
+	var total int
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("failed to count admin explorer needs: %w", err)
+	}
+
+	return total, nil
+}
+
+func (r *NeedRepository) AdminExplorerNeedsCountByStatus(ctx context.Context) (map[types.NeedStatus]int, error) {
+	query, args, err := psql().
+		Select("status", "COUNT(*)").
+		From(needTableName).
+		Where(sq.Eq{"deleted_at": nil}).
+		GroupBy("status").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate admin explorer grouped count query: %w", err)
+	}
+
+	type statusCountRow struct {
+		Status types.NeedStatus `db:"status"`
+		Count  int              `db:"count"`
+	}
+
+	rows := make([]statusCountRow, 0)
+	if err := pgxscan.Select(ctx, r.pool, &rows, query, args...); err != nil {
+		if pgxscan.NotFound(err) {
+			return map[types.NeedStatus]int{}, nil
+		}
+		return nil, fmt.Errorf("failed to fetch admin explorer grouped counts: %w", err)
+	}
+
+	counts := make(map[types.NeedStatus]int, len(rows))
+	for _, row := range rows {
+		counts[row.Status] = row.Count
+	}
+
+	return counts, nil
 }
 
 func (r *NeedRepository) LatestNeeds(ctx context.Context, limit int) ([]*types.Need, error) {
@@ -303,6 +408,14 @@ func (r *NeedRepository) SetNeedStatusTx(ctx context.Context, tx pgx.Tx, needID 
 	return r.setNeedStatusWithExec(ctx, tx, needID, status)
 }
 
+func (r *NeedRepository) PublishNeed(ctx context.Context, needID string) error {
+	return r.publishNeedWithExec(ctx, r.pool, needID)
+}
+
+func (r *NeedRepository) PublishNeedTx(ctx context.Context, tx pgx.Tx, needID string) error {
+	return r.publishNeedWithExec(ctx, tx, needID)
+}
+
 func (r *NeedRepository) setNeedStatusWithExec(ctx context.Context, execer needExecer, needID string, status types.NeedStatus) error {
 	query, args, err := psql().
 		Update(needTableName).
@@ -316,6 +429,22 @@ func (r *NeedRepository) setNeedStatusWithExec(ctx context.Context, execer needE
 
 	_, err = execer.Exec(ctx, query, args...)
 	return utils.ErrorWrapOrNil(err, "failed to set need status")
+}
+
+func (r *NeedRepository) publishNeedWithExec(ctx context.Context, execer needExecer, needID string) error {
+	query, args, err := psql().
+		Update(needTableName).
+		Set("status", types.NeedStatusActive).
+		Set("published_at", sq.Expr("COALESCE(published_at, NOW())")).
+		Set("updated_at", time.Now()).
+		Where(sq.Eq{"id": needID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to generate publish need query for need %s: %w", needID, err)
+	}
+
+	_, err = execer.Exec(ctx, query, args...)
+	return utils.ErrorWrapOrNil(err, "failed to publish need")
 }
 
 func (r *NeedRepository) SoftDeleteNeed(ctx context.Context, needID, actorUserID, reason string) error {

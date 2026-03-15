@@ -34,8 +34,7 @@ var weightedStatuses = []weightedNeedStatus{
 	{Status: types.NeedStatusDraft, Weight: 35},
 	{Status: types.NeedStatusSubmitted, Weight: 20},
 	{Status: types.NeedStatusUnderReview, Weight: 15},
-	{Status: types.NeedStatusApproved, Weight: 10},
-	{Status: types.NeedStatusActive, Weight: 12},
+	{Status: types.NeedStatusActive, Weight: 22},
 	{Status: types.NeedStatusFunded, Weight: 8},
 }
 
@@ -86,7 +85,7 @@ func SeedFakeNeeds(
 		switch status {
 		case types.NeedStatusFunded:
 			amountRaised = amountNeeded
-		case types.NeedStatusActive, types.NeedStatusApproved:
+		case types.NeedStatusActive:
 			amountRaised = rng.Intn(max(amountNeeded-100, 100))
 		case types.NeedStatusUnderReview, types.NeedStatusSubmitted:
 			amountRaised = rng.Intn(max(amountNeeded/3, 100))
@@ -109,7 +108,7 @@ func SeedFakeNeeds(
 		if status != types.NeedStatusDraft {
 			need.SubmittedAt = utils.TimePtr(now.Add(-time.Duration(rng.Intn(14*24)) * time.Hour))
 		}
-		if status == types.NeedStatusApproved || status == types.NeedStatusActive || status == types.NeedStatusFunded {
+		if status == types.NeedStatusActive || status == types.NeedStatusFunded {
 			verifiedBy := fakeNeedUserIDs[rng.Intn(len(fakeNeedUserIDs))]
 			need.VerifiedBy = utils.StringPtr(verifiedBy)
 			need.VerifiedAt = utils.TimePtr(now.Add(-time.Duration(rng.Intn(10*24)) * time.Hour))
@@ -201,7 +200,7 @@ func stepForStatus(status types.NeedStatus, rng *rand.Rand) types.NeedStep {
 		return steps[rng.Intn(len(steps))]
 	case types.NeedStatusSubmitted, types.NeedStatusUnderReview:
 		return types.NeedStepReview
-	case types.NeedStatusApproved, types.NeedStatusActive, types.NeedStatusFunded:
+	case types.NeedStatusActive, types.NeedStatusFunded:
 		return types.NeedStepComplete
 	default:
 		return types.NeedStepReview

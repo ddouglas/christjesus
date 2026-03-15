@@ -306,10 +306,8 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 			s.redirectAdminNeedReviewWithError(w, r, needID, "need must be under review before approval")
 			return
 		}
-		status := types.NeedStatusApproved
-		newStatus = &status
 		actionType = types.NeedModerationActionTypeReviewApproved
-		notice = "Need approved"
+		notice = "Need approved and published"
 	case "reject":
 		if need.Status != types.NeedStatusUnderReview {
 			s.redirectAdminNeedReviewWithError(w, r, needID, "need must be under review before rejection")
@@ -388,7 +386,11 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := store.WithTx(r.Context(), s.needsRepo, func(tx pgx.Tx) error {
-		if newStatus != nil {
+		if action == "approve" {
+			if err := s.needsRepo.PublishNeedTx(r.Context(), tx, needID); err != nil {
+				return err
+			}
+		} else if newStatus != nil {
 			if err := s.needsRepo.SetNeedStatusTx(r.Context(), tx, needID, *newStatus); err != nil {
 				return err
 			}

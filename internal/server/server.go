@@ -235,6 +235,7 @@ func (s *Service) buildRouter(r *flow.Mux) {
 
 		r.HandleFunc(RoutePattern(RouteAdmin), s.handleGetAdminDashboard, http.MethodGet)
 		r.HandleFunc(RoutePattern(RouteAdminNeeds), s.handleGetAdminNeeds, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteAdminNeedExplorer), s.handleGetAdminNeedExplorer, http.MethodGet)
 		r.HandleFunc(RoutePattern(RouteAdminNeedReview), s.handleGetAdminNeedReview, http.MethodGet)
 		r.HandleFunc(RoutePattern(RouteAdminNeedModerate), s.handlePostAdminNeedModerate, http.MethodPost)
 		r.HandleFunc(RoutePattern(RouteAdminNeedDocument), s.handleGetAdminNeedDocument, http.MethodGet)
