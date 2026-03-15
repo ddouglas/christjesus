@@ -82,6 +82,16 @@ func (r *NeedReviewMessageRepository) CreateMessage(ctx context.Context, message
 		return fmt.Errorf("message is required")
 	}
 
+	message.NeedID = strings.TrimSpace(message.NeedID)
+	if message.NeedID == "" {
+		return fmt.Errorf("need id is required")
+	}
+
+	message.SenderUserID = strings.TrimSpace(message.SenderUserID)
+	if message.SenderUserID == "" {
+		return fmt.Errorf("sender user id is required")
+	}
+
 	if message.SenderRole != types.NeedReviewMessageSenderRoleUser && message.SenderRole != types.NeedReviewMessageSenderRoleAdmin {
 		return fmt.Errorf("invalid sender role")
 	}

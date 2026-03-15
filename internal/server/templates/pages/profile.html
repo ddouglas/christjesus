@@ -60,7 +60,7 @@
             {{if .NeedsAttention}}
             <p class="mt-2 text-sm font-medium text-[color:var(--cj-warning)]">Action needed: review feedback and remediate this need.</p>
             {{end}}
-            {{if ne .Status "DRAFT"}}
+            {{if .ReviewPortalHref}}
             <a href="{{.ReviewPortalHref}}"
               class="mt-2 inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted">
               Open Review Portal

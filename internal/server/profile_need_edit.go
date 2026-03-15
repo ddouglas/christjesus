@@ -301,9 +301,26 @@ func (s *Service) handlePostProfileNeedEditCategories(w http.ResponseWriter, r *
 		return
 	}
 
-	ids := make([]string, 0, len(r.Form.Get("secondary"))+1)
-	ids = append(ids, r.Form.Get("primary"))
-	ids = append(ids, r.Form["secondary"]...)
+	primaryID := strings.TrimSpace(r.Form.Get("primary"))
+	if primaryID == "" {
+		s.redirectProfileNeedEditCategoriesWithError(w, r, needID, "Please select exactly one primary category.")
+		return
+	}
+
+	secondaryIDs := make([]string, 0, len(r.Form["secondary"]))
+	seenSecondaryIDs := make(map[string]bool, len(r.Form["secondary"]))
+	for _, rawID := range r.Form["secondary"] {
+		categoryID := strings.TrimSpace(rawID)
+		if categoryID == "" || categoryID == primaryID || seenSecondaryIDs[categoryID] {
+			continue
+		}
+		seenSecondaryIDs[categoryID] = true
+		secondaryIDs = append(secondaryIDs, categoryID)
+	}
+
+	ids := make([]string, 0, len(secondaryIDs)+1)
+	ids = append(ids, primaryID)
+	ids = append(ids, secondaryIDs...)
 
 	categories, err := s.categoryRepo.CategoriesByIDs(ctx, ids)
 	if err != nil {
@@ -328,9 +345,9 @@ func (s *Service) handlePostProfileNeedEditCategories(w http.ResponseWriter, r *
 		needCategories = append(needCategories, cat)
 	}
 
-	primaryCategory := categoryMap[r.Form.Get("primary")]
-	secondaryCategories := make([]*types.NeedCategory, 0)
-	for _, id := range r.Form["secondary"] {
+	primaryCategory := categoryMap[primaryID]
+	secondaryCategories := make([]*types.NeedCategory, 0, len(secondaryIDs))
+	for _, id := range secondaryIDs {
 		secondaryCategories = append(secondaryCategories, categoryMap[id])
 	}
 
