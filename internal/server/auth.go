@@ -90,7 +90,12 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 	}
 	req.Header.Set("content-type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	client := s.httpClient
+	if client == nil {
+		client = &http.Client{Timeout: authOutboundTimeout}
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to exchange authorization code with auth0")
 		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)

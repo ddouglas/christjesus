@@ -28,6 +28,8 @@ import (
 var uiFS embed.FS
 var decoder = form.NewDecoder()
 
+const authOutboundTimeout = 10 * time.Second
+
 type Service struct {
 	config *types.Config
 	logger *logrus.Logger
@@ -47,9 +49,10 @@ type Service struct {
 	donorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
 	donationIntentRepo          *store.DonationIntentRepository
 
-	cookie    *securecookie.SecureCookie
-	jwksCache *jwk.Cache
-	jwksURL   string
+	cookie     *securecookie.SecureCookie
+	jwksCache  *jwk.Cache
+	jwksURL    string
+	httpClient *http.Client
 
 	server    *http.Server
 	templates *template.Template
@@ -101,9 +104,10 @@ func New(
 		donorPreferenceAssignRepo:   donorPreferenceAssignRepo,
 		donationIntentRepo:          donationIntentRepo,
 
-		cookie:    securecookie.New(hashKey, blockKey),
-		jwksCache: jwkCache,
-		jwksURL:   jwksURL,
+		cookie:     securecookie.New(hashKey, blockKey),
+		jwksCache:  jwkCache,
+		jwksURL:    jwksURL,
+		httpClient: &http.Client{Timeout: authOutboundTimeout},
 
 		server: &http.Server{
 			Addr:              fmt.Sprintf(":%d", config.ServerPort),
