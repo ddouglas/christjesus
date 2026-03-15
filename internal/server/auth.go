@@ -22,9 +22,13 @@ type auth0TokenResponse struct {
 func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 	_, err := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
 	if err == nil {
-		s.logger.Info("user is already logged in, redirecting to Browse Needs")
-		http.Redirect(w, r, s.route(RouteBrowse, nil), http.StatusSeeOther)
-		return
+		if _, ok := s.authClaimsFromRequest(r); ok {
+			s.logger.Info("user is already logged in, redirecting to Browse Needs")
+			http.Redirect(w, r, s.route(RouteBrowse, nil), http.StatusSeeOther)
+			return
+		}
+
+		s.clearAccessTokenCookie(w)
 	}
 
 	s.startAuth0Authorization(w, r, "")
