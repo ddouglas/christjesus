@@ -1,19 +1,23 @@
-output "user_pool_id" {
-  value = aws_cognito_user_pool.user_pool.id
-}
-
-output "client_id" {
-  value = aws_cognito_user_pool_client.pool_client.id
-}
-
-output "issuer_url" {
-  value = "https://cognito-idp.${data.aws_region.current.region}.amazonaws.com/${aws_cognito_user_pool.user_pool.id}"
-}
-
 output "documents_bucket" {
   value = aws_s3_bucket.documents.bucket
 }
 
-output "cognito_admin_group_name" {
-  value = aws_cognito_user_group.admin.name
+output "auth0_web_client_id" {
+  value = auth0_client.web.client_id
+}
+
+output "auth0_web_client_name" {
+  value = auth0_client.web.name
+}
+
+output "auth0_db_connection_id" {
+  value = auth0_connection.users.id
+}
+
+output "auth0_db_connection_name" {
+  value = auth0_connection.users.name
+}
+
+output "auth0_admin_role_name" {
+  value = auth0_role.admin.name
 }

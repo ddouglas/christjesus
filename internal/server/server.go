@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -16,7 +17,6 @@ import (
 	"christjesus/pkg/types"
 
 	"github.com/alexedwards/flow"
-	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-playground/form/v4"
 	"github.com/gorilla/securecookie"
@@ -29,13 +29,14 @@ import (
 var uiFS embed.FS
 var decoder = form.NewDecoder()
 
+const authOutboundTimeout = 10 * time.Second
+
 type Service struct {
 	config *types.Config
 	logger *logrus.Logger
 
-	cognitoClient *cognitoidentityprovider.Client
-	s3Client      *s3.Client
-	stripeClient  *stripe.Client
+	s3Client     *s3.Client
+	stripeClient *stripe.Client
 
 	needsRepo                   *store.NeedRepository
 	progressRepo                *store.NeedProgressRepository
@@ -49,19 +50,25 @@ type Service struct {
 	donorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
 	donationIntentRepo          *store.DonationIntentRepository
 
-	cookie    *securecookie.SecureCookie
-	jwksCache *jwk.Cache
-	jwksURL   string
+	cookie           *securecookie.SecureCookie
+	jwksCache        *jwk.Cache
+	jwksURL          string
+	httpClient       *http.Client
+	authIdentityRepo authIdentityRepository
 
 	server    *http.Server
 	templates *template.Template
+}
+
+type authIdentityRepository interface {
+	UpsertIdentity(ctx context.Context, authSubject, email, givenName, familyName string) (string, error)
+	User(ctx context.Context, userID string) (*types.User, error)
 }
 
 func New(
 	config *types.Config,
 	logger *logrus.Logger,
 
-	cognitoClient *cognitoidentityprovider.Client,
 	s3Client *s3.Client,
 	stripeClient *stripe.Client,
 
@@ -89,9 +96,8 @@ func New(
 		config: config,
 		logger: logger,
 
-		cognitoClient: cognitoClient,
-		s3Client:      s3Client,
-		stripeClient:  stripeClient,
+		s3Client:     s3Client,
+		stripeClient: stripeClient,
 
 		needsRepo:                   needsRepo,
 		progressRepo:                progressRepo,
@@ -105,9 +111,11 @@ func New(
 		donorPreferenceAssignRepo:   donorPreferenceAssignRepo,
 		donationIntentRepo:          donationIntentRepo,
 
-		cookie:    securecookie.New(hashKey, blockKey),
-		jwksCache: jwkCache,
-		jwksURL:   jwksURL,
+		cookie:           securecookie.New(hashKey, blockKey),
+		jwksCache:        jwkCache,
+		jwksURL:          jwksURL,
+		httpClient:       &http.Client{Timeout: authOutboundTimeout},
+		authIdentityRepo: userRepo,
 
 		server: &http.Server{
 			Addr:              fmt.Sprintf(":%d", config.ServerPort),
@@ -138,6 +146,13 @@ func (s *Service) Stop(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
+func (s *Service) upsertIdentity(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
+	if s.authIdentityRepo == nil {
+		return "", errors.New("user repository not configured")
+	}
+	return s.authIdentityRepo.UpsertIdentity(ctx, authSubject, email, givenName, familyName)
+}
+
 func (s *Service) buildRouter(r *flow.Mux) {
 	r.Use(s.StripTrailingSlash)
 	r.Use(s.LoggingMiddleware)
@@ -152,6 +167,7 @@ func (s *Service) buildRouter(r *flow.Mux) {
 	r.HandleFunc(RoutePattern(RouteRegisterConfirmResend), s.handlePostRegisterConfirmResend, http.MethodPost)
 	r.HandleFunc(RoutePattern(RouteLogin), s.handleGetLogin, http.MethodGet)
 	r.HandleFunc(RoutePattern(RouteLogin), s.handlePostLogin, http.MethodPost)
+	r.HandleFunc(RoutePattern(RouteAuthCallback), s.handleGetAuthCallback, http.MethodGet)
 	r.HandleFunc(RoutePattern(RouteLogout), s.handlePostLogout, http.MethodPost)
 
 	r.Group(func(r *flow.Mux) {

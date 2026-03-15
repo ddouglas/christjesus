@@ -11,7 +11,7 @@ table "donation_intents" {
   }
 
   column "donor_user_id" {
-    type    = uuid
+    type    = text
     null    = true
     comment = "Optional authenticated donor user id"
   }
@@ -99,6 +99,6 @@ table "donation_intents" {
 
   index "idx_donation_intents_pending_created_at" {
     columns = [column.created_at]
-    where   = "payment_status = 'pending'"
+    where   = "(payment_status = 'pending'::text)"
   }
 }

@@ -18,7 +18,7 @@ table "need_moderation_actions" {
   }
 
   column "actor_user_id" {
-    type    = uuid
+    type    = text
     null    = false
     comment = "Admin user who performed the moderation action"
   }

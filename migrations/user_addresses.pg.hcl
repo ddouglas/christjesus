@@ -6,9 +6,9 @@ table "user_addresses" {
   }
 
   column "user_id" {
-    type    = uuid
+    type    = text
     null    = false
-    comment = "References auth.users(id) from Supabase - no FK due to different schema"
+    comment = "References christjesus.users(id)"
   }
 
   column "address" {

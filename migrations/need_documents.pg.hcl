@@ -13,9 +13,9 @@ table "need_documents" {
   }
 
   column "user_id" {
-    type    = uuid
+    type    = text
     null    = false
-    comment = "References auth.users(id) - no FK"
+    comment = "References christjesus.users(id)"
   }
 
   column "document_type" {

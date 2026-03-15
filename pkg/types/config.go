@@ -13,11 +13,19 @@ type Config struct {
 	StripePublishableKey string `envconfig:"STRIPE_PUBLISHABLE_KEY"`
 	StripeWebhookSecret  string `envconfig:"STRIPE_WEBHOOK_SECRET"`
 
-	// Cognito Auth
-	CognitoUserPoolID string `envconfig:"COGNITO_USER_POOL_ID" required:"true"`
-	CognitoClientID   string `envconfig:"COGNITO_CLIENT_ID" required:"true"`
-	CognitoIssuerURL  string `envconfig:"COGNITO_ISSUER_URL" required:"true"`
-	CognitoAdminGroup string `envconfig:"COGNITO_ADMIN_GROUP" default:"admin"`
+	// Auth settings
+	AuthIssuerURL  string `envconfig:"AUTH_ISSUER_URL"`
+	AuthClientID   string `envconfig:"AUTH_CLIENT_ID"`
+	AuthAdminClaim string `envconfig:"AUTH_ADMIN_CLAIM" default:"https://christjesus.app/claims/roles"`
+	AuthAdminValue string `envconfig:"AUTH_ADMIN_VALUE" default:"admin"`
+
+	// Auth0 settings
+	Auth0Domain       string `envconfig:"AUTH0_DOMAIN"`
+	Auth0ClientID     string `envconfig:"AUTH0_CLIENT_ID"`
+	Auth0ClientSecret string `envconfig:"AUTH0_CLIENT_SECRET"`
+	Auth0Audience     string `envconfig:"AUTH0_AUDIENCE"`
+	Auth0CallbackURL  string `envconfig:"AUTH0_CALLBACK_URL" default:"http://localhost:8080/auth/callback"`
+	Auth0LogoutURL    string `envconfig:"AUTH0_LOGOUT_URL" default:"http://localhost:8080/"`
 
 	// AWS S3
 	S3BucketName string `envconfig:"S3_BUCKET_NAME" required:"true"`

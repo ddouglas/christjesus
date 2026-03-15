@@ -25,7 +25,7 @@ table "need_progress_events" {
   }
 
   column "actor_user_id" {
-    type    = uuid
+    type    = text
     null    = true
     comment = "Actor user id when event is user/admin initiated"
   }

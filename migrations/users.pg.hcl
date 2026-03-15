@@ -2,9 +2,15 @@ table "users" {
   schema = schema.christjesus
 
   column "id" {
-    type    = uuid
+    type    = text
     null    = false
-    comment = "Cognito user id (JWT sub)"
+    comment = "Internal application user identifier (NanoID)"
+  }
+
+  column "auth_subject" {
+    type    = text
+    null    = true
+    comment = "External auth provider subject claim (for example Auth0 sub)"
   }
 
   column "user_type" {
@@ -16,19 +22,19 @@ table "users" {
   column "email" {
     type    = text
     null    = true
-    comment = "User email from Cognito token"
+    comment = "User email from ID token"
   }
 
   column "given_name" {
     type    = text
     null    = true
-    comment = "First name from Cognito token"
+    comment = "First name from ID token"
   }
 
   column "family_name" {
     type    = text
     null    = true
-    comment = "Last name from Cognito token"
+    comment = "Last name from ID token"
   }
 
   column "created_at" {
@@ -55,5 +61,10 @@ table "users" {
   index "idx_users_email" {
     columns = [column.email]
     where   = "email IS NOT NULL"
+  }
+
+  index "idx_users_auth_subject" {
+    columns = [column.auth_subject]
+    unique  = true
   }
 }

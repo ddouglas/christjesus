@@ -37,4 +37,4 @@
 - Document metadata update no longer mutates `uploaded_at` timestamps.
 
 ## Open/Deferred
-- Browser-authenticated, click-through E2E (Cognito session) is recommended as a final smoke pass in a signed-in browser session.
+- Browser-authenticated, click-through E2E (Auth0 session) is recommended as a final smoke pass in a signed-in browser session.

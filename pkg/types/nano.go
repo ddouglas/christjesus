@@ -1,4 +1,4 @@
-package utils
+package types
 
 import gonanoid "github.com/matoous/go-nanoid/v2"
 

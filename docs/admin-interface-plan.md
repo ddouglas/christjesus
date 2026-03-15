@@ -47,12 +47,12 @@ We need an admin interface to:
 ## Proposed Access Model
 
 ### Authentication
-- Reuse existing Cognito login/session model (`AttachAuthContext`).
+- Reuse existing Auth0 login/session model (`AttachAuthContext`).
 
 ### Authorization
 - Add explicit admin role checks (`RequireAdmin`) on admin route group.
-- Authorization source is Cognito Group membership.
-- Admin users are added/removed from the Cognito admin group via admin UI.
+- Authorization source is Auth0 role claim membership.
+- Admin users are added/removed from the Auth0 `admin` role via admin tooling.
 - Maintain one IaC-managed super-user with durable break-glass access.
 - Super-user credential storage in Secrets Manager is required operationally but out of scope for this branch.
 
@@ -134,7 +134,7 @@ Action events to persist:
 - Reflect document verification state on review page.
 
 ### Slice 5: Admin access management + soft-delete controls
-- Add admin UI flow to add/remove users from Cognito admin group.
+- Add admin UI flow to add/remove users from Auth0 admin role.
 - Add soft-delete/restore actions for needs with required reason capture.
 - Ensure all delete/restore actions write explicit audit events.
 
@@ -224,7 +224,7 @@ Action events to persist:
 
 `#16` Access management + soft-delete:
 - `internal/server/routes.go`: admin user/access routes + soft-delete routes.
-- `internal/server/admin_users.go`: Cognito group membership handlers.
+- `internal/server/admin_users.go`: Auth0 role membership handlers.
 - `internal/server/admin_needs_delete.go`: soft-delete/restore handlers.
 - `internal/store/need.go`: soft-delete/restore persistence and queries.
 - `migrations/needs.pg.hcl`: add soft-delete columns if approved unchanged.
@@ -242,12 +242,12 @@ Action events to persist:
 
 | ID | Date | Topic | Decision | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| ADM-001 | 2026-03-08 | Admin authorization source | Use Cognito Group membership for `RequireAdmin` checks | Accepted | Admin group membership managed via admin UI; retain IaC-managed super-user |
+| ADM-001 | 2026-03-08 | Admin authorization source | Use Auth0 role claim membership for `RequireAdmin` checks | Accepted | Admin role membership managed via admin tooling; retain IaC-managed super-user |
 | ADM-002 | 2026-03-08 | Admin UI stack | Use existing Go SSR + templates | Accepted | Avoid introducing separate admin SPA |
 | ADM-003 | 2026-03-08 | Moderation auditability | Persist explicit admin action events | Accepted | Reuse `need_progress_events` if suitable |
 | ADM-004 | 2026-03-08 | Post-submission content edits | Admins cannot edit posts/needs | Accepted | Moderation only: approve/reject/request changes |
 | ADM-005 | 2026-03-08 | Request changes state | Include `CHANGES_REQUESTED` in Phase 1 moderation | Accepted | Admins can request changes without editing need fields directly |
-| ADM-006 | 2026-03-08 | Admin role management path | Managed via admin UI (Cognito group membership) | Accepted | Super-user bootstrapped and maintained by IaC |
+| ADM-006 | 2026-03-08 | Admin role management path | Managed via admin UI/tooling (Auth0 role membership) | Accepted | Super-user bootstrapped and maintained by IaC |
 | ADM-007 | 2026-03-08 | Delete behavior | Soft-delete/restore in UI; no hard delete in UI | Accepted | Hard delete remains manual ops path only |
 | ADM-008 | 2026-03-08 | Edit permissions boundary | Admins may edit users/access controls, but may not edit submitted need content | Accepted | Keeps moderation auditable while preserving submitter-authored need integrity |
 | ADM-009 | 2026-03-08 | Audit visibility in moderation | Need review page must display moderation timeline | Accepted | Review decisions require full moderation context |
@@ -260,19 +260,19 @@ Action events to persist:
  - Decision: Not allowed. Admins moderate but do not edit need content.
 
 1a. Admin edits to users/access controls:
-- Decision: Allowed in Phase 1 (starting with Cognito group membership management).
+- Decision: Allowed in Phase 1 (starting with Auth0 role membership management).
 
 2. Request changes state:
 - Decision: Included in Phase 1 (`CHANGES_REQUESTED`).
 
 3. Admin role management:
-- Decision: Admin UI manages Cognito admin group membership.
+- Decision: Admin UI manages Auth0 admin role membership.
 
 4. Soft-delete/restore in UI:
 - Decision: Included in Phase 1+ scope; UI must not hard delete data.
 
 ## Next Discussion Agenda
 
-1. Confirm exact Cognito group name(s), claim shape, and middleware mapping.
+1. Confirm exact Auth0 role claim key/value shape and middleware mapping.
 2. Confirm soft-delete schema shape and restore UX rules.
 3. Define moderation event payload fields on `need_progress_events` and begin coding.
