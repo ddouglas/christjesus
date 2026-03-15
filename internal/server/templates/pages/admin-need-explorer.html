@@ -14,6 +14,17 @@
       </div>
     </div>
 
+    {{if .StatusCards}}
+    <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {{range .StatusCards}}
+      <a href="{{.Href}}" class="rounded-xl border p-4 transition-colors {{if .IsActive}}border-[color:var(--cj-primary)] bg-[color:var(--cj-primary)]/5{{else}}border-border bg-background hover:bg-muted{{end}}">
+        <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{{.Label}}</p>
+        <p class="mt-2 text-2xl font-semibold text-foreground">{{.Count}}</p>
+      </a>
+      {{end}}
+    </div>
+    {{end}}
+
     <form method="get" action="{{.FilterAction}}" class="mt-6 grid gap-3 rounded-xl border border-border bg-background p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
       <div>
         <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="status">Status</label>

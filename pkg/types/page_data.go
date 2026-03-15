@@ -410,6 +410,7 @@ type AdminNeedQueueItem struct {
 type AdminNeedExplorerPageData struct {
 	BasePageData
 	Needs             []*AdminNeedExplorerItem
+	StatusCards       []*AdminNeedStatusCard
 	Page              int
 	PageSize          int
 	TotalNeeds        int
@@ -424,6 +425,14 @@ type AdminNeedExplorerPageData struct {
 	BackHref          string
 	QueueHref         string
 	CurrentStatusText string
+}
+
+type AdminNeedStatusCard struct {
+	Status  NeedStatus
+	Label   string
+	Count   int
+	Href    string
+	IsActive bool
 }
 
 type AdminExplorerOption struct {

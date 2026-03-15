@@ -25,6 +25,13 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 	}
 
 	statusFilter := adminExplorerStatusFilter(selectedStatus)
+	statusCounts, err := s.needsRepo.AdminExplorerNeedsCountByStatus(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch grouped status counts for admin explorer")
+		s.internalServerError(w)
+		return
+	}
+
 	totalNeeds, err := s.needsRepo.AdminExplorerNeedsCount(ctx, statusFilter)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to count needs for admin explorer")
@@ -103,9 +110,35 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 		nextHref = buildPageHref(page + 1)
 	}
 
+	statusCards := make([]*types.AdminNeedStatusCard, 0, len(adminExplorerStatusOptions()))
+	for _, option := range adminExplorerStatusOptions() {
+		status := types.NeedStatus(option.Value)
+		count := totalNeeds
+		if strings.TrimSpace(option.Value) != "" {
+			count = statusCounts[status]
+		}
+
+		v := url.Values{}
+		if strings.TrimSpace(option.Value) != "" {
+			v.Set("status", option.Value)
+		}
+		if selectedSort != "" {
+			v.Set("sort", selectedSort)
+		}
+
+		statusCards = append(statusCards, &types.AdminNeedStatusCard{
+			Status:   status,
+			Label:    option.Label,
+			Count:    count,
+			Href:     s.routeWithQuery(RouteAdminNeedExplorer, nil, v),
+			IsActive: strings.EqualFold(strings.TrimSpace(selectedStatus), option.Value),
+		})
+	}
+
 	data := &types.AdminNeedExplorerPageData{
 		BasePageData:      types.BasePageData{Title: "Admin Need Explorer"},
 		Needs:             items,
+		StatusCards:       statusCards,
 		Page:              page,
 		PageSize:          adminNeedExplorerPageSize,
 		TotalNeeds:        totalNeeds,

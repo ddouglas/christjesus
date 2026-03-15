@@ -209,6 +209,38 @@ func (r *NeedRepository) AdminExplorerNeedsCount(ctx context.Context, statusFilt
 	return total, nil
 }
 
+func (r *NeedRepository) AdminExplorerNeedsCountByStatus(ctx context.Context) (map[types.NeedStatus]int, error) {
+	query, args, err := psql().
+		Select("status", "COUNT(*)").
+		From(needTableName).
+		Where(sq.Eq{"deleted_at": nil}).
+		GroupBy("status").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate admin explorer grouped count query: %w", err)
+	}
+
+	type statusCountRow struct {
+		Status types.NeedStatus `db:"status"`
+		Count  int              `db:"count"`
+	}
+
+	rows := make([]statusCountRow, 0)
+	if err := pgxscan.Select(ctx, r.pool, &rows, query, args...); err != nil {
+		if pgxscan.NotFound(err) {
+			return map[types.NeedStatus]int{}, nil
+		}
+		return nil, fmt.Errorf("failed to fetch admin explorer grouped counts: %w", err)
+	}
+
+	counts := make(map[types.NeedStatus]int, len(rows))
+	for _, row := range rows {
+		counts[row.Status] = row.Count
+	}
+
+	return counts, nil
+}
+
 func (r *NeedRepository) LatestNeeds(ctx context.Context, limit int) ([]*types.Need, error) {
 	if limit <= 0 {
 		limit = 5
