@@ -296,7 +296,7 @@ func (s *Service) handlePostProfileNeedReviewPullBack(w http.ResponseWriter, r *
 
 func isNeedOwnerMessagingAllowedStatus(status types.NeedStatus) bool {
 	switch status {
-	case types.NeedStatusSubmitted, types.NeedStatusReadyForReview, types.NeedStatusUnderReview, types.NeedStatusChangesRequested, types.NeedStatusApproved, types.NeedStatusRejected:
+	case types.NeedStatusSubmitted, types.NeedStatusReadyForReview, types.NeedStatusUnderReview, types.NeedStatusChangesRequested, types.NeedStatusRejected:
 		return true
 	default:
 		return false

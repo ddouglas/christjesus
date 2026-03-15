@@ -184,9 +184,6 @@ func adminExplorerStatusFilter(raw string) *types.NeedStatus {
 	case string(types.NeedStatusRejected):
 		status := types.NeedStatusRejected
 		return &status
-	case string(types.NeedStatusApproved):
-		status := types.NeedStatusApproved
-		return &status
 	case string(types.NeedStatusActive):
 		status := types.NeedStatusActive
 		return &status
@@ -241,7 +238,6 @@ func adminExplorerStatusOptions() []types.AdminExplorerOption {
 		{Value: string(types.NeedStatusUnderReview), Label: "Under Review"},
 		{Value: string(types.NeedStatusChangesRequested), Label: "Changes Requested"},
 		{Value: string(types.NeedStatusRejected), Label: "Rejected"},
-		{Value: string(types.NeedStatusApproved), Label: "Approved"},
 		{Value: string(types.NeedStatusActive), Label: "Active"},
 		{Value: string(types.NeedStatusFunded), Label: "Funded"},
 	}
