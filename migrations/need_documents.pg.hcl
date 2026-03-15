@@ -55,6 +55,12 @@ table "need_documents" {
     columns = [column.id]
   }
 
+  foreign_key "fk_documents_user" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = CASCADE
+  }
+
   foreign_key "fk_documents_need" {
     columns     = [column.need_id]
     ref_columns = [table.needs.column.id]

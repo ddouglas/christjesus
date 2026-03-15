@@ -21,6 +21,12 @@ table "donor_preference_category_assignments" {
     columns = [column.user_id, column.category_id]
   }
 
+  foreign_key "fk_donor_pref_category_assignments_user" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = CASCADE
+  }
+
   foreign_key "fk_donor_pref_category_assignments_category" {
     columns     = [column.category_id]
     ref_columns = [table.need_categories.column.id]

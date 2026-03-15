@@ -13,9 +13,9 @@ type Config struct {
 	StripePublishableKey string `envconfig:"STRIPE_PUBLISHABLE_KEY"`
 	StripeWebhookSecret  string `envconfig:"STRIPE_WEBHOOK_SECRET"`
 
-	// Auth settings
-	AuthIssuerURL  string `envconfig:"AUTH_ISSUER_URL"`
-	AuthClientID   string `envconfig:"AUTH_CLIENT_ID"`
+	// Auth settings (derived from Auth0Domain/Auth0ClientID in loadConfig)
+	AuthIssuerURL  string `envconfig:"-"`
+	AuthClientID   string `envconfig:"-"`
 	AuthAdminClaim string `envconfig:"AUTH_ADMIN_CLAIM" default:"https://christjesus.app/claims/roles"`
 	AuthAdminValue string `envconfig:"AUTH_ADMIN_VALUE" default:"admin"`
 

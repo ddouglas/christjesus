@@ -72,6 +72,12 @@ table "donation_intents" {
     columns = [column.id]
   }
 
+  foreign_key "fk_donation_intents_donor" {
+    columns     = [column.donor_user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = SET_NULL
+  }
+
   foreign_key "fk_donation_intents_need" {
     columns     = [column.need_id]
     ref_columns = [table.needs.column.id]

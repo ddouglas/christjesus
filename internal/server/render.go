@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"christjesus/pkg/types"
 	"net/http"
 	"strings"
@@ -27,7 +28,13 @@ func (s *Service) renderTemplate(w http.ResponseWriter, r *http.Request, templat
 		})
 	}
 
-	return s.templates.ExecuteTemplate(w, templateName, data)
+	var buf bytes.Buffer
+	if err := s.templates.ExecuteTemplate(&buf, templateName, data); err != nil {
+		return err
+	}
+
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 func displayNameFromEmail(email string) string {

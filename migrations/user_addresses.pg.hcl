@@ -80,6 +80,12 @@ table "user_addresses" {
     columns = [column.id]
   }
 
+  foreign_key "fk_user_addresses_user" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = CASCADE
+  }
+
   index "idx_user_addresses_user_id" {
     columns = [column.user_id]
   }

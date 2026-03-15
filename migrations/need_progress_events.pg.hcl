@@ -46,6 +46,12 @@ table "need_progress_events" {
     columns = [column.id]
   }
 
+  foreign_key "fk_progress_actor" {
+    columns     = [column.actor_user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = SET_NULL
+  }
+
   foreign_key "fk_progress_need" {
     columns     = [column.need_id]
     ref_columns = [table.needs.column.id]
