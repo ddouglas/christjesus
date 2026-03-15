@@ -5,12 +5,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gorilla/securecookie"
 )
+
+func testCookie() *securecookie.SecureCookie {
+	return securecookie.New([]byte("0123456789abcdef0123456789abcdef"), []byte("abcdef0123456789abcdef0123456789"))
+}
 
 func TestRequireAdmin_UnauthenticatedRedirectsToLogin(t *testing.T) {
 	t.Parallel()
 
-	s := &Service{}
+	s := &Service{cookie: testCookie()}
 
 	h := s.RequireAdmin(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("next handler should not be called")

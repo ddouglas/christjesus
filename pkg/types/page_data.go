@@ -1,6 +1,9 @@
 package types
 
-import "time"
+import (
+	"html/template"
+	"time"
+)
 
 type NavbarData struct {
 	IsAuthenticated bool
@@ -15,13 +18,22 @@ type NavbarDataSetter interface {
 	SetNavbarData(data NavbarData)
 }
 
+type CSRFFieldSetter interface {
+	SetCSRFField(field template.HTML)
+}
+
 type BasePageData struct {
-	Title  string
-	Navbar NavbarData
+	Title     string
+	Navbar    NavbarData
+	CSRFField template.HTML
 }
 
 func (d *BasePageData) SetNavbarData(data NavbarData) {
 	d.Navbar = data
+}
+
+func (d *BasePageData) SetCSRFField(field template.HTML) {
+	d.CSRFField = field
 }
 
 type HomePageData struct {
@@ -43,17 +55,23 @@ type BrowsePageData struct {
 	Filters              BrowseFilters
 	LoadResultsOnRender  bool
 	ShowResultsSkeletons bool
+	Page                 int
+	TotalNeeds           int
+	TotalPages           int
+	PrevHref             string
+	NextHref             string
 }
 
 type BrowseFilters struct {
 	Search          string
 	City            string
-	CategoryIDs     map[string]bool
-	VerificationIDs map[string]bool
-	Urgency         string
+	CategoryIDs map[string]bool
+	Urgency     string
 	FundingMax      int
 	ViewMode        string
 	SortBy          string
+	Page            int
+	PageSize        int
 }
 
 type BrowseNeedCard struct {
@@ -66,8 +84,6 @@ type BrowseNeedCard struct {
 	UrgencyDotClass   string
 	PrimaryCategoryID string
 	PrimaryCategory   string
-	VerificationID    string
-	VerificationLabel string
 	ShortDescription  *string
 	Status            NeedStatus
 	AmountNeededCents int
@@ -107,10 +123,9 @@ type NeedDetailPageData struct {
 	OwnerName           string
 	SelectedAddress     *UserAddress
 	CityState           string
-	UrgencyLabel        string
-	UrgencyDotClass     string
-	VerificationLabel   string
-	FundingPercent      int
+	UrgencyLabel    string
+	UrgencyDotClass string
+	FundingPercent  int
 	Story               *NeedStory
 	PrimaryCategory     *NeedCategory
 	SecondaryCategories []*NeedCategory

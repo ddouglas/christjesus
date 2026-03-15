@@ -197,6 +197,7 @@
     </section>
 
     <form id="review-form" action="{{.SubmitAction}}" method="post">
+      {{.CSRFField}}
       <div class="flex flex-col gap-6 rounded-xl border py-6 shadow-sm">
         <div class="space-y-4 px-6">
           <p class="text-sm font-semibold text-foreground">Final acknowledgements</p>

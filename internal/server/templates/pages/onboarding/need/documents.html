@@ -38,6 +38,7 @@
       <p class="text-sm font-semibold text-foreground">Uploaded documents</p>
 
       <form id="documents-metadata-form" action="{{.MetadataAction}}" method="post" class="space-y-4">
+        {{.CSRFField}}
         <div class="overflow-x-auto rounded-lg border border-border bg-slate-50">
           <table class="min-w-full divide-y divide-border">
             <thead class="bg-muted/50">
@@ -92,6 +93,7 @@
     {{end}}
 
     <form id="documents-upload-form" action="{{.UploadAction}}" method="post" enctype="multipart/form-data" class="space-y-4 px-6">
+      {{.CSRFField}}
       <div class="rounded-xl border-2 border-dashed border-border bg-slate-50 p-8 text-center">
         <input type="file" name="documents" multiple accept=".pdf,.jpg,.jpeg,.png" class="hidden" id="file-upload" />
         <label for="file-upload" class="cursor-pointer">
@@ -136,6 +138,7 @@
     </a>
 
     <form id="documents-continue-form" action="{{.ContinueAction}}" method="post" class="flex items-center gap-3">
+      {{.CSRFField}}
       {{if not .HasDocuments}}
       <label for="skip-documents-checkbox" class="inline-flex items-center gap-2 text-sm text-muted-foreground">
         <input id="skip-documents-checkbox" name="skipDocuments" type="checkbox" class="h-4 w-4 rounded border-border text-[color:var(--cj-primary)] focus:ring-[color:var(--cj-primary)]" />

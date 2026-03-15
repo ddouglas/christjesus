@@ -11,6 +11,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -24,6 +25,10 @@ type DonationIntentRepository struct {
 
 func NewDonationIntentRepository(pool *pgxpool.Pool) *DonationIntentRepository {
 	return &DonationIntentRepository{pool: pool}
+}
+
+func (r *DonationIntentRepository) BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx, error) {
+	return r.pool.BeginTx(ctx, txOptions)
 }
 
 func (r *DonationIntentRepository) Create(ctx context.Context, intent *types.DonationIntent) error {
@@ -142,7 +147,8 @@ func (r *DonationIntentRepository) FinalizeIntentByID(ctx context.Context, inten
 		Set("payment_status", types.DonationPaymentStatusFinalized).
 		Set("updated_at", now).
 		Where(sq.Eq{"id": intentID}).
-		Where(sq.NotEq{"payment_status": types.DonationPaymentStatusFinalized})
+		Where(sq.NotEq{"payment_status": types.DonationPaymentStatusFinalized}).
+		Suffix("RETURNING need_id")
 
 	if checkoutSessionID != nil && *checkoutSessionID != "" {
 		qb = qb.Set("checkout_session_id", *checkoutSessionID)
@@ -151,17 +157,45 @@ func (r *DonationIntentRepository) FinalizeIntentByID(ctx context.Context, inten
 		qb = qb.Set("payment_intent_id", *paymentIntentID)
 	}
 
-	query, args, err := qb.ToSql()
+	finalizeQuery, finalizeArgs, err := qb.ToSql()
 	if err != nil {
 		return false, fmt.Errorf("failed to generate finalize donation intent query: %w", err)
 	}
 
-	tag, err := r.pool.Exec(ctx, query, args...)
-	if err != nil {
-		return false, fmt.Errorf("failed to finalize donation intent: %w", err)
-	}
+	var finalized bool
+	err = WithTx(ctx, r, func(tx pgx.Tx) error {
+		var needID string
+		err := tx.QueryRow(ctx, finalizeQuery, finalizeArgs...).Scan(&needID)
+		if err != nil {
+			if err.Error() == "no rows in result set" {
+				return nil
+			}
+			return fmt.Errorf("failed to finalize donation intent: %w", err)
+		}
 
-	return tag.RowsAffected() > 0, nil
+		finalized = true
+
+		syncQuery, syncArgs, err := psql().
+			Update(needTableName).
+			Set("amount_raised_cents", sq.Expr(
+				"(SELECT COALESCE(SUM(amount_cents), 0) FROM "+donationIntentTableName+" WHERE need_id = ? AND LOWER(payment_status) = ?)",
+				needID, types.DonationPaymentStatusFinalized,
+			)).
+			Set("updated_at", now).
+			Where(sq.Eq{"id": needID}).
+			ToSql()
+		if err != nil {
+			return fmt.Errorf("failed to generate sync need raised amount query: %w", err)
+		}
+
+		if _, err := tx.Exec(ctx, syncQuery, syncArgs...); err != nil {
+			return fmt.Errorf("failed to sync need raised amount for need %s: %w", needID, err)
+		}
+
+		return nil
+	})
+
+	return finalized, err
 }
 
 func (r *DonationIntentRepository) MarkIntentFailedByID(ctx context.Context, intentID string, checkoutSessionID, paymentIntentID *string) (bool, error) {

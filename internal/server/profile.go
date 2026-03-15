@@ -53,6 +53,52 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			myNeeds = needs
+
+			needIDs := make([]string, 0, len(needs))
+			for _, need := range needs {
+				needIDs = append(needIDs, need.ID)
+			}
+
+			allAssignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
+			if err != nil {
+				s.logger.WithError(err).WithField("user_id", userID).Error("failed to batch fetch need category assignments for profile")
+				s.internalServerError(w)
+				return
+			}
+
+			primaryCategoryIDByNeed := make(map[string]string, len(needs))
+			uniqueCategoryIDs := make(map[string]bool)
+			for _, a := range allAssignments {
+				if !a.IsPrimary {
+					continue
+				}
+				if _, exists := primaryCategoryIDByNeed[a.NeedID]; exists {
+					continue
+				}
+				primaryCategoryIDByNeed[a.NeedID] = a.CategoryID
+				uniqueCategoryIDs[a.CategoryID] = true
+			}
+
+			categoryIDs := make([]string, 0, len(uniqueCategoryIDs))
+			for id := range uniqueCategoryIDs {
+				categoryIDs = append(categoryIDs, id)
+			}
+
+			categoryNameByID := make(map[string]string, len(categoryIDs))
+			if len(categoryIDs) > 0 {
+				categories, err := s.categoryRepo.CategoriesByIDs(ctx, categoryIDs)
+				if err != nil {
+					s.logger.WithError(err).Error("failed to batch fetch categories for profile")
+					s.internalServerError(w)
+					return
+				}
+				for _, cat := range categories {
+					if cat != nil {
+						categoryNameByID[cat.ID] = cat.Name
+					}
+				}
+			}
+
 			for _, need := range needs {
 				reviewPortalHref := ""
 				if need.Status != types.NeedStatusDraft {
@@ -60,31 +106,10 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 				}
 
 				primaryCategoryName := "Uncategorized"
-
-				assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, need.ID)
-				if err != nil {
-					s.logger.WithError(err).WithField("need_id", need.ID).Error("failed to fetch need category assignments for profile")
-					s.internalServerError(w)
-					return
-				}
-
-				for _, assignment := range assignments {
-					if !assignment.IsPrimary {
-						continue
+				if catID, ok := primaryCategoryIDByNeed[need.ID]; ok {
+					if name, ok := categoryNameByID[catID]; ok {
+						primaryCategoryName = name
 					}
-
-					category, err := s.categoryRepo.CategoryByID(ctx, assignment.CategoryID)
-					if err != nil {
-						s.logger.WithError(err).WithField("category_id", assignment.CategoryID).Error("failed to fetch primary category for profile")
-						s.internalServerError(w)
-						return
-					}
-
-					if category != nil {
-						primaryCategoryName = category.Name
-					}
-
-					break
 				}
 
 				needSummaries = append(needSummaries, types.ProfileNeedSummary{

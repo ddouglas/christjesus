@@ -5,6 +5,7 @@ import (
 	"christjesus/pkg/types"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -58,14 +59,96 @@ func (r *NeedRepository) Need(ctx context.Context, needID string) (*types.Need, 
 
 }
 
-func (r *NeedRepository) BrowseNeeds(ctx context.Context) ([]*types.Need, error) {
-	query, args, err := psql().Select(needColumns...).From(needTableName).
-		Where(sq.Eq{"status": []types.NeedStatus{types.NeedStatusActive, types.NeedStatusFunded}}).
-		Where(sq.Eq{"deleted_at": nil}).
-		OrderBy("created_at desc").
+type BrowseNeedsFilter struct {
+	City        string
+	CategoryIDs []string
+	Urgency string
+	FundingMax  int
+	Search      string
+	SortBy      string
+	Page        int
+	PageSize    int
+}
+
+const (
+	browseFromClause = needTableName + " n"
+
+	browseJoinSelectedAddr = "christjesus.user_addresses sa ON sa.id = n.user_address_id"
+	browseJoinPrimaryAddr  = "christjesus.user_addresses pa ON pa.user_id = n.user_id AND pa.is_primary = true AND n.user_address_id IS NULL"
+	browseJoinPrimaryCategory = "christjesus.need_category_assignments nca ON nca.need_id = n.id AND nca.is_primary = true"
+
+	browseFundingPercentExpr = "CASE WHEN n.amount_needed_cents > 0 THEN (n.amount_raised_cents * 100 / n.amount_needed_cents) ELSE 0 END"
+	browseUrgencyWeightExpr  = "CASE WHEN n.amount_needed_cents <= 0 THEN 1 WHEN (n.amount_raised_cents * 100 / n.amount_needed_cents) < 35 THEN 3 WHEN (n.amount_raised_cents * 100 / n.amount_needed_cents) < 70 THEN 2 ELSE 1 END"
+)
+
+func browseBaseQuery(columns ...string) sq.SelectBuilder {
+	return psql().Select(columns...).
+		From(browseFromClause).
+		LeftJoin(browseJoinSelectedAddr).
+		LeftJoin(browseJoinPrimaryAddr).
+		LeftJoin(browseJoinPrimaryCategory).
+		Where(sq.Eq{"n.status": []types.NeedStatus{types.NeedStatusActive, types.NeedStatusFunded}}).
+		Where(sq.Eq{"n.deleted_at": nil})
+}
+
+func applyBrowseFilters(qb sq.SelectBuilder, f BrowseNeedsFilter) sq.SelectBuilder {
+	if f.City != "" {
+		qb = qb.Where("LOWER(COALESCE(sa.city, pa.city)) = LOWER(?)", f.City)
+	}
+	if len(f.CategoryIDs) > 0 {
+		qb = qb.Where(sq.Eq{"nca.category_id": f.CategoryIDs})
+	}
+	if f.FundingMax < 100 {
+		qb = qb.Where(browseFundingPercentExpr+" <= ?", f.FundingMax)
+	}
+	if f.Urgency != "" {
+		switch strings.ToLower(f.Urgency) {
+		case "high":
+			qb = qb.Where(browseUrgencyWeightExpr + " = 3")
+		case "medium":
+			qb = qb.Where(browseUrgencyWeightExpr + " = 2")
+		case "low":
+			qb = qb.Where(browseUrgencyWeightExpr + " = 1")
+		}
+	}
+	if f.Search != "" {
+		qb = qb.Where("LOWER(COALESCE(n.short_description, '')) LIKE ?", "%"+strings.ToLower(f.Search)+"%")
+	}
+	return qb
+}
+
+func (r *NeedRepository) BrowseNeedsPage(ctx context.Context, f BrowseNeedsFilter) ([]*types.Need, error) {
+	if f.Page < 1 {
+		f.Page = 1
+	}
+	if f.PageSize <= 0 {
+		f.PageSize = 18
+	}
+
+	cols := make([]string, len(needColumns))
+	for i, c := range needColumns {
+		cols[i] = "n." + c
+	}
+
+	qb := browseBaseQuery(cols...)
+	qb = applyBrowseFilters(qb, f)
+
+	switch f.SortBy {
+	case "newest":
+		qb = qb.OrderBy("n.created_at DESC")
+	case "closest":
+		qb = qb.OrderBy(browseFundingPercentExpr + " DESC", "n.created_at DESC")
+	default: // "urgency"
+		qb = qb.OrderBy(browseUrgencyWeightExpr + " DESC", "n.created_at DESC")
+	}
+
+	offset := uint64((f.Page - 1) * f.PageSize)
+	query, args, err := qb.
+		Limit(uint64(f.PageSize)).
+		Offset(offset).
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate browse needs query: %w", err)
+		return nil, fmt.Errorf("failed to generate browse needs page query: %w", err)
 	}
 
 	needs := make([]*types.Need, 0)
@@ -74,10 +157,61 @@ func (r *NeedRepository) BrowseNeeds(ctx context.Context) ([]*types.Need, error)
 		if pgxscan.NotFound(err) {
 			return needs, nil
 		}
-		return nil, fmt.Errorf("failed to fetch browse needs: %w", err)
+		return nil, fmt.Errorf("failed to fetch browse needs page: %w", err)
 	}
 
 	return needs, nil
+}
+
+func (r *NeedRepository) BrowseNeedsCount(ctx context.Context, f BrowseNeedsFilter) (int, error) {
+	qb := browseBaseQuery("COUNT(DISTINCT n.id)")
+	qb = applyBrowseFilters(qb, f)
+
+	query, args, err := qb.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to generate browse needs count query: %w", err)
+	}
+
+	var total int
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("failed to count browse needs: %w", err)
+	}
+
+	return total, nil
+}
+
+func (r *NeedRepository) BrowseDistinctCities(ctx context.Context) ([]string, error) {
+	qb := psql().
+		Select("DISTINCT COALESCE(sa.city, pa.city) AS city").
+		From(browseFromClause).
+		LeftJoin(browseJoinSelectedAddr).
+		LeftJoin(browseJoinPrimaryAddr).
+		Where(sq.Eq{"n.status": []types.NeedStatus{types.NeedStatusActive, types.NeedStatusFunded}}).
+		Where(sq.Eq{"n.deleted_at": nil}).
+		Where("COALESCE(sa.city, pa.city) IS NOT NULL").
+		OrderBy("city")
+
+	query, args, err := qb.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate browse distinct cities query: %w", err)
+	}
+
+	cities := make([]string, 0)
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch browse distinct cities: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var city string
+		if err := rows.Scan(&city); err != nil {
+			return nil, fmt.Errorf("failed to scan browse city row: %w", err)
+		}
+		cities = append(cities, city)
+	}
+
+	return cities, nil
 }
 
 func (r *NeedRepository) ModerationQueueNeeds(ctx context.Context) ([]*types.Need, error) {

@@ -114,6 +114,7 @@
 
       {{if and (not .IsDeleted) .CanAcceptReview}}
       <form method="post" action="{{.AcceptReviewAction}}" class="mt-4">
+        {{.CSRFField}}
         <button type="submit" name="action" value="accept_review"
           class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-primary)]/90">
           Accept Review
@@ -125,6 +126,7 @@
         {{if .IsDeleted}}
         <p class="text-sm text-muted-foreground">Deleted at {{.DeletedAt}} by {{.DeletedByUserID}}. Reason: {{.DeleteReason}}</p>
         <form method="post" action="{{.RestoreAction}}" class="mt-3 space-y-3">
+          {{.CSRFField}}
           <div>
             <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="restore-reason">Restore Reason</label>
             <input id="restore-reason" name="reason" type="text" required class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
@@ -135,6 +137,7 @@
         {{else}}
           <p class="text-sm text-muted-foreground">Soft-delete hides this need from public surfaces. Hard delete is not available.</p>
           <form method="post" action="{{.DeleteAction}}" class="mt-3 space-y-3">
+            {{.CSRFField}}
             <div>
               <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="delete-reason">Delete Reason</label>
               <input id="delete-reason" name="reason" type="text" required class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
@@ -200,6 +203,7 @@
         {{end}}
 
         <form method="post" action="{{.MessageAction}}" class="mt-4 space-y-3">
+          {{.CSRFField}}
           <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="admin-need-message">Message to Need Owner</label>
           <textarea id="admin-need-message" name="message" rows="3" required class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
             placeholder="Share clear remediation guidance or answer a user question"></textarea>
@@ -264,6 +268,7 @@
     <p class="mt-1 text-sm text-muted-foreground">Choose a moderation action and optionally add context.</p>
   </div>
   <form method="post" action="{{.ModerateAction}}" class="space-y-4 px-5 py-4">
+    {{.CSRFField}}
     <div>
       <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="modal-reason">Reason</label>
       <input id="modal-reason" name="reason" type="text" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional summary reason" />
@@ -294,6 +299,7 @@
     <p id="document-review-target" class="mt-2 text-xs font-mono text-muted-foreground"></p>
   </div>
   <form method="post" action="{{.ModerateAction}}" class="space-y-4 px-5 py-4">
+    {{.CSRFField}}
     <input id="document-review-id" type="hidden" name="document_id" value="" />
     <div>
       <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="document-modal-reason">Reason</label>

@@ -97,26 +97,26 @@ func serve(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to register supabase jwk with cache: %w", err)
 	}
 
-	srv, err := server.New(
-		config,
-		logger,
-		s3Client,
-		stripeClient,
-		needsRepo,
-		progressRepo,
-		categoryRepo,
-		needCategoryAssignmentsRepo,
-		storyRepo,
-		documentRepo,
-		needReviewMessageRepo,
-		userAddressRepo,
-		userRepo,
-		donorPreferenceRepo,
-		donorPreferenceAssignRepo,
-		donationIntentRepo,
-		jwkCache,
-		jwksURL,
-	)
+	srv, err := server.New(server.Options{
+		Config:                      config,
+		Logger:                      logger,
+		S3Client:                    s3Client,
+		StripeClient:                stripeClient,
+		NeedsRepo:                   needsRepo,
+		ProgressRepo:                progressRepo,
+		CategoryRepo:                categoryRepo,
+		NeedCategoryAssignmentsRepo: needCategoryAssignmentsRepo,
+		StoryRepo:                   storyRepo,
+		DocumentRepo:                documentRepo,
+		NeedReviewMessageRepo:       needReviewMessageRepo,
+		UserAddressRepo:             userAddressRepo,
+		UserRepo:                    userRepo,
+		DonorPreferenceRepo:         donorPreferenceRepo,
+		DonorPreferenceAssignRepo:   donorPreferenceAssignRepo,
+		DonationIntentRepo:          donationIntentRepo,
+		JWKCache:                    jwkCache,
+		JWKSURL:                     jwksURL,
+	})
 	if err != nil {
 		return err
 	}

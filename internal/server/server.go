@@ -66,66 +66,67 @@ type authIdentityRepository interface {
 	User(ctx context.Context, userID string) (*types.User, error)
 }
 
-func New(
-	config *types.Config,
-	logger *logrus.Logger,
+type Options struct {
+	Config       *types.Config
+	Logger       *logrus.Logger
+	S3Client     *s3.Client
+	StripeClient *stripe.Client
 
-	s3Client *s3.Client,
-	stripeClient *stripe.Client,
+	NeedsRepo                   *store.NeedRepository
+	ProgressRepo                *store.NeedProgressRepository
+	CategoryRepo                *store.CategoryRepository
+	NeedCategoryAssignmentsRepo *store.AssignmentRepository
+	StoryRepo                   *store.StoryRepository
+	DocumentRepo                *store.DocumentRepository
+	NeedReviewMessageRepo       *store.NeedReviewMessageRepository
+	UserAddressRepo             *store.UserAddressRepository
+	UserRepo                    *store.UserRepository
+	DonorPreferenceRepo         *store.DonorPreferenceRepository
+	DonorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
+	DonationIntentRepo          *store.DonationIntentRepository
 
-	needsRepo *store.NeedRepository,
-	progressRepo *store.NeedProgressRepository,
-	categoryRepo *store.CategoryRepository,
-	needCategoryAssignmentsRepo *store.AssignmentRepository,
-	storyRepo *store.StoryRepository,
-	documentRepo *store.DocumentRepository,
-	needReviewMessageRepo *store.NeedReviewMessageRepository,
-	userAddressRepo *store.UserAddressRepository,
-	userRepo *store.UserRepository,
-	donorPreferenceRepo *store.DonorPreferenceRepository,
-	donorPreferenceAssignRepo *store.DonorPreferenceAssignmentRepository,
-	donationIntentRepo *store.DonationIntentRepository,
+	JWKCache *jwk.Cache
+	JWKSURL  string
+}
 
-	jwkCache *jwk.Cache,
-	jwksURL string,
-) (*Service, error) {
+func New(opts Options) (*Service, error) {
 	mux := flow.New()
 
-	hashKey, _ := base64.StdEncoding.DecodeString(config.CookieHashKey)
-	blockKey, _ := base64.StdEncoding.DecodeString(config.CookieBlockKey)
+	hashKey, _ := base64.StdEncoding.DecodeString(opts.Config.CookieHashKey)
+	blockKey, _ := base64.StdEncoding.DecodeString(opts.Config.CookieBlockKey)
 
 	s := &Service{
-		config: config,
-		logger: logger,
+		config: opts.Config,
+		logger: opts.Logger,
 
-		s3Client:     s3Client,
-		stripeClient: stripeClient,
+		s3Client:     opts.S3Client,
+		stripeClient: opts.StripeClient,
 
-		needsRepo:                   needsRepo,
-		progressRepo:                progressRepo,
-		storyRepo:                   storyRepo,
-		categoryRepo:                categoryRepo,
-		needCategoryAssignmentsRepo: needCategoryAssignmentsRepo,
-		documentRepo:                documentRepo,
-		needReviewMessageRepo:       needReviewMessageRepo,
-		userAddressRepo:             userAddressRepo,
-		userRepo:                    userRepo,
-		donorPreferenceRepo:         donorPreferenceRepo,
-		donorPreferenceAssignRepo:   donorPreferenceAssignRepo,
-		donationIntentRepo:          donationIntentRepo,
+		needsRepo:                   opts.NeedsRepo,
+		progressRepo:                opts.ProgressRepo,
+		storyRepo:                   opts.StoryRepo,
+		categoryRepo:                opts.CategoryRepo,
+		needCategoryAssignmentsRepo: opts.NeedCategoryAssignmentsRepo,
+		documentRepo:                opts.DocumentRepo,
+		needReviewMessageRepo:       opts.NeedReviewMessageRepo,
+		userAddressRepo:             opts.UserAddressRepo,
+		userRepo:                    opts.UserRepo,
+		donorPreferenceRepo:         opts.DonorPreferenceRepo,
+		donorPreferenceAssignRepo:   opts.DonorPreferenceAssignRepo,
+		donationIntentRepo:          opts.DonationIntentRepo,
 
 		cookie:           securecookie.New(hashKey, blockKey),
-		jwksCache:        jwkCache,
-		jwksURL:          jwksURL,
+		jwksCache:        opts.JWKCache,
+		jwksURL:          opts.JWKSURL,
 		httpClient:       &http.Client{Timeout: authOutboundTimeout},
-		authIdentityRepo: userRepo,
+		authIdentityRepo: opts.UserRepo,
 
 		server: &http.Server{
-			Addr:              fmt.Sprintf(":%d", config.ServerPort),
+			Addr:              fmt.Sprintf(":%d", opts.Config.ServerPort),
 			Handler:           mux,
-			ReadTimeout:       time.Duration(config.ReadTimeoutSec) * time.Second,
-			ReadHeaderTimeout: time.Duration(config.ReadTimeoutSec) * time.Second,
-			WriteTimeout:      time.Duration(config.WriteTimeoutSec) * time.Second,
+			ReadTimeout:       time.Duration(opts.Config.ReadTimeoutSec) * time.Second,
+			ReadHeaderTimeout: time.Duration(opts.Config.ReadTimeoutSec) * time.Second,
+			WriteTimeout:      time.Duration(opts.Config.WriteTimeoutSec) * time.Second,
 			MaxHeaderBytes:    1 << 20,
 		},
 	}
@@ -136,7 +137,7 @@ func New(
 	}
 	s.templates = templates
 
-	s.buildRouter(mux)
+	s.buildRouter(mux, hashKey)
 
 	return s, nil
 }
@@ -156,99 +157,108 @@ func (s *Service) upsertIdentity(ctx context.Context, authSubject, email, givenN
 	return s.authIdentityRepo.UpsertIdentity(ctx, authSubject, email, givenName, familyName)
 }
 
-func (s *Service) buildRouter(r *flow.Mux) {
+func (s *Service) buildRouter(r *flow.Mux, csrfKey []byte) {
+	r.Use(s.SecurityHeaders)
 	r.Use(s.StripTrailingSlash)
 	r.Use(s.LoggingMiddleware)
 	r.Use(s.AttachAuthContext)
 
-	r.HandleFunc(RoutePattern(RouteHome), s.handleHome, http.MethodGet)
-
-	r.HandleFunc(RoutePattern(RouteRegister), s.handleGetRegister, http.MethodGet)
-	r.HandleFunc(RoutePattern(RouteRegister), s.handlePostRegister, http.MethodPost)
-	r.HandleFunc(RoutePattern(RouteRegisterConfirm), s.handleGetRegisterConfirm, http.MethodGet)
-	r.HandleFunc(RoutePattern(RouteRegisterConfirm), s.handlePostRegisterConfirm, http.MethodPost)
-	r.HandleFunc(RoutePattern(RouteRegisterConfirmResend), s.handlePostRegisterConfirmResend, http.MethodPost)
-	r.HandleFunc(RoutePattern(RouteLogin), s.handleGetLogin, http.MethodGet)
-	r.HandleFunc(RoutePattern(RouteLogin), s.handlePostLogin, http.MethodPost)
-	r.HandleFunc(RoutePattern(RouteAuthCallback), s.handleGetAuthCallback, http.MethodGet)
-	r.HandleFunc(RoutePattern(RouteLogout), s.handlePostLogout, http.MethodPost)
-
-	r.Group(func(r *flow.Mux) {
-		r.Use(s.RequireAuth)
-
-		r.HandleFunc(RoutePattern(RouteProfile), s.handleGetProfile, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteProfileNeedDelete), s.handlePostProfileNeedDelete, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedReview), s.handleGetProfileNeedReview, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteProfileNeedReviewPost), s.handlePostProfileNeedReviewMessage, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedReviewSetReady), s.handlePostProfileNeedReviewSetReady, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedReviewPullBack), s.handlePostProfileNeedReviewPullBack, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedDocumentView), s.handleGetProfileNeedDocument, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEdit), s.handleGetProfileNeedEdit, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditLocation), s.handleGetProfileNeedEditLocation, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditLocation), s.handlePostProfileNeedEditLocation, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditCategories), s.handleGetProfileNeedEditCategories, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditCategories), s.handlePostProfileNeedEditCategories, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditStory), s.handleGetProfileNeedEditStory, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditStory), s.handlePostProfileNeedEditStory, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditDocs), s.handleGetProfileNeedEditDocuments, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditDocs), s.handlePostProfileNeedEditDocuments, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditUpload), s.handlePostProfileNeedEditDocumentsUpload, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditMeta), s.handlePostProfileNeedEditDocumentMetadata, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditDelete), s.handlePostProfileNeedEditDocumentDelete, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditReview), s.handleGetProfileNeedEditReview, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteProfileNeedEditReview), s.handlePostProfileNeedEditReview, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteProfileDonationReceipt), s.handleGetProfileDonationReceipt, http.MethodGet)
-
-		r.HandleFunc(RoutePattern(RouteOnboarding), s.handleGetOnboarding, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteOnboarding), s.handlePostOnboarding, http.MethodPost)
-
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedWelcome), s.handleGetOnboardingNeedWelcome, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedWelcome), s.handlePostOnboardingNeedWelcome, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedLocation), s.handleGetOnboardingNeedLocation, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedLocation), s.handlePostOnboardingNeedLocation, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedCategories), s.handleGetOnboardingNeedCategories, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedCategories), s.handlePostOnboardingNeedCategories, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedStory), s.handleGetOnboardingNeedStory, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedStory), s.handlePostOnboardingNeedStory, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedDocuments), s.handleGetOnboardingNeedDocuments, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedDocuments), s.handlePostOnboardingNeedDocuments, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedDocumentsUpload), s.handlePostOnboardingNeedDocumentsUpload, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedDocumentsMeta), s.handlePostOnboardingNeedDocumentMetadata, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedDocumentDelete), s.handlePostOnboardingNeedDocumentDelete, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedReview), s.handleGetOnboardingNeedReview, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedReview), s.handlePostOnboardingNeedReview, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteOnboardingNeedConfirmation), s.handleGetOnboardingNeedConfirmation, http.MethodGet)
-
-		// Donor onboarding flow
-		r.HandleFunc(RoutePattern(RouteOnboardingDonorWelcome), s.handleGetOnboardingDonorWelcome, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteOnboardingDonorPreferences), s.handleGetOnboardingDonorPreferences, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteOnboardingDonorPreferences), s.handlePostOnboardingDonorPreferences, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteOnboardingDonorConfirmation), s.handleGetOnboardingDonorConfirmation, http.MethodGet)
-
-		r.HandleFunc(RoutePattern(RouteNeedDonate), s.handleGetNeedDonate, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteNeedDonate), s.handlePostNeedDonate, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteNeedDonateConfirmation), s.handleGetNeedDonateConfirmation, http.MethodGet)
-	})
-
-	r.Group(func(r *flow.Mux) {
-		r.Use(s.RequireAdmin)
-
-		r.HandleFunc(RoutePattern(RouteAdmin), s.handleGetAdminDashboard, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteAdminNeeds), s.handleGetAdminNeeds, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteAdminNeedExplorer), s.handleGetAdminNeedExplorer, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteAdminNeedReview), s.handleGetAdminNeedReview, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteAdminNeedModerate), s.handlePostAdminNeedModerate, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteAdminNeedDocument), s.handleGetAdminNeedDocument, http.MethodGet)
-		r.HandleFunc(RoutePattern(RouteAdminNeedDelete), s.handlePostAdminNeedDelete, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteAdminNeedRestore), s.handlePostAdminNeedRestore, http.MethodPost)
-		r.HandleFunc(RoutePattern(RouteAdminNeedMessage), s.handlePostAdminNeedMessage, http.MethodPost)
-	})
-
-	r.HandleFunc(RoutePattern(RouteBrowse), s.handleBrowse, http.MethodGet)
-	r.HandleFunc(RoutePattern(RouteCategories), s.handleCategories, http.MethodGet)
-	r.HandleFunc(RoutePattern(RouteCategoryNeeds), s.handleCategoryNeeds, http.MethodGet)
-	r.HandleFunc(RoutePattern(RouteNeedDetail), s.handleNeedDetail, http.MethodGet)
+	// Stripe webhook uses its own signature verification; registered
+	// outside the CSRF group so the middleware never sees it.
 	r.HandleFunc(RoutePattern(RouteStripeWebhook), s.handlePostStripeWebhook, http.MethodPost)
+
+	// All non-webhook routes get CSRF protection.
+	r.Group(func(r *flow.Mux) {
+		r.Use(s.csrfMiddleware(csrfKey))
+
+		r.HandleFunc(RoutePattern(RouteHome), s.handleHome, http.MethodGet)
+
+		r.HandleFunc(RoutePattern(RouteRegister), s.handleGetRegister, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteRegister), s.handlePostRegister, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteRegisterConfirm), s.handleGetRegisterConfirm, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteRegisterConfirm), s.handlePostRegisterConfirm, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteRegisterConfirmResend), s.handlePostRegisterConfirmResend, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteLogin), s.handleGetLogin, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteLogin), s.handlePostLogin, http.MethodPost)
+		r.HandleFunc(RoutePattern(RouteAuthCallback), s.handleGetAuthCallback, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteLogout), s.handlePostLogout, http.MethodPost)
+
+		r.HandleFunc(RoutePattern(RouteBrowse), s.handleBrowse, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteCategories), s.handleCategories, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteCategoryNeeds), s.handleCategoryNeeds, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteNeedDetail), s.handleNeedDetail, http.MethodGet)
+
+		r.Group(func(r *flow.Mux) {
+			r.Use(s.RequireAuth)
+
+			r.HandleFunc(RoutePattern(RouteProfile), s.handleGetProfile, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteProfileNeedDelete), s.handlePostProfileNeedDelete, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedReview), s.handleGetProfileNeedReview, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteProfileNeedReviewPost), s.handlePostProfileNeedReviewMessage, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedReviewSetReady), s.handlePostProfileNeedReviewSetReady, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedReviewPullBack), s.handlePostProfileNeedReviewPullBack, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedDocumentView), s.handleGetProfileNeedDocument, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEdit), s.handleGetProfileNeedEdit, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditLocation), s.handleGetProfileNeedEditLocation, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditLocation), s.handlePostProfileNeedEditLocation, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditCategories), s.handleGetProfileNeedEditCategories, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditCategories), s.handlePostProfileNeedEditCategories, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditStory), s.handleGetProfileNeedEditStory, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditStory), s.handlePostProfileNeedEditStory, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditDocs), s.handleGetProfileNeedEditDocuments, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditDocs), s.handlePostProfileNeedEditDocuments, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditUpload), s.handlePostProfileNeedEditDocumentsUpload, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditMeta), s.handlePostProfileNeedEditDocumentMetadata, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditDelete), s.handlePostProfileNeedEditDocumentDelete, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditReview), s.handleGetProfileNeedEditReview, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteProfileNeedEditReview), s.handlePostProfileNeedEditReview, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteProfileDonationReceipt), s.handleGetProfileDonationReceipt, http.MethodGet)
+
+			r.HandleFunc(RoutePattern(RouteOnboarding), s.handleGetOnboarding, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboarding), s.handlePostOnboarding, http.MethodPost)
+
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedWelcome), s.handleGetOnboardingNeedWelcome, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedWelcome), s.handlePostOnboardingNeedWelcome, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedLocation), s.handleGetOnboardingNeedLocation, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedLocation), s.handlePostOnboardingNeedLocation, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedCategories), s.handleGetOnboardingNeedCategories, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedCategories), s.handlePostOnboardingNeedCategories, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedStory), s.handleGetOnboardingNeedStory, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedStory), s.handlePostOnboardingNeedStory, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedDocuments), s.handleGetOnboardingNeedDocuments, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedDocuments), s.handlePostOnboardingNeedDocuments, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedDocumentsUpload), s.handlePostOnboardingNeedDocumentsUpload, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedDocumentsMeta), s.handlePostOnboardingNeedDocumentMetadata, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedDocumentDelete), s.handlePostOnboardingNeedDocumentDelete, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedReview), s.handleGetOnboardingNeedReview, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedReview), s.handlePostOnboardingNeedReview, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingNeedConfirmation), s.handleGetOnboardingNeedConfirmation, http.MethodGet)
+
+			// Donor onboarding flow
+			r.HandleFunc(RoutePattern(RouteOnboardingDonorWelcome), s.handleGetOnboardingDonorWelcome, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboardingDonorPreferences), s.handleGetOnboardingDonorPreferences, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboardingDonorPreferences), s.handlePostOnboardingDonorPreferences, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingDonorConfirmation), s.handleGetOnboardingDonorConfirmation, http.MethodGet)
+
+			r.HandleFunc(RoutePattern(RouteNeedDonate), s.handleGetNeedDonate, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteNeedDonate), s.handlePostNeedDonate, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteNeedDonateConfirmation), s.handleGetNeedDonateConfirmation, http.MethodGet)
+		})
+
+		r.Group(func(r *flow.Mux) {
+			r.Use(s.RequireAdmin)
+
+			r.HandleFunc(RoutePattern(RouteAdmin), s.handleGetAdminDashboard, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteAdminNeeds), s.handleGetAdminNeeds, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteAdminNeedExplorer), s.handleGetAdminNeedExplorer, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteAdminNeedReview), s.handleGetAdminNeedReview, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteAdminNeedModerate), s.handlePostAdminNeedModerate, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteAdminNeedDocument), s.handleGetAdminNeedDocument, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteAdminNeedDelete), s.handlePostAdminNeedDelete, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteAdminNeedRestore), s.handlePostAdminNeedRestore, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteAdminNeedMessage), s.handlePostAdminNeedMessage, http.MethodPost)
+		})
+	})
 
 	staticRoot, err := fs.Sub(uiFS, "static")
 	if err != nil {

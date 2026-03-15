@@ -68,7 +68,7 @@
     {{else}}
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="text-sm text-muted-foreground">
-          Showing {{len .Needs}} needs
+          Showing {{len .Needs}} of {{.TotalNeeds}} needs
         </div>
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -113,9 +113,29 @@
           {{end}}
         </div>
         {{end}}
+
+        {{if gt .TotalPages 1}}
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+          <p>Page {{.Page}} of {{.TotalPages}} ({{.TotalNeeds}} needs)</p>
+          <div class="flex items-center gap-2">
+            {{if .PrevHref}}
+            <a href="{{.PrevHref}}"
+               hx-get="{{.PrevHref}}" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading"
+               class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">Previous</a>
+            {{end}}
+            {{if .NextHref}}
+            <a href="{{.NextHref}}"
+               hx-get="{{.NextHref}}" hx-target="#browse-results" hx-select="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse-loading"
+               class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">Next</a>
+            {{end}}
+          </div>
+        </div>
+        {{end}}
+
         {{else}}
           <div class="rounded-xl border border-border bg-card px-6 py-12 text-center text-card-foreground shadow-sm">
-            <p class="text-sm text-muted-foreground">No needs available at this time.</p>
+            <p class="text-base font-medium text-foreground">No needs listed right now</p>
+            <p class="mt-2 text-sm text-muted-foreground">New needs are added regularly. Check back soon or adjust your filters to broaden the search.</p>
           </div>
           {{end}}
           {{end}}

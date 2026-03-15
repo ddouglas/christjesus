@@ -140,9 +140,27 @@ table "needs" {
     columns = [column.id]
   }
 
+  foreign_key "fk_needs_user" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = CASCADE
+  }
+
   foreign_key "fk_needs_user_address" {
     columns     = [column.user_address_id]
     ref_columns = [table.user_addresses.column.id]
+    on_delete   = SET_NULL
+  }
+
+  foreign_key "fk_needs_verified_by" {
+    columns     = [column.verified_by]
+    ref_columns = [table.users.column.id]
+    on_delete   = SET_NULL
+  }
+
+  foreign_key "fk_needs_deleted_by" {
+    columns     = [column.deleted_by_user_id]
+    ref_columns = [table.users.column.id]
     on_delete   = SET_NULL
   }
 

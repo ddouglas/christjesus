@@ -45,4 +45,10 @@ table "donor_preferences" {
   primary_key {
     columns = [column.user_id]
   }
+
+  foreign_key "fk_donor_preferences_user" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = CASCADE
+  }
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,7 +15,7 @@ import (
 )
 
 func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Request) {
-	needID := strings.TrimSpace(r.PathValue("id"))
+	needID := strings.TrimSpace(r.PathValue("needID"))
 	if needID == "" {
 		http.NotFound(w, r)
 		return
@@ -24,7 +25,7 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -130,7 +131,7 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 
 	reviewDocuments := make([]*types.AdminNeedReviewDocument, 0, len(documents))
 	for _, document := range documents {
-		documentParams := map[string]string{"id": needID, "documentID": document.ID}
+		documentParams := map[string]string{"needID": needID, "documentID": document.ID}
 
 		status := "Pending Review"
 		if value, ok := documentStatusByID[document.ID]; ok {
@@ -231,18 +232,18 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		Documents:           reviewDocuments,
 		Timeline:            timeline,
 		BackHref:            s.route(RouteAdminNeeds, nil),
-		ModerateAction:      s.route(RouteAdminNeedModerate, map[string]string{"id": needID}),
-		AcceptReviewAction:  s.route(RouteAdminNeedModerate, map[string]string{"id": needID}),
+		ModerateAction:      s.route(RouteAdminNeedModerate, map[string]string{"needID": needID}),
+		AcceptReviewAction:  s.route(RouteAdminNeedModerate, map[string]string{"needID": needID}),
 		CanAcceptReview:     need.Status == types.NeedStatusReadyForReview,
 		CanSubmitModeration: need.Status == types.NeedStatusUnderReview,
-		DeleteAction:        s.route(RouteAdminNeedDelete, map[string]string{"id": needID}),
-		RestoreAction:       s.route(RouteAdminNeedRestore, map[string]string{"id": needID}),
+		DeleteAction:        s.route(RouteAdminNeedDelete, map[string]string{"needID": needID}),
+		RestoreAction:       s.route(RouteAdminNeedRestore, map[string]string{"needID": needID}),
 		IsDeleted:           need.DeletedAt != nil,
 		DeletedAt:           formatOptionalDateTime(need.DeletedAt),
 		DeletedByUserID:     formatOptionalString(need.DeletedByUserID),
 		DeleteReason:        formatOptionalString(need.DeleteReason),
 		Messages:            buildNeedReviewMessageViews(messages, strings.TrimSpace(viewerUserID)),
-		MessageAction:       s.route(RouteAdminNeedMessage, map[string]string{"id": needID}),
+		MessageAction:       s.route(RouteAdminNeedMessage, map[string]string{"needID": needID}),
 		Notice:              strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:               strings.TrimSpace(r.URL.Query().Get("error")),
 	}
@@ -255,7 +256,7 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Request) {
-	needID := strings.TrimSpace(r.PathValue("id"))
+	needID := strings.TrimSpace(r.PathValue("needID"))
 	if needID == "" {
 		http.NotFound(w, r)
 		return
@@ -268,7 +269,7 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 
 	need, err := s.needsRepo.Need(r.Context(), needID)
 	if err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -406,17 +407,17 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 
 	v := url.Values{}
 	v.Set("notice", notice)
-	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"id": needID}, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
 }
 
 func (s *Service) redirectAdminNeedReviewWithError(w http.ResponseWriter, r *http.Request, needID, message string) {
 	v := url.Values{}
 	v.Set("error", message)
-	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"id": needID}, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostAdminNeedMessage(w http.ResponseWriter, r *http.Request) {
-	needID := strings.TrimSpace(r.PathValue("id"))
+	needID := strings.TrimSpace(r.PathValue("needID"))
 	if needID == "" {
 		http.NotFound(w, r)
 		return
@@ -440,7 +441,7 @@ func (s *Service) handlePostAdminNeedMessage(w http.ResponseWriter, r *http.Requ
 	}
 
 	if _, err := s.needsRepo.Need(r.Context(), needID); err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -463,7 +464,7 @@ func (s *Service) handlePostAdminNeedMessage(w http.ResponseWriter, r *http.Requ
 
 	v := url.Values{}
 	v.Set("notice", "Message sent to need owner")
-	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"id": needID}, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
 }
 
 func formatFileSize(bytes int64) string {

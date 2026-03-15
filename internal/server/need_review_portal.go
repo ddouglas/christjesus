@@ -36,7 +36,7 @@ func (s *Service) handleGetProfileNeedReview(w http.ResponseWriter, r *http.Requ
 
 	shared, err := s.loadNeedReviewSharedData(ctx, needID)
 	if err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -140,7 +140,7 @@ func (s *Service) handlePostProfileNeedReviewMessage(w http.ResponseWriter, r *h
 
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -221,7 +221,7 @@ func (s *Service) handlePostProfileNeedReviewSetReady(w http.ResponseWriter, r *
 
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -266,7 +266,7 @@ func (s *Service) handlePostProfileNeedReviewPullBack(w http.ResponseWriter, r *
 
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -321,7 +321,7 @@ func (s *Service) handleGetProfileNeedDocument(w http.ResponseWriter, r *http.Re
 
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
-		if err == types.ErrNeedNotFound {
+		if errors.Is(err, types.ErrNeedNotFound) {
 			http.NotFound(w, r)
 			return
 		}

@@ -10,6 +10,7 @@ import (
 	"christjesus/internal"
 	"christjesus/pkg/types"
 
+	"github.com/gorilla/csrf"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/sirupsen/logrus"
 )
@@ -53,6 +54,31 @@ type AuthClaims struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// SecurityHeaders sets baseline defensive HTTP headers on every response.
+func (s *Service) SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Prevents browsers from MIME-sniffing the Content-Type, which can
+		// lead to XSS if a user-uploaded file is interpreted as HTML/JS.
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		// Blocks this site from being embedded in an iframe on another
+		// origin, preventing clickjacking attacks.
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+
+		// Controls how much referrer information is sent with navigations.
+		// "strict-origin-when-cross-origin" sends the full path to same-origin
+		// destinations but only the origin (no path) to cross-origin ones.
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+
+		// CSP frame-ancestors directive is the modern replacement for
+		// X-Frame-Options. Both are set for backward compatibility with
+		// older browsers that don't support CSP.
+		w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Service) LoggingMiddleware(next http.Handler) http.Handler {
@@ -346,6 +372,20 @@ func (s *Service) RequireAdmin(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (s *Service) csrfMiddleware(key []byte) func(http.Handler) http.Handler {
+	return csrf.Protect(key,
+		csrf.CookieName("cja_csrf"),
+		csrf.FieldName("csrf_token"),
+		csrf.Secure(true),
+		csrf.SameSite(csrf.SameSiteLaxMode),
+		csrf.Path("/"),
+		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s.logger.WithField("path", r.URL.Path).Warn("CSRF validation failed")
+			http.Error(w, "forbidden", http.StatusForbidden)
+		})),
+	)
 }
 
 func (s *Service) StripTrailingSlash(next http.Handler) http.Handler {

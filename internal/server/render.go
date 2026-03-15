@@ -1,9 +1,13 @@
 package server
 
 import (
-	"christjesus/pkg/types"
+	"bytes"
 	"net/http"
 	"strings"
+
+	"christjesus/pkg/types"
+
+	"github.com/gorilla/csrf"
 )
 
 func (s *Service) renderTemplate(w http.ResponseWriter, r *http.Request, templateName string, data any) error {
@@ -14,6 +18,10 @@ func (s *Service) renderTemplate(w http.ResponseWriter, r *http.Request, templat
 
 	if userName == "" {
 		userName = displayNameFromEmail(userEmail)
+	}
+
+	if setter, ok := data.(types.CSRFFieldSetter); ok {
+		setter.SetCSRFField(csrf.TemplateField(r))
 	}
 
 	if setter, ok := data.(types.NavbarDataSetter); ok {
@@ -27,7 +35,13 @@ func (s *Service) renderTemplate(w http.ResponseWriter, r *http.Request, templat
 		})
 	}
 
-	return s.templates.ExecuteTemplate(w, templateName, data)
+	var buf bytes.Buffer
+	if err := s.templates.ExecuteTemplate(&buf, templateName, data); err != nil {
+		return err
+	}
+
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 func displayNameFromEmail(email string) string {

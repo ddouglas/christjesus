@@ -51,6 +51,12 @@ table "need_moderation_actions" {
     columns = [column.id]
   }
 
+  foreign_key "fk_need_moderation_actions_actor" {
+    columns     = [column.actor_user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = CASCADE
+  }
+
   foreign_key "fk_need_moderation_actions_need" {
     columns     = [column.need_id]
     ref_columns = [table.needs.column.id]

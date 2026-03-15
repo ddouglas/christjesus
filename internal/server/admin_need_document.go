@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Service) handleGetAdminNeedDocument(w http.ResponseWriter, r *http.Request) {
-	needID := strings.TrimSpace(r.PathValue("id"))
+	needID := strings.TrimSpace(r.PathValue("needID"))
 	documentID := strings.TrimSpace(r.PathValue("documentID"))
 	if needID == "" || documentID == "" {
 		http.NotFound(w, r)

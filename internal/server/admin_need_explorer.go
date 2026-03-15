@@ -52,11 +52,7 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := s.applyFinalizedRaisedAmounts(ctx, needs); err != nil {
-		s.logger.WithError(err).Error("failed to apply finalized raised amounts for admin explorer")
-		s.internalServerError(w)
-		return
-	}
+
 
 	items := make([]*types.AdminNeedExplorerItem, 0, len(needs))
 	for _, need := range needs {
@@ -84,8 +80,8 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 			ActivityLabel:     fundingActivityLabel(fundingPercent),
 			UpdatedAt:         need.UpdatedAt.Format(time.DateOnly),
 			PublishedAt:       publishedAt,
-			ReviewHref:        s.route(RouteAdminNeedReview, map[string]string{"id": needID}),
-			DetailHref:        s.route(RouteNeedDetail, map[string]string{"id": needID}),
+			ReviewHref:        s.route(RouteAdminNeedReview, map[string]string{"needID": needID}),
+			DetailHref:        s.route(RouteNeedDetail, map[string]string{"needID": needID}),
 			CanViewDetail:     adminExplorerCanViewPublicDetail(need.Status),
 		})
 	}

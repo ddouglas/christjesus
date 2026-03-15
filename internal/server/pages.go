@@ -9,8 +9,11 @@ import (
 	"strconv"
 	"strings"
 
+	"christjesus/internal/store"
 	"christjesus/pkg/types"
 )
+
+const browseDefaultPageSize = 18
 
 func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -18,12 +21,6 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 	latestNeeds, err := s.needsRepo.LatestNeeds(ctx, 5)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch latest needs for home page")
-		s.internalServerError(w)
-		return
-	}
-
-	if err := s.applyFinalizedRaisedAmounts(ctx, latestNeeds); err != nil {
-		s.logger.WithError(err).Error("failed to apply finalized raised totals for home page needs")
 		s.internalServerError(w)
 		return
 	}
@@ -197,13 +194,6 @@ func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logCo
 
 		urgencyLabel, urgencyDotClass := browseUrgency(need.Status, need.AmountNeededCents, need.AmountRaisedCents)
 
-		verificationID := "story-shared"
-		verificationLabel := "Story Shared"
-		if need.VerifiedAt != nil {
-			verificationID = "personally-verified"
-			verificationLabel = "Personally Verified"
-		}
-
 		cards = append(cards, &types.BrowseNeedCard{
 			ID:                need.ID,
 			OwnerName:         ownerName,
@@ -214,8 +204,6 @@ func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logCo
 			UrgencyDotClass:   urgencyDotClass,
 			PrimaryCategoryID: primaryCategoryID,
 			PrimaryCategory:   primaryCategory,
-			VerificationID:    verificationID,
-			VerificationLabel: verificationLabel,
 			ShortDescription:  need.ShortDescription,
 			Status:            need.Status,
 			AmountNeededCents: need.AmountNeededCents,
@@ -422,23 +410,16 @@ func parseBrowseFilters(query url.Values) types.BrowseFilters {
 		}
 	}
 
-	selectedVerification := make(map[string]bool)
-	for _, verificationID := range query["verification"] {
-		trimmed := strings.TrimSpace(verificationID)
-		if trimmed != "" {
-			selectedVerification[trimmed] = true
-		}
-	}
-
 	return types.BrowseFilters{
-		Search:          strings.TrimSpace(query.Get("search")),
-		City:            strings.TrimSpace(query.Get("city")),
-		CategoryIDs:     selectedCategories,
-		VerificationIDs: selectedVerification,
-		Urgency:         strings.TrimSpace(query.Get("urgency")),
+		Search:      strings.TrimSpace(query.Get("search")),
+		City:        strings.TrimSpace(query.Get("city")),
+		CategoryIDs: selectedCategories,
+		Urgency:     strings.TrimSpace(query.Get("urgency")),
 		FundingMax:      fundingMax,
 		ViewMode:        normalizeBrowseViewMode(query.Get("view")),
 		SortBy:          normalizeBrowseSortBy(query.Get("sort")),
+		Page:            parsePositiveInt(query.Get("page"), 1),
+		PageSize:        browseDefaultPageSize,
 	}
 }
 
@@ -464,185 +445,111 @@ func isHXRequest(r *http.Request) bool {
 	return strings.EqualFold(r.Header.Get("HX-Request"), "true")
 }
 
-func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.BrowseFilters) (*types.BrowsePageData, error) {
-	type categoryFilterOption struct {
-		ID   string
-		Name string
+func browseStoreFilter(filters types.BrowseFilters) store.BrowseNeedsFilter {
+	categoryIDs := make([]string, 0, len(filters.CategoryIDs))
+	for id := range filters.CategoryIDs {
+		categoryIDs = append(categoryIDs, id)
 	}
 
-	searchLower := strings.ToLower(filters.Search)
+	return store.BrowseNeedsFilter{
+		City:        filters.City,
+		CategoryIDs: categoryIDs,
+		Urgency:     filters.Urgency,
+		FundingMax:  filters.FundingMax,
+		Search:      filters.Search,
+		SortBy:      filters.SortBy,
+		Page:        filters.Page,
+		PageSize:    filters.PageSize,
+	}
+}
 
-	needs, err := s.needsRepo.BrowseNeeds(ctx)
+func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.BrowseFilters) (*types.BrowsePageData, error) {
+	sf := browseStoreFilter(filters)
+
+	totalNeeds, err := s.needsRepo.BrowseNeedsCount(ctx, sf)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.applyFinalizedRaisedAmounts(ctx, needs); err != nil {
+	totalPages := totalNeeds / filters.PageSize
+	if totalNeeds%filters.PageSize != 0 {
+		totalPages++
+	}
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	if filters.Page > totalPages {
+		filters.Page = totalPages
+		sf.Page = totalPages
+	}
+
+	needs, err := s.needsRepo.BrowseNeedsPage(ctx, sf)
+	if err != nil {
 		return nil, err
 	}
+
+	cards := s.buildNeedCards(ctx, needs, "browse needs")
 
 	categories, err := s.categoryRepo.Categories(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.logger.WithField("db_category_count", len(categories)).Info("browse: loaded category options from DB")
 
-	categoryOptionMap := make(map[string]categoryFilterOption)
-	cityOptionsSet := make(map[string]bool)
-	allCards := s.buildNeedCards(ctx, needs, "browse needs")
-
-	cards := make([]*types.BrowseNeedCard, 0, len(allCards))
-	for _, card := range allCards {
-		if card == nil {
-			continue
-		}
-
-		if card.City != "N/A" {
-			cityOptionsSet[card.City] = true
-		}
-		if strings.TrimSpace(card.PrimaryCategoryID) != "" {
-			categoryOptionMap[card.PrimaryCategoryID] = categoryFilterOption{ID: card.PrimaryCategoryID, Name: card.PrimaryCategory}
-		}
-
-		urgencyID := strings.ToLower(card.UrgencyLabel)
-
-		if filters.City != "" && !strings.EqualFold(card.City, filters.City) {
-			continue
-		}
-
-		if len(filters.CategoryIDs) > 0 && !filters.CategoryIDs[card.PrimaryCategoryID] {
-			continue
-		}
-
-		if len(filters.VerificationIDs) > 0 && !filters.VerificationIDs[card.VerificationID] {
-			continue
-		}
-
-		if filters.Urgency != "" && filters.Urgency != urgencyID {
-			continue
-		}
-
-		if card.FundingPercent > filters.FundingMax {
-			continue
-		}
-
-		if searchLower != "" {
-			haystack := strings.ToLower(strings.Join([]string{
-				card.OwnerName,
-				card.PrimaryCategory,
-				card.CityState,
-				derefString(card.ShortDescription),
-			}, " "))
-			if !strings.Contains(haystack, searchLower) {
-				continue
-			}
-		}
-
-		cards = append(cards, card)
-	}
-
-	sortBrowseCards(cards, filters.SortBy)
-
-	cityOptions := make([]string, 0, len(cityOptionsSet))
-	for city := range cityOptionsSet {
-		cityOptions = append(cityOptions, city)
-	}
-	sort.Strings(cityOptions)
-
-	categoryOptionsByID := make(map[string]*types.NeedCategory)
-	for _, category := range categories {
-		if category == nil || strings.TrimSpace(category.ID) == "" {
-			continue
-		}
-		categoryOptionsByID[category.ID] = category
-	}
-
-	for _, option := range categoryOptionMap {
-		if strings.TrimSpace(option.ID) == "" {
-			continue
-		}
-		if _, exists := categoryOptionsByID[option.ID]; exists {
-			continue
-		}
-		categoryOptionsByID[option.ID] = &types.NeedCategory{ID: option.ID, Name: option.Name}
-	}
-
-	categoryOptionIDs := make([]string, 0, len(categoryOptionsByID))
-	for id := range categoryOptionsByID {
-		categoryOptionIDs = append(categoryOptionIDs, id)
-	}
-	sort.Slice(categoryOptionIDs, func(i, j int) bool {
-		left := strings.ToLower(categoryOptionsByID[categoryOptionIDs[i]].Name)
-		right := strings.ToLower(categoryOptionsByID[categoryOptionIDs[j]].Name)
-		return left < right
+	sort.Slice(categories, func(i, j int) bool {
+		return strings.ToLower(categories[i].Name) < strings.ToLower(categories[j].Name)
 	})
 
-	categoryOptions := make([]*types.NeedCategory, 0, len(categoryOptionIDs))
-	for _, id := range categoryOptionIDs {
-		categoryOptions = append(categoryOptions, categoryOptionsByID[id])
+	prevHref := ""
+	nextHref := ""
+	if filters.Page > 1 {
+		prevHref = s.buildBrowsePageHref(filters, filters.Page-1)
 	}
-
-	s.logger.WithFields(map[string]any{
-		"db_category_count":      len(categories),
-		"derived_category_count": len(categoryOptionMap),
-		"final_category_count":   len(categoryOptions),
-	}).Info("browse: category options resolved")
+	if filters.Page < totalPages {
+		nextHref = s.buildBrowsePageHref(filters, filters.Page+1)
+	}
 
 	return &types.BrowsePageData{
 		Needs:      cards,
-		Categories: categoryOptions,
-		Cities:     cityOptions,
+		Categories: categories,
 		Filters:    filters,
+		Page:       filters.Page,
+		TotalNeeds: totalNeeds,
+		TotalPages: totalPages,
+		PrevHref:   prevHref,
+		NextHref:   nextHref,
 	}, nil
 }
 
-func sortBrowseCards(cards []*types.BrowseNeedCard, sortBy string) {
-	switch sortBy {
-	case "newest":
-		sort.SliceStable(cards, func(i, j int) bool {
-			return cards[i].CreatedAt.After(cards[j].CreatedAt)
-		})
-	case "closest":
-		sort.SliceStable(cards, func(i, j int) bool {
-			if cards[i].FundingPercent != cards[j].FundingPercent {
-				return cards[i].FundingPercent > cards[j].FundingPercent
-			}
-			return cards[i].CreatedAt.After(cards[j].CreatedAt)
-		})
-	case "nearest":
-		return
-	case "urgency":
-		fallthrough
-	default:
-		sort.SliceStable(cards, func(i, j int) bool {
-			left := urgencySortWeight(cards[i].UrgencyLabel)
-			right := urgencySortWeight(cards[j].UrgencyLabel)
-			if left != right {
-				return left > right
-			}
-			return cards[i].CreatedAt.After(cards[j].CreatedAt)
-		})
+func (s *Service) buildBrowsePageHref(filters types.BrowseFilters, page int) string {
+	v := url.Values{}
+	v.Set("page", strconv.Itoa(page))
+	if filters.Search != "" {
+		v.Set("search", filters.Search)
 	}
-}
-
-func urgencySortWeight(label string) int {
-	switch strings.ToUpper(strings.TrimSpace(label)) {
-	case "URGENT":
-		return 4
-	case "HIGH":
-		return 3
-	case "MEDIUM":
-		return 2
-	case "LOW":
-		return 1
-	default:
-		return 0
+	if filters.City != "" {
+		v.Set("city", filters.City)
 	}
+	for id := range filters.CategoryIDs {
+		v.Add("category", id)
+	}
+	if filters.Urgency != "" {
+		v.Set("urgency", filters.Urgency)
+	}
+	if filters.FundingMax < 100 {
+		v.Set("funding_max", strconv.Itoa(filters.FundingMax))
+	}
+	if filters.ViewMode != "grid" {
+		v.Set("view", filters.ViewMode)
+	}
+	if filters.SortBy != "urgency" {
+		v.Set("sort", filters.SortBy)
+	}
+	return s.routeWithQuery(RouteBrowse, nil, v)
 }
 
 func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	needID := r.PathValue("id")
+	needID := r.PathValue("needID")
 
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
@@ -659,11 +566,6 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.applyFinalizedRaisedAmount(ctx, need); err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to load finalized donation totals for need detail")
-		s.internalServerError(w)
-		return
-	}
 
 	ownerName := "Anonymous"
 	user, err := s.userRepo.User(ctx, need.UserID)
@@ -752,11 +654,6 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 
 	_, _, cityState := browseCityStateParts(selectedAddress)
 
-	verificationLabel := "Story Shared"
-	if need.VerifiedAt != nil {
-		verificationLabel = "Personally Verified"
-	}
-
 	urgencyLabel, urgencyDotClass := browseUrgency(need.Status, need.AmountNeededCents, need.AmountRaisedCents)
 
 	fundingPercent := fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents)
@@ -786,6 +683,8 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 			FundingMax:  100,
 			ViewMode:    "grid",
 			SortBy:      "urgency",
+			Page:        1,
+			PageSize:    4,
 		}
 
 		relatedData, err := s.buildBrowseResultsPageData(ctx, relatedFilters)
@@ -811,10 +710,9 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		OwnerName:           ownerName,
 		SelectedAddress:     selectedAddress,
 		CityState:           cityState,
-		UrgencyLabel:        urgencyLabel,
-		UrgencyDotClass:     urgencyDotClass,
-		VerificationLabel:   verificationLabel,
-		FundingPercent:      fundingPercent,
+		UrgencyLabel:    urgencyLabel,
+		UrgencyDotClass: urgencyDotClass,
+		FundingPercent:  fundingPercent,
 		Story:               story,
 		PrimaryCategory:     primaryCategory,
 		SecondaryCategories: secondaryCategories,
