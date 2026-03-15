@@ -15,6 +15,7 @@ import (
 	"christjesus/internal/server"
 	"christjesus/internal/store"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/lestrrat-go/httprc/v3"
 	"github.com/lestrrat-go/jwx/v3/jwk"
@@ -41,12 +42,24 @@ func serve(cCtx *cli.Context) error {
 		return err
 	}
 
-	awsConfig, err := loadAWSConfig(ctx)
+	awsConfig, err := loadAWSConfig(ctx, config)
 	if err != nil {
 		return err
 	}
 
-	s3Client := s3.NewFromConfig(awsConfig)
+	s3Client := s3.NewFromConfig(awsConfig, func(o *s3.Options) {
+		endpoint := strings.TrimSpace(config.ObjectStoreEndpoint)
+		if endpoint != "" {
+			o.BaseEndpoint = aws.String(endpoint)
+		}
+
+		region := strings.TrimSpace(config.ObjectStoreRegion)
+		if region != "" {
+			o.Region = region
+		}
+
+		o.UsePathStyle = config.ObjectStorePathStyle
+	})
 	var stripeClient *stripe.Client
 	if config.StripeSecretKey != "" {
 		stripeClient = stripe.NewClient(config.StripeSecretKey)

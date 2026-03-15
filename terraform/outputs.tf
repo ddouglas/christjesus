@@ -1,5 +1,5 @@
 output "documents_bucket" {
-  value = aws_s3_bucket.documents.bucket
+  value = tigris_bucket.documents.bucket
 }
 
 output "auth0_web_client_id" {

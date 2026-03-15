@@ -15,7 +15,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	s3t "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
@@ -832,11 +831,10 @@ func (s *Service) handleFile(ctx context.Context, needID, userID string, fileHea
 	contentType := fileHeader.Header.Get("Content-Type")
 
 	_, err = s.s3Client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:       aws.String(s.config.S3BucketName),
-		Key:          aws.String(storageKey),
-		Body:         file,
-		ContentType:  aws.String(contentType),
-		StorageClass: s3t.StorageClassIntelligentTiering,
+		Bucket:      aws.String(s.config.S3BucketName),
+		Key:         aws.String(storageKey),
+		Body:        file,
+		ContentType: aws.String(contentType),
 	})
 	if err != nil {
 		return utils.ErrorWrapOrNil(err, "failed to upload file to S3")
