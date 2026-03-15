@@ -66,66 +66,67 @@ type authIdentityRepository interface {
 	User(ctx context.Context, userID string) (*types.User, error)
 }
 
-func New(
-	config *types.Config,
-	logger *logrus.Logger,
+type Options struct {
+	Config       *types.Config
+	Logger       *logrus.Logger
+	S3Client     *s3.Client
+	StripeClient *stripe.Client
 
-	s3Client *s3.Client,
-	stripeClient *stripe.Client,
+	NeedsRepo                   *store.NeedRepository
+	ProgressRepo                *store.NeedProgressRepository
+	CategoryRepo                *store.CategoryRepository
+	NeedCategoryAssignmentsRepo *store.AssignmentRepository
+	StoryRepo                   *store.StoryRepository
+	DocumentRepo                *store.DocumentRepository
+	NeedReviewMessageRepo       *store.NeedReviewMessageRepository
+	UserAddressRepo             *store.UserAddressRepository
+	UserRepo                    *store.UserRepository
+	DonorPreferenceRepo         *store.DonorPreferenceRepository
+	DonorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
+	DonationIntentRepo          *store.DonationIntentRepository
 
-	needsRepo *store.NeedRepository,
-	progressRepo *store.NeedProgressRepository,
-	categoryRepo *store.CategoryRepository,
-	needCategoryAssignmentsRepo *store.AssignmentRepository,
-	storyRepo *store.StoryRepository,
-	documentRepo *store.DocumentRepository,
-	needReviewMessageRepo *store.NeedReviewMessageRepository,
-	userAddressRepo *store.UserAddressRepository,
-	userRepo *store.UserRepository,
-	donorPreferenceRepo *store.DonorPreferenceRepository,
-	donorPreferenceAssignRepo *store.DonorPreferenceAssignmentRepository,
-	donationIntentRepo *store.DonationIntentRepository,
+	JWKCache *jwk.Cache
+	JWKSURL  string
+}
 
-	jwkCache *jwk.Cache,
-	jwksURL string,
-) (*Service, error) {
+func New(opts Options) (*Service, error) {
 	mux := flow.New()
 
-	hashKey, _ := base64.StdEncoding.DecodeString(config.CookieHashKey)
-	blockKey, _ := base64.StdEncoding.DecodeString(config.CookieBlockKey)
+	hashKey, _ := base64.StdEncoding.DecodeString(opts.Config.CookieHashKey)
+	blockKey, _ := base64.StdEncoding.DecodeString(opts.Config.CookieBlockKey)
 
 	s := &Service{
-		config: config,
-		logger: logger,
+		config: opts.Config,
+		logger: opts.Logger,
 
-		s3Client:     s3Client,
-		stripeClient: stripeClient,
+		s3Client:     opts.S3Client,
+		stripeClient: opts.StripeClient,
 
-		needsRepo:                   needsRepo,
-		progressRepo:                progressRepo,
-		storyRepo:                   storyRepo,
-		categoryRepo:                categoryRepo,
-		needCategoryAssignmentsRepo: needCategoryAssignmentsRepo,
-		documentRepo:                documentRepo,
-		needReviewMessageRepo:       needReviewMessageRepo,
-		userAddressRepo:             userAddressRepo,
-		userRepo:                    userRepo,
-		donorPreferenceRepo:         donorPreferenceRepo,
-		donorPreferenceAssignRepo:   donorPreferenceAssignRepo,
-		donationIntentRepo:          donationIntentRepo,
+		needsRepo:                   opts.NeedsRepo,
+		progressRepo:                opts.ProgressRepo,
+		storyRepo:                   opts.StoryRepo,
+		categoryRepo:                opts.CategoryRepo,
+		needCategoryAssignmentsRepo: opts.NeedCategoryAssignmentsRepo,
+		documentRepo:                opts.DocumentRepo,
+		needReviewMessageRepo:       opts.NeedReviewMessageRepo,
+		userAddressRepo:             opts.UserAddressRepo,
+		userRepo:                    opts.UserRepo,
+		donorPreferenceRepo:         opts.DonorPreferenceRepo,
+		donorPreferenceAssignRepo:   opts.DonorPreferenceAssignRepo,
+		donationIntentRepo:          opts.DonationIntentRepo,
 
 		cookie:           securecookie.New(hashKey, blockKey),
-		jwksCache:        jwkCache,
-		jwksURL:          jwksURL,
+		jwksCache:        opts.JWKCache,
+		jwksURL:          opts.JWKSURL,
 		httpClient:       &http.Client{Timeout: authOutboundTimeout},
-		authIdentityRepo: userRepo,
+		authIdentityRepo: opts.UserRepo,
 
 		server: &http.Server{
-			Addr:              fmt.Sprintf(":%d", config.ServerPort),
+			Addr:              fmt.Sprintf(":%d", opts.Config.ServerPort),
 			Handler:           mux,
-			ReadTimeout:       time.Duration(config.ReadTimeoutSec) * time.Second,
-			ReadHeaderTimeout: time.Duration(config.ReadTimeoutSec) * time.Second,
-			WriteTimeout:      time.Duration(config.WriteTimeoutSec) * time.Second,
+			ReadTimeout:       time.Duration(opts.Config.ReadTimeoutSec) * time.Second,
+			ReadHeaderTimeout: time.Duration(opts.Config.ReadTimeoutSec) * time.Second,
+			WriteTimeout:      time.Duration(opts.Config.WriteTimeoutSec) * time.Second,
 			MaxHeaderBytes:    1 << 20,
 		},
 	}
