@@ -62,8 +62,7 @@ func (r *NeedRepository) Need(ctx context.Context, needID string) (*types.Need, 
 type BrowseNeedsFilter struct {
 	City        string
 	CategoryIDs []string
-	Verified    *bool // nil = no filter, true = verified only, false = unverified only
-	Urgency     string
+	Urgency string
 	FundingMax  int
 	Search      string
 	SortBy      string
@@ -98,13 +97,6 @@ func applyBrowseFilters(qb sq.SelectBuilder, f BrowseNeedsFilter) sq.SelectBuild
 	}
 	if len(f.CategoryIDs) > 0 {
 		qb = qb.Where(sq.Eq{"nca.category_id": f.CategoryIDs})
-	}
-	if f.Verified != nil {
-		if *f.Verified {
-			qb = qb.Where("n.verified_at IS NOT NULL")
-		} else {
-			qb = qb.Where("n.verified_at IS NULL")
-		}
 	}
 	if f.FundingMax < 100 {
 		qb = qb.Where(browseFundingPercentExpr+" <= ?", f.FundingMax)

@@ -20,7 +20,7 @@ var donatePresetAmounts = []int{25, 50, 100, 250}
 
 func (s *Service) handleGetNeedDonate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	needID := r.PathValue("id")
+	needID := r.PathValue("needID")
 
 	data, err := s.buildNeedDonatePageData(ctx, needID, &types.NeedDonatePageData{PresetAmounts: donatePresetAmounts})
 	if err != nil {
@@ -38,7 +38,7 @@ func (s *Service) handleGetNeedDonate(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	needID := r.PathValue("id")
+	needID := r.PathValue("needID")
 
 	if err := r.ParseForm(); err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to parse donate form")
@@ -149,8 +149,8 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 
 	successQuery := make(url.Values)
 	successQuery.Set("intent_id", intent.ID)
-	successURL := s.absoluteRoute(RouteNeedDonateConfirmation, map[string]string{"id": needID}, successQuery)
-	cancelURL := s.absoluteRoute(RouteNeedDonate, map[string]string{"id": needID}, nil)
+	successURL := s.absoluteRoute(RouteNeedDonateConfirmation, map[string]string{"needID": needID}, successQuery)
+	cancelURL := s.absoluteRoute(RouteNeedDonate, map[string]string{"needID": needID}, nil)
 
 	donorEmail := s.resolveDonorCheckoutEmail(ctx, r, donorUserID)
 
@@ -233,10 +233,10 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	needID := r.PathValue("id")
+	needID := r.PathValue("needID")
 	intentID := strings.TrimSpace(r.URL.Query().Get("intent_id"))
 	if intentID == "" {
-		http.Redirect(w, r, s.route(RouteNeedDonate, map[string]string{"id": needID}), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteNeedDonate, map[string]string{"needID": needID}), http.StatusSeeOther)
 		return
 	}
 

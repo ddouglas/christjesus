@@ -194,13 +194,6 @@ func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logCo
 
 		urgencyLabel, urgencyDotClass := browseUrgency(need.Status, need.AmountNeededCents, need.AmountRaisedCents)
 
-		verificationID := "story-shared"
-		verificationLabel := "Story Shared"
-		if need.VerifiedAt != nil {
-			verificationID = "personally-verified"
-			verificationLabel = "Personally Verified"
-		}
-
 		cards = append(cards, &types.BrowseNeedCard{
 			ID:                need.ID,
 			OwnerName:         ownerName,
@@ -211,8 +204,6 @@ func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logCo
 			UrgencyDotClass:   urgencyDotClass,
 			PrimaryCategoryID: primaryCategoryID,
 			PrimaryCategory:   primaryCategory,
-			VerificationID:    verificationID,
-			VerificationLabel: verificationLabel,
 			ShortDescription:  need.ShortDescription,
 			Status:            need.Status,
 			AmountNeededCents: need.AmountNeededCents,
@@ -419,20 +410,11 @@ func parseBrowseFilters(query url.Values) types.BrowseFilters {
 		}
 	}
 
-	selectedVerification := make(map[string]bool)
-	for _, verificationID := range query["verification"] {
-		trimmed := strings.TrimSpace(verificationID)
-		if trimmed != "" {
-			selectedVerification[trimmed] = true
-		}
-	}
-
 	return types.BrowseFilters{
-		Search:          strings.TrimSpace(query.Get("search")),
-		City:            strings.TrimSpace(query.Get("city")),
-		CategoryIDs:     selectedCategories,
-		VerificationIDs: selectedVerification,
-		Urgency:         strings.TrimSpace(query.Get("urgency")),
+		Search:      strings.TrimSpace(query.Get("search")),
+		City:        strings.TrimSpace(query.Get("city")),
+		CategoryIDs: selectedCategories,
+		Urgency:     strings.TrimSpace(query.Get("urgency")),
 		FundingMax:      fundingMax,
 		ViewMode:        normalizeBrowseViewMode(query.Get("view")),
 		SortBy:          normalizeBrowseSortBy(query.Get("sort")),
@@ -469,21 +451,9 @@ func browseStoreFilter(filters types.BrowseFilters) store.BrowseNeedsFilter {
 		categoryIDs = append(categoryIDs, id)
 	}
 
-	var verified *bool
-	if len(filters.VerificationIDs) == 1 {
-		if filters.VerificationIDs["personally-verified"] {
-			v := true
-			verified = &v
-		} else if filters.VerificationIDs["story-shared"] {
-			v := false
-			verified = &v
-		}
-	}
-
 	return store.BrowseNeedsFilter{
 		City:        filters.City,
 		CategoryIDs: categoryIDs,
-		Verified:    verified,
 		Urgency:     filters.Urgency,
 		FundingMax:  filters.FundingMax,
 		Search:      filters.Search,
@@ -562,9 +532,6 @@ func (s *Service) buildBrowsePageHref(filters types.BrowseFilters, page int) str
 	for id := range filters.CategoryIDs {
 		v.Add("category", id)
 	}
-	for id := range filters.VerificationIDs {
-		v.Add("verification", id)
-	}
 	if filters.Urgency != "" {
 		v.Set("urgency", filters.Urgency)
 	}
@@ -582,7 +549,7 @@ func (s *Service) buildBrowsePageHref(filters types.BrowseFilters, page int) str
 
 func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	needID := r.PathValue("id")
+	needID := r.PathValue("needID")
 
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
@@ -687,11 +654,6 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 
 	_, _, cityState := browseCityStateParts(selectedAddress)
 
-	verificationLabel := "Story Shared"
-	if need.VerifiedAt != nil {
-		verificationLabel = "Personally Verified"
-	}
-
 	urgencyLabel, urgencyDotClass := browseUrgency(need.Status, need.AmountNeededCents, need.AmountRaisedCents)
 
 	fundingPercent := fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents)
@@ -748,10 +710,9 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		OwnerName:           ownerName,
 		SelectedAddress:     selectedAddress,
 		CityState:           cityState,
-		UrgencyLabel:        urgencyLabel,
-		UrgencyDotClass:     urgencyDotClass,
-		VerificationLabel:   verificationLabel,
-		FundingPercent:      fundingPercent,
+		UrgencyLabel:    urgencyLabel,
+		UrgencyDotClass: urgencyDotClass,
+		FundingPercent:  fundingPercent,
 		Story:               story,
 		PrimaryCategory:     primaryCategory,
 		SecondaryCategories: secondaryCategories,

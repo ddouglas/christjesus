@@ -26,13 +26,13 @@ func TestBuildRoute_SelectedRouteShapes(t *testing.T) {
 		{
 			name:     "single parameter",
 			route:    RouteNeedDetail,
-			params:   map[string]string{"id": "need_123"},
+			params:   map[string]string{"needID": "need_123"},
 			expected: "/need/need_123",
 		},
 		{
 			name:     "single parameter trims spaces",
 			route:    RouteNeedDetail,
-			params:   map[string]string{"id": " need_123 "},
+			params:   map[string]string{"needID": " need_123 "},
 			expected: "/need/need_123",
 		},
 		{

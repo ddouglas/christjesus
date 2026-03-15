@@ -80,8 +80,8 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 			ActivityLabel:     fundingActivityLabel(fundingPercent),
 			UpdatedAt:         need.UpdatedAt.Format(time.DateOnly),
 			PublishedAt:       publishedAt,
-			ReviewHref:        s.route(RouteAdminNeedReview, map[string]string{"id": needID}),
-			DetailHref:        s.route(RouteNeedDetail, map[string]string{"id": needID}),
+			ReviewHref:        s.route(RouteAdminNeedReview, map[string]string{"needID": needID}),
+			DetailHref:        s.route(RouteNeedDetail, map[string]string{"needID": needID}),
 			CanViewDetail:     adminExplorerCanViewPublicDetail(need.Status),
 		})
 	}

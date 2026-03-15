@@ -21,7 +21,7 @@ func (s *Service) handlePostAdminNeedRestore(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *http.Request, deleting bool) {
-	needID := strings.TrimSpace(r.PathValue("id"))
+	needID := strings.TrimSpace(r.PathValue("needID"))
 	if needID == "" {
 		http.NotFound(w, r)
 		return
@@ -86,7 +86,7 @@ func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *h
 
 		v := url.Values{}
 		v.Set("notice", "Need deleted")
-		http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"id": needID}, v), http.StatusSeeOther)
+		http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
 		return
 	}
 
@@ -116,5 +116,5 @@ func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *h
 
 	v := url.Values{}
 	v.Set("notice", "Need restored")
-	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"id": needID}, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
 }

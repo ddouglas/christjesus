@@ -53,9 +53,8 @@ type BrowsePageData struct {
 type BrowseFilters struct {
 	Search          string
 	City            string
-	CategoryIDs     map[string]bool
-	VerificationIDs map[string]bool
-	Urgency         string
+	CategoryIDs map[string]bool
+	Urgency     string
 	FundingMax      int
 	ViewMode        string
 	SortBy          string
@@ -73,8 +72,6 @@ type BrowseNeedCard struct {
 	UrgencyDotClass   string
 	PrimaryCategoryID string
 	PrimaryCategory   string
-	VerificationID    string
-	VerificationLabel string
 	ShortDescription  *string
 	Status            NeedStatus
 	AmountNeededCents int
@@ -114,10 +111,9 @@ type NeedDetailPageData struct {
 	OwnerName           string
 	SelectedAddress     *UserAddress
 	CityState           string
-	UrgencyLabel        string
-	UrgencyDotClass     string
-	VerificationLabel   string
-	FundingPercent      int
+	UrgencyLabel    string
+	UrgencyDotClass string
+	FundingPercent  int
 	Story               *NeedStory
 	PrimaryCategory     *NeedCategory
 	SecondaryCategories []*NeedCategory

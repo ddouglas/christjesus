@@ -28,7 +28,7 @@
       <h1 class="text-3xl font-semibold text-foreground">Choose your donation amount</h1>
       <p class="mt-2 text-base text-muted-foreground">Secure payment via Stripe. 100% goes to the recipient.</p>
 
-      <form method="post" action="{{route "need.donate" (dict "id" .NeedID)}}" class="mt-7 space-y-6">
+      <form method="post" action="{{route "need.donate" (dict "needID" .NeedID)}}" class="mt-7 space-y-6">
         <div class="grid grid-cols-2 gap-3">
           {{range .PresetAmounts}}
           <label class="block cursor-pointer">

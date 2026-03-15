@@ -39,20 +39,6 @@
   </div>
 
   <div>
-    <p class="text-sm font-semibold text-foreground">Verification Level</p>
-    <div class="mt-3 space-y-2">
-      <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" name="verification" value="personally-verified" class="h-4 w-4 rounded border-border" {{if hasKey .Filters.VerificationIDs "personally-verified"}}checked{{end}} />
-        Personally Verified
-      </label>
-      <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" name="verification" value="story-shared" class="h-4 w-4 rounded border-border" {{if hasKey .Filters.VerificationIDs "story-shared"}}checked{{end}} />
-        Story Shared
-      </label>
-    </div>
-  </div>
-
-  <div>
     <p class="text-sm font-semibold text-foreground">Urgency</p>
     <div class="mt-3 space-y-2">
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
