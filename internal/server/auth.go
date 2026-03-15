@@ -43,13 +43,25 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 	}
 
 	stateCookie, err := r.Cookie(internal.COOKIE_AUTH_STATE)
-	if err != nil || !subtleCompare(stateCookie.Value, state) {
+	if err != nil {
+		s.clearAuthFlowCookies(w)
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
+	var stateFromCookie string
+	if err := s.cookie.Decode(internal.COOKIE_AUTH_STATE, stateCookie.Value, &stateFromCookie); err != nil || !subtleCompare(stateFromCookie, state) {
 		s.clearAuthFlowCookies(w)
 		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
 	}
 	nonceCookie, err := r.Cookie(internal.COOKIE_AUTH_NONCE)
-	if err != nil || strings.TrimSpace(nonceCookie.Value) == "" {
+	if err != nil {
+		s.clearAuthFlowCookies(w)
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
+	var nonceFromCookie string
+	if err := s.cookie.Decode(internal.COOKIE_AUTH_NONCE, nonceCookie.Value, &nonceFromCookie); err != nil || strings.TrimSpace(nonceFromCookie) == "" {
 		s.clearAuthFlowCookies(w)
 		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
@@ -105,7 +117,7 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
 	}
-	if claims.Nonce == "" || !subtleCompare(nonceCookie.Value, claims.Nonce) {
+	if claims.Nonce == "" || !subtleCompare(nonceFromCookie, claims.Nonce) {
 		s.logger.WithField("auth_subject", claims.Subject).Warn("auth callback nonce mismatch")
 		s.clearAuthFlowCookies(w)
 		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
@@ -168,9 +180,21 @@ func (s *Service) startAuth0Authorization(w http.ResponseWriter, r *http.Request
 	}
 
 	age := int((5 * time.Minute).Seconds())
+	encryptedState, err := s.cookie.Encode(internal.COOKIE_AUTH_STATE, state)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to encrypt auth state")
+		s.internalServerError(w)
+		return
+	}
+	encryptedNonce, err := s.cookie.Encode(internal.COOKIE_AUTH_NONCE, nonce)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to encrypt auth nonce")
+		s.internalServerError(w)
+		return
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     internal.COOKIE_AUTH_STATE,
-		Value:    state,
+		Value:    encryptedState,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
@@ -179,7 +203,7 @@ func (s *Service) startAuth0Authorization(w http.ResponseWriter, r *http.Request
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     internal.COOKIE_AUTH_NONCE,
-		Value:    nonce,
+		Value:    encryptedNonce,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
