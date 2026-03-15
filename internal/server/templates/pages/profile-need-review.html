@@ -113,6 +113,7 @@
         <p class="mt-4 text-sm text-muted-foreground">No messages yet. Send the first message if you need clarification.</p>
         {{end}}
 
+        {{if .CanSendMessage}}
         <form method="post" action="{{.PostMessageAction}}" class="mt-4 space-y-3">
           <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="user-review-message">Message</label>
           <textarea id="user-review-message" name="message" rows="4" required class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
@@ -121,6 +122,9 @@
             class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-primary)]/90">Send
             Message</button>
         </form>
+        {{else}}
+        <p class="mt-4 text-sm text-muted-foreground">Messaging is unavailable for this need status.</p>
+        {{end}}
     </div>
     {{end}}
   </div>

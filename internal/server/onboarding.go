@@ -155,9 +155,9 @@ func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWri
 		return
 	}
 
-	// Once a need leaves draft/onboarding workflow, keep onboarding read-only and send users to confirmation.
+	// Once a need leaves draft/onboarding workflow, send users to the need review portal.
 	if need.Status != types.NeedStatusDraft {
-		http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteProfileNeedReview, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 		return
 	}
 
@@ -223,13 +223,12 @@ func (s *Service) redirectIfNeedSubmitted(w http.ResponseWriter, r *http.Request
 		return false
 	}
 
-	switch need.Status {
-	case types.NeedStatusSubmitted, types.NeedStatusReadyForReview, types.NeedStatusUnderReview, types.NeedStatusChangesRequested, types.NeedStatusApproved, types.NeedStatusRejected:
-		http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+	if need.Status != types.NeedStatusDraft {
+		http.Redirect(w, r, s.route(RouteProfileNeedReview, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 		return true
-	default:
-		return false
 	}
+
+	return false
 }
 
 func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {

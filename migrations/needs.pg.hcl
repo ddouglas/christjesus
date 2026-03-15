@@ -56,8 +56,8 @@ table "needs" {
   column "status" {
     type    = text
     null    = false
-    default = "draft"
-    comment = "draft, submitted, ready_for_review, under_review, changes_requested, approved, rejected, active, funded, closed"
+    default = "DRAFT"
+    comment = "DRAFT, SUBMITTED, READY_FOR_REVIEW, UNDER_REVIEW, CHANGES_REQUESTED, APPROVED, REJECTED, ACTIVE, FUNDED, CLOSED"
   }
 
   column "verified_at" {

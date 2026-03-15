@@ -845,7 +845,7 @@ func (s *Service) profileEditableNeed(ctx context.Context, needID string) (*type
 		return nil, types.ErrNeedNotFound
 	}
 
-	if need.Status != types.NeedStatusSubmitted && need.Status != types.NeedStatusReadyForReview && need.Status != types.NeedStatusChangesRequested {
+	if need.Status != types.NeedStatusSubmitted && need.Status != types.NeedStatusChangesRequested {
 		return nil, fmt.Errorf("need is not editable in its current state")
 	}
 

@@ -172,6 +172,7 @@ func (s *Service) handleGetProfileNeedReview(w http.ResponseWriter, r *http.Requ
 		CanEditNeed:         need.Status == types.NeedStatusSubmitted || need.Status == types.NeedStatusChangesRequested,
 		CanSetReady:         need.Status == types.NeedStatusSubmitted || need.Status == types.NeedStatusChangesRequested,
 		CanPullBack:         need.Status == types.NeedStatusReadyForReview,
+		CanSendMessage:      isNeedOwnerMessagingAllowedStatus(need.Status),
 		Notice:              strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:               strings.TrimSpace(r.URL.Query().Get("error")),
 	}
@@ -300,8 +301,7 @@ func (s *Service) handlePostProfileNeedReviewSetReady(w http.ResponseWriter, r *
 		return
 	}
 
-	need.Status = types.NeedStatusReadyForReview
-	if err := s.needsRepo.UpdateNeed(ctx, needID, need); err != nil {
+	if err := s.needsRepo.SetNeedStatus(ctx, needID, types.NeedStatusReadyForReview); err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to set need status to ready for review")
 		s.internalServerError(w)
 		return
@@ -346,8 +346,7 @@ func (s *Service) handlePostProfileNeedReviewPullBack(w http.ResponseWriter, r *
 		return
 	}
 
-	need.Status = types.NeedStatusSubmitted
-	if err := s.needsRepo.UpdateNeed(ctx, needID, need); err != nil {
+	if err := s.needsRepo.SetNeedStatus(ctx, needID, types.NeedStatusSubmitted); err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to pull need back to submitted")
 		s.internalServerError(w)
 		return

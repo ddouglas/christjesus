@@ -368,6 +368,7 @@ type NeedReviewPortalPageData struct {
 	CanEditNeed         bool
 	CanSetReady         bool
 	CanPullBack         bool
+	CanSendMessage      bool
 	Notice              string
 	Error               string
 }
