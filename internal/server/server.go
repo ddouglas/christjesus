@@ -157,6 +157,7 @@ func (s *Service) upsertIdentity(ctx context.Context, authSubject, email, givenN
 }
 
 func (s *Service) buildRouter(r *flow.Mux) {
+	r.Use(s.SecurityHeaders)
 	r.Use(s.StripTrailingSlash)
 	r.Use(s.LoggingMiddleware)
 	r.Use(s.AttachAuthContext)
