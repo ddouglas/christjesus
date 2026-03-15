@@ -40,7 +40,7 @@ func (s *Service) handleGetProfileNeedReview(w http.ResponseWriter, r *http.Requ
 			http.NotFound(w, r)
 			return
 		}
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need for review portal")
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to load shared need review data for review portal")
 		s.internalServerError(w)
 		return
 	}

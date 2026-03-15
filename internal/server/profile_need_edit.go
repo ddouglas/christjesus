@@ -937,7 +937,12 @@ func (s *Service) loadNeedReviewSharedData(ctx context.Context, needID string) (
 	var primaryCategory *types.NeedCategory
 	secondaryCategories := make([]*types.NeedCategory, 0)
 	for _, assignment := range assignments {
-		category := categoryByID[assignment.CategoryID]
+		categoryID := strings.TrimSpace(assignment.CategoryID)
+		if categoryID == "" {
+			continue
+		}
+
+		category := categoryByID[categoryID]
 		if category == nil {
 			continue
 		}
