@@ -60,7 +60,7 @@ func (r *NeedRepository) Need(ctx context.Context, needID string) (*types.Need, 
 
 func (r *NeedRepository) BrowseNeeds(ctx context.Context) ([]*types.Need, error) {
 	query, args, err := psql().Select(needColumns...).From(needTableName).
-		Where(sq.NotEq{"status": types.NeedStatusDraft}).
+		Where(sq.Eq{"status": []types.NeedStatus{types.NeedStatusActive, types.NeedStatusFunded}}).
 		Where(sq.Eq{"deleted_at": nil}).
 		OrderBy("created_at desc").
 		ToSql()
@@ -408,6 +408,14 @@ func (r *NeedRepository) SetNeedStatusTx(ctx context.Context, tx pgx.Tx, needID 
 	return r.setNeedStatusWithExec(ctx, tx, needID, status)
 }
 
+func (r *NeedRepository) PublishNeed(ctx context.Context, needID string) error {
+	return r.publishNeedWithExec(ctx, r.pool, needID)
+}
+
+func (r *NeedRepository) PublishNeedTx(ctx context.Context, tx pgx.Tx, needID string) error {
+	return r.publishNeedWithExec(ctx, tx, needID)
+}
+
 func (r *NeedRepository) setNeedStatusWithExec(ctx context.Context, execer needExecer, needID string, status types.NeedStatus) error {
 	query, args, err := psql().
 		Update(needTableName).
@@ -421,6 +429,22 @@ func (r *NeedRepository) setNeedStatusWithExec(ctx context.Context, execer needE
 
 	_, err = execer.Exec(ctx, query, args...)
 	return utils.ErrorWrapOrNil(err, "failed to set need status")
+}
+
+func (r *NeedRepository) publishNeedWithExec(ctx context.Context, execer needExecer, needID string) error {
+	query, args, err := psql().
+		Update(needTableName).
+		Set("status", types.NeedStatusActive).
+		Set("published_at", sq.Expr("COALESCE(published_at, NOW())")).
+		Set("updated_at", time.Now()).
+		Where(sq.Eq{"id": needID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to generate publish need query for need %s: %w", needID, err)
+	}
+
+	_, err = execer.Exec(ctx, query, args...)
+	return utils.ErrorWrapOrNil(err, "failed to publish need")
 }
 
 func (r *NeedRepository) SoftDeleteNeed(ctx context.Context, needID, actorUserID, reason string) error {
