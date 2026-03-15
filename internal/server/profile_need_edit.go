@@ -817,7 +817,7 @@ func (s *Service) handlePostProfileNeedEditReview(w http.ResponseWriter, r *http
 
 	now := time.Now()
 	need.CurrentStep = types.NeedStepReview
-	need.Status = types.NeedStatusSubmitted
+	need.Status = types.NeedStatusReadyForReview
 	need.SubmittedAt = &now
 
 	if err := s.needsRepo.UpdateNeed(ctx, need.ID, need); err != nil {
@@ -845,7 +845,7 @@ func (s *Service) profileEditableNeed(ctx context.Context, needID string) (*type
 		return nil, types.ErrNeedNotFound
 	}
 
-	if need.Status != types.NeedStatusChangesRequested && need.Status != types.NeedStatusRejected {
+	if need.Status != types.NeedStatusSubmitted && need.Status != types.NeedStatusReadyForReview && need.Status != types.NeedStatusChangesRequested {
 		return nil, fmt.Errorf("need is not editable in its current state")
 	}
 

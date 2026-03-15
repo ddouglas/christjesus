@@ -155,7 +155,7 @@ func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWri
 		return
 	}
 
-	if need.Status == types.NeedStatusSubmitted {
+	if need.Status == types.NeedStatusSubmitted || need.Status == types.NeedStatusReadyForReview || need.Status == types.NeedStatusUnderReview || need.Status == types.NeedStatusChangesRequested || need.Status == types.NeedStatusApproved || need.Status == types.NeedStatusRejected {
 		http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
 		return
 	}
@@ -218,12 +218,17 @@ func (s *Service) setUserType(ctx context.Context, userType string) error {
 }
 
 func (s *Service) redirectIfNeedSubmitted(w http.ResponseWriter, r *http.Request, need *types.Need) bool {
-	if need == nil || need.Status != types.NeedStatusSubmitted {
+	if need == nil {
 		return false
 	}
 
-	http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
-	return true
+	switch need.Status {
+	case types.NeedStatusSubmitted, types.NeedStatusReadyForReview, types.NeedStatusUnderReview, types.NeedStatusChangesRequested, types.NeedStatusApproved, types.NeedStatusRejected:
+		http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Service) handleGetOnboardingNeedWelcome(w http.ResponseWriter, r *http.Request) {

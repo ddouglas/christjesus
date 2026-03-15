@@ -95,7 +95,7 @@ func (r *NeedRepository) ModerationQueueNeedsPage(ctx context.Context, page, pag
 	offset := uint64((page - 1) * pageSize)
 
 	query, args, err := psql().Select(needColumns...).From(needTableName).
-		Where(sq.Eq{"status": []types.NeedStatus{types.NeedStatusSubmitted, types.NeedStatusUnderReview}}).
+		Where(sq.Eq{"status": []types.NeedStatus{types.NeedStatusReadyForReview, types.NeedStatusUnderReview}}).
 		Where(sq.Eq{"deleted_at": nil}).
 		OrderBy("submitted_at desc nulls last", "created_at desc").
 		Limit(uint64(pageSize)).
@@ -121,7 +121,7 @@ func (r *NeedRepository) ModerationQueueNeedsCount(ctx context.Context) (int, er
 	query, args, err := psql().
 		Select("COUNT(*)").
 		From(needTableName).
-		Where(sq.Eq{"status": []types.NeedStatus{types.NeedStatusSubmitted, types.NeedStatusUnderReview}}).
+		Where(sq.Eq{"status": []types.NeedStatus{types.NeedStatusReadyForReview, types.NeedStatusUnderReview}}).
 		Where(sq.Eq{"deleted_at": nil}).
 		ToSql()
 	if err != nil {

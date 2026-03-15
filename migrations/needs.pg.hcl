@@ -57,7 +57,7 @@ table "needs" {
     type    = text
     null    = false
     default = "draft"
-    comment = "draft, submitted, pending_review, approved, rejected, active, funded, closed"
+    comment = "draft, submitted, ready_for_review, under_review, changes_requested, approved, rejected, active, funded, closed"
   }
 
   column "verified_at" {
@@ -178,10 +178,10 @@ table "needs" {
     where   = "deleted_at IS NOT NULL"
   }
 
-  # Speeds moderation queue pages, which always filter to non-deleted submitted/review needs.
+  # Speeds moderation queue pages, which always filter to non-deleted ready/review needs.
   index "idx_needs_queue_active" {
     columns = [column.submitted_at, column.created_at]
-    where   = "((deleted_at IS NULL) AND (status = ANY (ARRAY['SUBMITTED'::text, 'UNDER_REVIEW'::text])))"
+    where   = "((deleted_at IS NULL) AND (status = ANY (ARRAY['READY_FOR_REVIEW'::text, 'UNDER_REVIEW'::text])))"
   }
 
   # Speeds browse/latest lists that only display non-deleted, non-draft needs by recency.

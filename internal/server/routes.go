@@ -29,6 +29,8 @@ const (
 	RouteProfileNeedDelete         RouteName = "profile.need.delete"
 	RouteProfileNeedReview         RouteName = "profile.need.review"
 	RouteProfileNeedReviewPost     RouteName = "profile.need.review.post"
+	RouteProfileNeedReviewSetReady RouteName = "profile.need.review.set.ready"
+	RouteProfileNeedReviewPullBack RouteName = "profile.need.review.pull.back"
 	RouteProfileNeedDocumentView   RouteName = "profile.need.document.view"
 	RouteProfileNeedEdit           RouteName = "profile.need.edit"
 	RouteProfileNeedEditLocation   RouteName = "profile.need.edit.location"
@@ -95,6 +97,8 @@ var routePatterns = map[RouteName]string{
 	RouteProfileNeedDelete:             "/profile/needs/:needID/delete",
 	RouteProfileNeedReview:             "/profile/needs/:needID/review",
 	RouteProfileNeedReviewPost:         "/profile/needs/:needID/review/messages",
+	RouteProfileNeedReviewSetReady:     "/profile/needs/:needID/review/set-ready",
+	RouteProfileNeedReviewPullBack:     "/profile/needs/:needID/review/pull-back",
 	RouteProfileNeedDocumentView:       "/profile/needs/:needID/documents/:documentID",
 	RouteProfileNeedEdit:               "/profile/needs/:needID/edit",
 	RouteProfileNeedEditLocation:       "/profile/needs/:needID/edit/location",

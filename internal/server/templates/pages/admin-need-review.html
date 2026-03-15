@@ -96,17 +96,30 @@
           <h2 class="text-base font-semibold text-foreground">Moderation Actions</h2>
           {{if .IsDeleted}}
           <p class="mt-1 text-sm text-muted-foreground">Need is deleted. Restore first before submitting moderation actions.</p>
-          {{else}}
-            <p class="mt-1 text-sm text-muted-foreground">Submit approve/reject/request changes in a focused modal.</p>
-            {{end}}
+          {{else if .CanAcceptReview}}
+            <p class="mt-1 text-sm text-muted-foreground">This need is ready for review. Accept it to lock owner edits and begin moderation.</p>
+            {{else if .CanSubmitModeration}}
+              <p class="mt-1 text-sm text-muted-foreground">Submit approve/reject/request changes in a focused modal.</p>
+              {{else}}
+                <p class="mt-1 text-sm text-muted-foreground">Moderation decisions are available only when the need is under review.</p>
+                {{end}}
         </div>
-        {{if not .IsDeleted}}
+        {{if and (not .IsDeleted) .CanSubmitModeration}}
         <button type="button" data-open-modal="need-moderation-modal"
           class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-primary)]/90">
           Submit Need Review
         </button>
         {{end}}
       </div>
+
+      {{if and (not .IsDeleted) .CanAcceptReview}}
+      <form method="post" action="{{.AcceptReviewAction}}" class="mt-4">
+        <button type="submit" name="action" value="accept_review"
+          class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cj-primary)]/90">
+          Accept Review
+        </button>
+      </form>
+      {{end}}
 
       <div class="mt-4 rounded-lg border border-border bg-card p-4">
         {{if .IsDeleted}}
@@ -153,7 +166,7 @@
               class="inline-flex h-8 items-center justify-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted">
               Preview
             </a>
-            <button type="button" data-open-modal="document-review-modal" data-document-id="{{.ID}}" data-document-name="{{.FileName}}"
+            <button type="button" data-open-modal="document-review-modal" data-document-id="{{.ID}}" data-document-name="{{.FileName}}" {{if not $.CanSubmitModeration}}disabled{{end}}
               class="inline-flex h-8 items-center justify-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted">
               Review Decision
             </button>
