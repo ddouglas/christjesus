@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -49,10 +50,11 @@ type Service struct {
 	donorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
 	donationIntentRepo          *store.DonationIntentRepository
 
-	cookie     *securecookie.SecureCookie
-	jwksCache  *jwk.Cache
-	jwksURL    string
-	httpClient *http.Client
+	cookie           *securecookie.SecureCookie
+	jwksCache        *jwk.Cache
+	jwksURL          string
+	httpClient       *http.Client
+	upsertIdentityFn func(ctx context.Context, authSubject, email, givenName, familyName string) (string, error)
 
 	server    *http.Server
 	templates *template.Template
@@ -136,6 +138,16 @@ func (s *Service) Start() error {
 
 func (s *Service) Stop(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
+}
+
+func (s *Service) upsertIdentity(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
+	if s.upsertIdentityFn != nil {
+		return s.upsertIdentityFn(ctx, authSubject, email, givenName, familyName)
+	}
+	if s.userRepo == nil {
+		return "", errors.New("user repository not configured")
+	}
+	return s.userRepo.UpsertIdentity(ctx, authSubject, email, givenName, familyName)
 }
 
 func (s *Service) buildRouter(r *flow.Mux) {

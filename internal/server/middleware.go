@@ -67,7 +67,7 @@ func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 			return
 		}
 
-		userID, err := s.userRepo.UpsertIdentity(r.Context(), claims.Subject, claims.Email, claims.GivenName, claims.FamilyName)
+		userID, err := s.upsertIdentity(r.Context(), claims.Subject, claims.Email, claims.GivenName, claims.FamilyName)
 		if err != nil {
 			s.logger.WithError(err).WithField("auth_subject", claims.Subject).Warn("failed to sync user identity from token")
 			next.ServeHTTP(w, r)

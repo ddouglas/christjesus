@@ -133,7 +133,7 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if _, err := s.userRepo.UpsertIdentity(r.Context(), claims.Subject, claims.Email, claims.GivenName, claims.FamilyName); err != nil {
+	if _, err := s.upsertIdentity(r.Context(), claims.Subject, claims.Email, claims.GivenName, claims.FamilyName); err != nil {
 		s.logger.WithError(err).WithField("auth_subject", claims.Subject).Error("failed to sync user identity in auth callback")
 		s.internalServerError(w)
 		return
