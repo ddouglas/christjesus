@@ -2,6 +2,16 @@ variable "workspace" {
   type = string
 }
 
+variable "tigris_access_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "tigris_secret_key" {
+  type      = string
+  sensitive = true
+}
+
 variable "auth0_admin_role_name" {
   type        = string
   description = "Auth0 role name used for admin authorization"

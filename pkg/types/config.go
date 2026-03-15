@@ -27,8 +27,13 @@ type Config struct {
 	Auth0CallbackURL  string `envconfig:"AUTH0_CALLBACK_URL" default:"http://localhost:8080/auth/callback"`
 	Auth0LogoutURL    string `envconfig:"AUTH0_LOGOUT_URL" default:"http://localhost:8080/"`
 
-	// AWS S3
-	S3BucketName string `envconfig:"S3_BUCKET_NAME" required:"true"`
+	// S3-compatible object storage (Tigris)
+	S3BucketName         string `envconfig:"S3_BUCKET_NAME" required:"true"`
+	ObjectStoreEndpoint  string `envconfig:"OBJECT_STORE_ENDPOINT" default:"https://t3.storage.dev"`
+	ObjectStoreRegion    string `envconfig:"OBJECT_STORE_REGION" default:"auto"`
+	ObjectStorePathStyle bool   `envconfig:"OBJECT_STORE_PATH_STYLE" default:"false"`
+	TigrisAccessKey      string `envconfig:"TIGRIS_ACCESS_KEY"`
+	TigrisSecretKey      string `envconfig:"TIGRIS_SECRET_KEY"`
 
 	// Auth Configuration
 	CookieName       string `envconfig:"SESSION_COOKIE_NAME" default:"session_id"`

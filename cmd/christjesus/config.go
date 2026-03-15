@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -53,8 +54,22 @@ func loadConfig() (*types.Config, error) {
 	return c, nil
 }
 
-func loadAWSConfig(ctx context.Context) (aws.Config, error) {
-	config, err := config.LoadDefaultConfig(ctx)
+func loadAWSConfig(ctx context.Context, appConfig *types.Config) (aws.Config, error) {
+	options := make([]func(*config.LoadOptions) error, 0, 2)
+
+	region := strings.TrimSpace(appConfig.ObjectStoreRegion)
+	if region != "" {
+		options = append(options, config.WithRegion(region))
+	}
+
+	accessKey := strings.TrimSpace(appConfig.TigrisAccessKey)
+	secretKey := strings.TrimSpace(appConfig.TigrisSecretKey)
+	if accessKey != "" && secretKey != "" {
+		provider := credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")
+		options = append(options, config.WithCredentialsProvider(provider))
+	}
+
+	config, err := config.LoadDefaultConfig(ctx, options...)
 	if err != nil {
 		return aws.Config{}, fmt.Errorf("failed to load aws config: %w", err)
 	}
