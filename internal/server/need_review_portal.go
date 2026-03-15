@@ -34,75 +34,21 @@ func (s *Service) handleGetProfileNeedReview(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	need, err := s.needsRepo.Need(ctx, needID)
+	shared, err := s.loadNeedReviewSharedData(ctx, needID)
 	if err != nil {
 		if err == types.ErrNeedNotFound {
 			http.NotFound(w, r)
 			return
 		}
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need for review portal")
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to load shared need review data for review portal")
 		s.internalServerError(w)
 		return
 	}
 
+	need := shared.Need
 	if need.UserID != userID {
 		s.redirectProfileWithError(w, r, "You do not have permission to access that need.")
 		return
-	}
-
-	story, err := s.storyRepo.GetStoryByNeedID(ctx, needID)
-	if err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch story for review portal")
-		s.internalServerError(w)
-		return
-	}
-
-	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
-	if err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch category assignments for review portal")
-		s.internalServerError(w)
-		return
-	}
-
-	categoryIDs := make([]string, 0, len(assignments))
-	for _, assignment := range assignments {
-		categoryID := strings.TrimSpace(assignment.CategoryID)
-		if categoryID != "" {
-			categoryIDs = append(categoryIDs, categoryID)
-		}
-	}
-
-	categoryByID := make(map[string]*types.NeedCategory)
-	if len(categoryIDs) > 0 {
-		categories, err := s.categoryRepo.CategoriesByIDs(ctx, categoryIDs)
-		if err != nil {
-			s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch categories for review portal")
-			s.internalServerError(w)
-			return
-		}
-
-		for _, category := range categories {
-			if category == nil {
-				continue
-			}
-			categoryByID[category.ID] = category
-		}
-	}
-
-	var primaryCategory *types.NeedCategory
-	secondaryCategories := make([]*types.NeedCategory, 0)
-	for _, assignment := range assignments {
-		category := categoryByID[assignment.CategoryID]
-		if category == nil {
-			continue
-		}
-
-		if assignment.IsPrimary {
-			primaryCategory = category
-			continue
-		}
-
-		secondaryCategories = append(secondaryCategories, category)
 	}
 
 	actions, err := s.progressRepo.ModerationActionsByNeed(ctx, needID)
@@ -115,15 +61,8 @@ func (s *Service) handleGetProfileNeedReview(w http.ResponseWriter, r *http.Requ
 	rejectionReason, rejectionNote, rejectedDocumentByID := latestRejectedFeedback(actions)
 	documentStatusByID := latestDocumentStatuses(actions)
 
-	docs, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
-	if err != nil {
-		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch documents for review portal")
-		s.internalServerError(w)
-		return
-	}
-
-	docFeedback := make([]types.NeedReviewDocumentFeedback, 0, len(docs))
-	for _, doc := range docs {
+	docFeedback := make([]types.NeedReviewDocumentFeedback, 0, len(shared.Documents))
+	for _, doc := range shared.Documents {
 		status := "Pending Review"
 		if value, ok := documentStatusByID[doc.ID]; ok {
 			status = value
@@ -157,9 +96,9 @@ func (s *Service) handleGetProfileNeedReview(w http.ResponseWriter, r *http.Requ
 	data := &types.NeedReviewPortalPageData{
 		BasePageData:        types.BasePageData{Title: "Need Review Portal"},
 		Need:                need,
-		Story:               story,
-		PrimaryCategory:     primaryCategory,
-		SecondaryCategories: secondaryCategories,
+		Story:               shared.Story,
+		PrimaryCategory:     shared.PrimaryCategory,
+		SecondaryCategories: shared.SecondaryCategories,
 		RejectionReason:     rejectionReason,
 		RejectionNote:       rejectionNote,
 		Documents:           docFeedback,

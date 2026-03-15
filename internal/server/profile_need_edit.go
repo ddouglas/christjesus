@@ -24,6 +24,14 @@ type needReviewCoreData struct {
 	Documents           []types.ReviewDocument
 }
 
+type needReviewSharedData struct {
+	Need                *types.Need
+	Story               *types.NeedStory
+	PrimaryCategory     *types.NeedCategory
+	SecondaryCategories []*types.NeedCategory
+	Documents           []types.NeedDocument
+}
+
 func (s *Service) handleGetProfileNeedEdit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	needID := strings.TrimSpace(r.PathValue("needID"))
@@ -853,6 +861,41 @@ func (s *Service) profileEditableNeed(ctx context.Context, needID string) (*type
 }
 
 func (s *Service) loadNeedReviewCoreData(ctx context.Context, needID string) (*needReviewCoreData, error) {
+	shared, err := s.loadNeedReviewSharedData(ctx, needID)
+	if err != nil {
+		return nil, err
+	}
+
+	var selectedAddress *types.UserAddress
+	if shared.Need.UserAddressID != nil && *shared.Need.UserAddressID != "" {
+		selectedAddress, err = s.userAddressRepo.ByIDAndUserID(ctx, *shared.Need.UserAddressID, shared.Need.UserID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if selectedAddress == nil {
+		selectedAddress, err = s.userAddressRepo.PrimaryByUserID(ctx, shared.Need.UserID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	reviewDocs := make([]types.ReviewDocument, 0, len(shared.Documents))
+	for _, doc := range shared.Documents {
+		reviewDocs = append(reviewDocs, types.ReviewDocument{ID: doc.ID, FileName: doc.FileName, TypeLabel: documentTypeLabel(doc.DocumentType), SizeBytes: doc.FileSizeBytes, UploadedAt: doc.UploadedAt})
+	}
+
+	return &needReviewCoreData{
+		Need:                shared.Need,
+		Story:               shared.Story,
+		PrimaryCategory:     shared.PrimaryCategory,
+		SecondaryCategories: shared.SecondaryCategories,
+		SelectedAddress:     selectedAddress,
+		Documents:           reviewDocs,
+	}, nil
+}
+
+func (s *Service) loadNeedReviewSharedData(ctx context.Context, needID string) (*needReviewSharedData, error) {
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
 		return nil, err
@@ -868,18 +911,25 @@ func (s *Service) loadNeedReviewCoreData(ctx context.Context, needID string) (*n
 		return nil, err
 	}
 
-	ids := make([]string, 0, len(assignments))
+	categoryIDs := make([]string, 0, len(assignments))
 	for _, assignment := range assignments {
-		ids = append(ids, assignment.CategoryID)
+		categoryID := strings.TrimSpace(assignment.CategoryID)
+		if categoryID == "" {
+			continue
+		}
+		categoryIDs = append(categoryIDs, categoryID)
 	}
 
 	categoryByID := make(map[string]*types.NeedCategory)
-	if len(ids) > 0 {
-		categories, err := s.categoryRepo.CategoriesByIDs(ctx, ids)
+	if len(categoryIDs) > 0 {
+		categories, err := s.categoryRepo.CategoriesByIDs(ctx, categoryIDs)
 		if err != nil {
 			return nil, err
 		}
 		for _, category := range categories {
+			if category == nil {
+				continue
+			}
 			categoryByID[category.ID] = category
 		}
 	}
@@ -887,8 +937,13 @@ func (s *Service) loadNeedReviewCoreData(ctx context.Context, needID string) (*n
 	var primaryCategory *types.NeedCategory
 	secondaryCategories := make([]*types.NeedCategory, 0)
 	for _, assignment := range assignments {
-		category, ok := categoryByID[assignment.CategoryID]
-		if !ok {
+		categoryID := strings.TrimSpace(assignment.CategoryID)
+		if categoryID == "" {
+			continue
+		}
+
+		category := categoryByID[categoryID]
+		if category == nil {
 			continue
 		}
 		if assignment.IsPrimary {
@@ -898,37 +953,17 @@ func (s *Service) loadNeedReviewCoreData(ctx context.Context, needID string) (*n
 		secondaryCategories = append(secondaryCategories, category)
 	}
 
-	var selectedAddress *types.UserAddress
-	if need.UserAddressID != nil && *need.UserAddressID != "" {
-		selectedAddress, err = s.userAddressRepo.ByIDAndUserID(ctx, *need.UserAddressID, need.UserID)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if selectedAddress == nil {
-		selectedAddress, err = s.userAddressRepo.PrimaryByUserID(ctx, need.UserID)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	docs, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
+	documents, err := s.documentRepo.DocumentsByNeedID(ctx, needID)
 	if err != nil {
 		return nil, err
 	}
 
-	reviewDocs := make([]types.ReviewDocument, 0, len(docs))
-	for _, doc := range docs {
-		reviewDocs = append(reviewDocs, types.ReviewDocument{ID: doc.ID, FileName: doc.FileName, TypeLabel: documentTypeLabel(doc.DocumentType), SizeBytes: doc.FileSizeBytes, UploadedAt: doc.UploadedAt})
-	}
-
-	return &needReviewCoreData{
+	return &needReviewSharedData{
 		Need:                need,
 		Story:               story,
 		PrimaryCategory:     primaryCategory,
 		SecondaryCategories: secondaryCategories,
-		SelectedAddress:     selectedAddress,
-		Documents:           reviewDocs,
+		Documents:           documents,
 	}, nil
 }
 
