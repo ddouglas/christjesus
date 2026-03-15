@@ -29,6 +29,7 @@ func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 		}
 
 		s.clearAccessTokenCookie(w)
+		s.clearAuthUserStateCookie(w)
 	}
 
 	s.startAuth0Authorization(w, r, "")
@@ -39,6 +40,7 @@ func (s *Service) handlePostLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) {
+	var ctx = r.Context()
 	state := strings.TrimSpace(r.URL.Query().Get("state"))
 	code := strings.TrimSpace(r.URL.Query().Get("code"))
 	if state == "" || code == "" {
@@ -94,12 +96,7 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 	}
 	req.Header.Set("content-type", "application/json")
 
-	client := s.httpClient
-	if client == nil {
-		client = &http.Client{Timeout: authOutboundTimeout}
-	}
-
-	resp, err := client.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to exchange authorization code with auth0")
 		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
@@ -126,6 +123,7 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
 	}
+
 	if claims.Nonce == "" || !subtleCompare(nonceFromCookie, claims.Nonce) {
 		s.logger.WithField("auth_subject", claims.Subject).Warn("auth callback nonce mismatch")
 		s.clearAuthFlowCookies(w)
@@ -133,10 +131,17 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if _, err := s.upsertIdentity(r.Context(), claims.Subject, claims.Email, claims.GivenName, claims.FamilyName); err != nil {
+	userID, err := s.upsertIdentity(r.Context(), claims.Subject, claims.Email, claims.GivenName, claims.FamilyName)
+	if err != nil {
 		s.logger.WithError(err).WithField("auth_subject", claims.Subject).Error("failed to sync user identity in auth callback")
 		s.internalServerError(w)
 		return
+	}
+
+	var userType string
+	user, err := s.authIdentityRepo.User(ctx, userID)
+	if err == nil && user != nil && user.UserType != nil {
+		userType = strings.TrimSpace(*user.UserType)
 	}
 
 	expiresIn := tokenResp.ExpiresIn
@@ -160,6 +165,16 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 		MaxAge:   expiresIn,
 		Path:     "/",
 	})
+
+	s.setAuthUserStateCookie(w, authUserState{
+		UserID:      userID,
+		AuthSubject: claims.Subject,
+		Email:       strings.TrimSpace(claims.Email),
+		GivenName:   strings.TrimSpace(claims.GivenName),
+		FamilyName:  strings.TrimSpace(claims.FamilyName),
+		UserType:    userType,
+		IsAdmin:     claims.IsAdmin,
+	}, expiresIn)
 
 	s.clearAuthFlowCookies(w)
 
@@ -319,6 +334,7 @@ func (s *Service) clearAccessTokenCookie(w http.ResponseWriter) {
 
 func (s *Service) handlePostLogout(w http.ResponseWriter, r *http.Request) {
 	s.clearAccessTokenCookie(w)
+	s.clearAuthUserStateCookie(w)
 	s.clearRedirectCookie(w)
 	s.clearRegisterConfirmCookie(w)
 	s.clearAuthFlowCookies(w)
@@ -335,4 +351,44 @@ func (s *Service) auth0DomainURL() string {
 		return strings.TrimRight(domain, "/")
 	}
 	return fmt.Sprintf("https://%s", strings.TrimRight(domain, "/"))
+}
+
+func (s *Service) setAuthUserStateCookie(w http.ResponseWriter, state authUserState, maxAge int) {
+	encoded, err := s.cookie.Encode(internal.COOKIE_AUTH_USER_STATE, state)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to encode auth user state cookie")
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     internal.COOKIE_AUTH_USER_STATE,
+		Value:    encoded,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   maxAge,
+		Path:     "/",
+	})
+}
+
+func (s *Service) clearAuthUserStateCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     internal.COOKIE_AUTH_USER_STATE,
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   -1,
+	})
+}
+
+func (s *Service) updateAuthUserTypeCookie(w http.ResponseWriter, r *http.Request, userType string) {
+	state, ok := s.authUserStateFromRequest(r)
+	if !ok {
+		return
+	}
+
+	state.UserType = strings.TrimSpace(userType)
+	s.setAuthUserStateCookie(w, state, s.config.SessionMaxAgeSec)
 }

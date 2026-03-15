@@ -87,6 +87,7 @@ func (s *Service) handlePostOnboarding(w http.ResponseWriter, r *http.Request) {
 			s.internalServerError(w)
 			return
 		}
+		s.updateAuthUserTypeCookie(w, r, userType)
 		s.handleCreateNeed(ctx, w, r)
 		return
 	case "donor":
@@ -97,6 +98,7 @@ func (s *Service) handlePostOnboarding(w http.ResponseWriter, r *http.Request) {
 			s.internalServerError(w)
 			return
 		}
+		s.updateAuthUserTypeCookie(w, r, userType)
 		http.Redirect(w, r, s.route(RouteOnboardingDonorWelcome, nil), http.StatusSeeOther)
 		return
 	}

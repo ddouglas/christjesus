@@ -21,8 +21,20 @@ const (
 	contextKeyUserID   contextKey = "user_id"
 	contextKeyEmail    contextKey = "email"
 	contextKeyUserName contextKey = "user_name"
+	contextKeyUserType contextKey = "user_type"
 	contextKeyIsAdmin  contextKey = "is_admin"
+	contextKeyUser     contextKey = "user"
 )
+
+type authUserState struct {
+	UserID      string
+	AuthSubject string
+	Email       string
+	GivenName   string
+	FamilyName  string
+	UserType    string
+	IsAdmin     bool
+}
 
 type responseWriter struct {
 	http.ResponseWriter
@@ -67,25 +79,86 @@ func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 			return
 		}
 
-		userID, err := s.upsertIdentity(r.Context(), claims.Subject, claims.Email, claims.GivenName, claims.FamilyName)
-		if err != nil {
-			s.logger.WithError(err).WithField("auth_subject", claims.Subject).Warn("failed to sync user identity from token")
+		state, ok := s.authUserStateFromRequest(r)
+		if !ok || strings.TrimSpace(state.AuthSubject) != strings.TrimSpace(claims.Subject) || strings.TrimSpace(state.UserID) == "" {
+			s.clearAccessTokenCookie(w)
+			s.clearAuthUserStateCookie(w)
 			next.ServeHTTP(w, r)
 			return
 		}
 
+		userID := strings.TrimSpace(state.UserID)
+		email := strings.TrimSpace(state.Email)
+		if email == "" {
+			email = strings.TrimSpace(claims.Email)
+		}
+		givenName := strings.TrimSpace(state.GivenName)
+		if givenName == "" {
+			givenName = strings.TrimSpace(claims.GivenName)
+		}
+		familyName := strings.TrimSpace(state.FamilyName)
+		if familyName == "" {
+			familyName = strings.TrimSpace(claims.FamilyName)
+		}
+
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, contextKeyUserID, userID)
-		if claims.Email != "" {
-			ctx = context.WithValue(ctx, contextKeyEmail, claims.Email)
+		if email != "" {
+			ctx = context.WithValue(ctx, contextKeyEmail, email)
 		}
-		if claims.GivenName != "" {
-			ctx = context.WithValue(ctx, contextKeyUserName, claims.GivenName)
+		if givenName != "" {
+			ctx = context.WithValue(ctx, contextKeyUserName, givenName)
+		}
+		if strings.TrimSpace(state.UserType) != "" {
+			ctx = context.WithValue(ctx, contextKeyUserType, strings.TrimSpace(state.UserType))
 		}
 		ctx = context.WithValue(ctx, contextKeyIsAdmin, claims.IsAdmin)
 
+		var userTypePtr *string
+		if strings.TrimSpace(state.UserType) != "" {
+			userType := strings.TrimSpace(state.UserType)
+			userTypePtr = &userType
+		}
+		var emailPtr *string
+		if email != "" {
+			em := email
+			emailPtr = &em
+		}
+		var givenNamePtr *string
+		if givenName != "" {
+			gn := givenName
+			givenNamePtr = &gn
+		}
+		var familyNamePtr *string
+		if familyName != "" {
+			fn := familyName
+			familyNamePtr = &fn
+		}
+		ctx = context.WithValue(ctx, contextKeyUser, types.User{
+			ID:         userID,
+			UserType:   userTypePtr,
+			Email:      emailPtr,
+			GivenName:  givenNamePtr,
+			FamilyName: familyNamePtr,
+		})
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func (s *Service) authUserStateFromRequest(r *http.Request) (authUserState, bool) {
+	var state authUserState
+
+	cookie, err := r.Cookie(internal.COOKIE_AUTH_USER_STATE)
+	if err != nil {
+		return state, false
+	}
+
+	if err := s.cookie.Decode(internal.COOKIE_AUTH_USER_STATE, cookie.Value, &state); err != nil {
+		return authUserState{}, false
+	}
+
+	return state, true
 }
 
 func (s *Service) authClaimsFromRequest(r *http.Request) (AuthClaims, bool) {
@@ -234,19 +307,8 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		if !strings.HasPrefix(r.URL.Path, RoutePattern(RouteOnboarding)) {
-			user, err := s.userRepo.User(r.Context(), userID)
-			if err != nil {
-				if errors.Is(err, types.ErrUserNotFound) {
-					http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
-					return
-				}
-
-				s.logger.WithError(err).WithField("user_id", userID).Error("failed to load user for auth gate")
-				s.internalServerError(w)
-				return
-			}
-
-			if user.UserType == nil || strings.TrimSpace(*user.UserType) == "" {
+			userType, _ := r.Context().Value(contextKeyUserType).(string)
+			if strings.TrimSpace(userType) == "" {
 				http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
 				return
 			}

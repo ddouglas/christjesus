@@ -54,10 +54,15 @@ type Service struct {
 	jwksCache        *jwk.Cache
 	jwksURL          string
 	httpClient       *http.Client
-	upsertIdentityFn func(ctx context.Context, authSubject, email, givenName, familyName string) (string, error)
+	authIdentityRepo authIdentityRepository
 
 	server    *http.Server
 	templates *template.Template
+}
+
+type authIdentityRepository interface {
+	UpsertIdentity(ctx context.Context, authSubject, email, givenName, familyName string) (string, error)
+	User(ctx context.Context, userID string) (*types.User, error)
 }
 
 func New(
@@ -106,10 +111,11 @@ func New(
 		donorPreferenceAssignRepo:   donorPreferenceAssignRepo,
 		donationIntentRepo:          donationIntentRepo,
 
-		cookie:     securecookie.New(hashKey, blockKey),
-		jwksCache:  jwkCache,
-		jwksURL:    jwksURL,
-		httpClient: &http.Client{Timeout: authOutboundTimeout},
+		cookie:           securecookie.New(hashKey, blockKey),
+		jwksCache:        jwkCache,
+		jwksURL:          jwksURL,
+		httpClient:       &http.Client{Timeout: authOutboundTimeout},
+		authIdentityRepo: userRepo,
 
 		server: &http.Server{
 			Addr:              fmt.Sprintf(":%d", config.ServerPort),
@@ -141,13 +147,10 @@ func (s *Service) Stop(ctx context.Context) error {
 }
 
 func (s *Service) upsertIdentity(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
-	if s.upsertIdentityFn != nil {
-		return s.upsertIdentityFn(ctx, authSubject, email, givenName, familyName)
-	}
-	if s.userRepo == nil {
+	if s.authIdentityRepo == nil {
 		return "", errors.New("user repository not configured")
 	}
-	return s.userRepo.UpsertIdentity(ctx, authSubject, email, givenName, familyName)
+	return s.authIdentityRepo.UpsertIdentity(ctx, authSubject, email, givenName, familyName)
 }
 
 func (s *Service) buildRouter(r *flow.Mux) {
@@ -165,7 +168,6 @@ func (s *Service) buildRouter(r *flow.Mux) {
 	r.HandleFunc(RoutePattern(RouteLogin), s.handleGetLogin, http.MethodGet)
 	r.HandleFunc(RoutePattern(RouteLogin), s.handlePostLogin, http.MethodPost)
 	r.HandleFunc(RoutePattern(RouteAuthCallback), s.handleGetAuthCallback, http.MethodGet)
-	r.HandleFunc(RoutePattern(RouteLogout), s.handlePostLogout, http.MethodGet)
 	r.HandleFunc(RoutePattern(RouteLogout), s.handlePostLogout, http.MethodPost)
 
 	r.Group(func(r *flow.Mux) {

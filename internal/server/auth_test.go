@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -21,6 +22,25 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/sirupsen/logrus"
 )
+
+type mockAuthIdentityRepo struct {
+	upsertIdentityFn func(ctx context.Context, authSubject, email, givenName, familyName string) (string, error)
+	userFn           func(ctx context.Context, userID string) (*types.User, error)
+}
+
+func (m *mockAuthIdentityRepo) UpsertIdentity(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
+	if m.upsertIdentityFn == nil {
+		return "", errors.New("upsertIdentityFn not configured")
+	}
+	return m.upsertIdentityFn(ctx, authSubject, email, givenName, familyName)
+}
+
+func (m *mockAuthIdentityRepo) User(ctx context.Context, userID string) (*types.User, error) {
+	if m.userFn == nil {
+		return nil, errors.New("userFn not configured")
+	}
+	return m.userFn(ctx, userID)
+}
 
 func TestSubtleCompare_CallbackSecrets(t *testing.T) {
 	t.Parallel()
@@ -144,12 +164,20 @@ func TestHandleGetAuthCallback_Success(t *testing.T) {
 	t.Cleanup(auth0.Close)
 
 	s := newAuthCallbackTestService(t, auth0.URL, issuer, clientID, jwksURL)
-	s.upsertIdentityFn = func(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
+	mockRepo := &mockAuthIdentityRepo{}
+	mockRepo.upsertIdentityFn = func(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
 		if authSubject == "" {
 			t.Fatal("expected non-empty auth subject")
 		}
 		return "user_123", nil
 	}
+	mockRepo.userFn = func(ctx context.Context, userID string) (*types.User, error) {
+		if userID == "" {
+			t.Fatal("expected non-empty user id")
+		}
+		return &types.User{ID: userID}, nil
+	}
+	s.authIdentityRepo = mockRepo
 
 	req := httptest.NewRequest(http.MethodGet, "/auth/callback?state="+state+"&code=abc123", nil)
 	addEncodedCookie(t, s, req, internal.COOKIE_AUTH_STATE, state)
@@ -215,10 +243,15 @@ func TestHandleGetAuthCallback_NonceMismatch(t *testing.T) {
 	t.Cleanup(auth0.Close)
 
 	s := newAuthCallbackTestService(t, auth0.URL, issuer, clientID, jwksURL)
-	s.upsertIdentityFn = func(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
+	mockRepo := &mockAuthIdentityRepo{}
+	mockRepo.upsertIdentityFn = func(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
 		t.Fatal("upsertIdentity should not be called on nonce mismatch")
 		return "", nil
 	}
+	mockRepo.userFn = func(ctx context.Context, userID string) (*types.User, error) {
+		return &types.User{ID: userID}, nil
+	}
+	s.authIdentityRepo = mockRepo
 
 	req := httptest.NewRequest(http.MethodGet, "/auth/callback?state="+state+"&code=abc123", nil)
 	addEncodedCookie(t, s, req, internal.COOKIE_AUTH_STATE, state)
@@ -300,6 +333,14 @@ func newAuthCallbackTestService(t *testing.T, auth0Domain, issuer, clientID, jwk
 		jwksCache:  cache,
 		jwksURL:    jwksURL,
 		httpClient: &http.Client{Timeout: 250 * time.Millisecond},
+		authIdentityRepo: &mockAuthIdentityRepo{
+			upsertIdentityFn: func(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
+				return "user_123", nil
+			},
+			userFn: func(ctx context.Context, userID string) (*types.User, error) {
+				return &types.User{ID: userID}, nil
+			},
+		},
 	}
 }
 
