@@ -1,0 +1,12 @@
+.git
+.github
+.claude
+.bin
+.env
+.env.*
+.air.toml
+docker-compose.yaml
+terraform
+docs
+*.md
+justfile

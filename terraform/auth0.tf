@@ -26,17 +26,9 @@ resource "auth0_client" "web" {
     lifetime_in_seconds = 86400
   }
 
-  callbacks = [
-    var.auth0_app_callback_url,
-  ]
-
-  allowed_logout_urls = [
-    var.auth0_app_logout_url,
-  ]
-
-  web_origins = [
-    var.auth0_app_origin,
-  ]
+  callbacks           = var.auth0_app_callback_urls
+  allowed_logout_urls = var.auth0_app_logout_urls
+  web_origins         = var.auth0_app_origins
 }
 
 resource "auth0_connection_clients" "users_web" {

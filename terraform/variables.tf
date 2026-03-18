@@ -30,20 +30,20 @@ variable "auth0_db_connection_name" {
   default     = "christjesus"
 }
 
-variable "auth0_app_origin" {
-  type        = string
-  description = "Allowed web origin for the Auth0 web application"
-  default     = "http://localhost:8080"
+variable "auth0_app_origins" {
+  type        = list(string)
+  description = "Allowed web origins for the Auth0 web application"
+  default     = ["http://localhost:8080"]
 }
 
-variable "auth0_app_callback_url" {
-  type        = string
-  description = "Allowed callback URL for the Auth0 web application"
-  default     = "http://localhost:8080/auth/callback"
+variable "auth0_app_callback_urls" {
+  type        = list(string)
+  description = "Allowed callback URLs for the Auth0 web application"
+  default     = ["http://localhost:8080/auth/callback"]
 }
 
-variable "auth0_app_logout_url" {
-  type        = string
-  description = "Allowed logout URL for the Auth0 web application"
-  default     = "http://localhost:8080/"
+variable "auth0_app_logout_urls" {
+  type        = list(string)
+  description = "Allowed logout URLs for the Auth0 web application"
+  default     = ["http://localhost:8080/"]
 }
