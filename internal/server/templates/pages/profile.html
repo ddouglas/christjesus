@@ -46,6 +46,30 @@
         </dl>
       </div>
 
+      <div id="edit-profile" class="rounded-xl border bg-background p-6">
+        <h2 class="text-xl font-semibold text-foreground">Edit Profile</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Update how your name appears throughout the site.</p>
+        <form method="POST" action="{{.UpdateNameAction}}" class="mt-4 max-w-sm space-y-4">
+          {{.CSRFField}}
+          <div class="space-y-1">
+            <label for="display_name" class="block text-sm font-medium text-foreground">Display Name</label>
+            <input
+              id="display_name"
+              name="display_name"
+              type="text"
+              value="{{.DisplayName}}"
+              maxlength="100"
+              required
+              class="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--cj-primary)]"
+            />
+          </div>
+          <button type="submit"
+            class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+            Save
+          </button>
+        </form>
+      </div>
+
       {{if eq .UserType "need"}}
       <div id="my-needs" class="rounded-xl border bg-background p-6">
         <h2 class="text-xl font-semibold text-foreground">My Needs</h2>

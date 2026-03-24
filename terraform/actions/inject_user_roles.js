@@ -5,7 +5,11 @@ exports.onExecutePostLogin = async (event, api) => {
   api.idToken.setCustomClaim(`${namespace}/roles`, roles);
   api.accessToken.setCustomClaim(`${namespace}/roles`, roles);
 
-  const displayName = event.user.given_name || event.user.nickname || null;
+  const displayName =
+    event.user.user_metadata?.display_name ||
+    event.user.given_name ||
+    event.user.nickname ||
+    null;
   if (displayName) {
     api.idToken.setCustomClaim(`${namespace}/display_name`, displayName);
   }

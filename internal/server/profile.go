@@ -2,6 +2,8 @@ package server
 
 import (
 	"christjesus/pkg/types"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -204,9 +206,11 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		UserID:            userID,
 		UserEmail:         userEmail,
 		WelcomeName:       userName,
+		DisplayName:       userName,
 		UserType:          userType,
 		Notice:            strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:             strings.TrimSpace(r.URL.Query().Get("error")),
+		UpdateNameAction:  s.route(RouteProfileUpdateName, nil),
 		SidebarItems:      buildProfileSidebar(userType),
 		Needs:             myNeeds,
 		NeedSummaries:     needSummaries,
@@ -351,9 +355,130 @@ func formatDonationStatus(status string) string {
 	}
 }
 
+func (s *Service) handlePostProfileUpdateName(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if err := r.ParseForm(); err != nil {
+		s.redirectProfileWithError(w, r, "Invalid form submission.")
+		return
+	}
+
+	displayName := strings.TrimSpace(r.FormValue("display_name"))
+	if displayName == "" {
+		s.redirectProfileWithError(w, r, "Display name cannot be empty.")
+		return
+	}
+	if len([]rune(displayName)) > 100 {
+		s.redirectProfileWithError(w, r, "Display name must be 100 characters or fewer.")
+		return
+	}
+
+	state, ok := s.authUserStateFromRequest(r)
+	if !ok {
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
+
+	authSubject := strings.TrimSpace(state.AuthSubject)
+	if authSubject == "" {
+		s.redirectProfileWithError(w, r, "Unable to update profile: missing identity.")
+		return
+	}
+
+	if strings.TrimSpace(s.config.Auth0MgmtClientID) != "" && strings.TrimSpace(s.config.Auth0MgmtClientSecret) != "" {
+		if err := s.auth0UpdateUserDisplayName(ctx, authSubject, displayName); err != nil {
+			s.logger.WithError(err).WithField("auth_subject", authSubject).Error("failed to update Auth0 user display name")
+			s.redirectProfileWithError(w, r, "Unable to update profile. Please try again later.")
+			return
+		}
+	}
+
+	state.DisplayName = displayName
+	s.setAuthUserStateCookie(w, state, s.config.SessionMaxAgeSec)
+
+	s.redirectProfileWithNotice(w, r, "Display name updated.")
+}
+
+func (s *Service) auth0ManagementToken(ctx context.Context) (string, error) {
+	payload := map[string]string{
+		"client_id":     s.config.Auth0MgmtClientID,
+		"client_secret": s.config.Auth0MgmtClientSecret,
+		"audience":      strings.TrimRight(s.auth0DomainURL(), "/") + "/api/v2/",
+		"grant_type":    "client_credentials",
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("marshal token request: %w", err)
+	}
+
+	tokenURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/oauth/token"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(string(body)))
+	if err != nil {
+		return "", fmt.Errorf("create token request: %w", err)
+	}
+	req.Header.Set("content-type", "application/json")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("execute token request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("decode token response: %w", err)
+	}
+
+	if resp.StatusCode >= 400 || strings.TrimSpace(result.AccessToken) == "" {
+		return "", fmt.Errorf("management token request failed with status %d", resp.StatusCode)
+	}
+
+	return result.AccessToken, nil
+}
+
+func (s *Service) auth0UpdateUserDisplayName(ctx context.Context, authSubject, displayName string) error {
+	token, err := s.auth0ManagementToken(ctx)
+	if err != nil {
+		return fmt.Errorf("get management token: %w", err)
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"user_metadata": map[string]string{
+			"display_name": displayName,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("marshal user update: %w", err)
+	}
+
+	patchURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/api/v2/users/" + url.PathEscape(authSubject)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, patchURL, strings.NewReader(string(body)))
+	if err != nil {
+		return fmt.Errorf("create patch request: %w", err)
+	}
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("authorization", "Bearer "+token)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("execute patch request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("user update failed with status %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 func buildProfileSidebar(userType string) []types.ProfileNavItem {
 	items := []types.ProfileNavItem{
 		{Label: "Profile Overview", Href: "#overview", Active: true, Section: "overview", ShowItem: true},
+		{Label: "Edit Profile", Href: "#edit-profile", Active: false, Section: "edit-profile", ShowItem: true},
 		{Label: "My Needs", Href: "#my-needs", Active: false, Section: "my-needs", ShowItem: userType == string(types.UserTypeNeed)},
 		{Label: "Need Status", Href: "#need-status", Active: false, Section: "need-status", ShowItem: userType == string(types.UserTypeNeed)},
 		{Label: "Donation History", Href: "#donations", Active: false, Section: "donations", ShowItem: userType == string(types.UserTypeDonor)},

@@ -324,9 +324,11 @@ type ProfilePageData struct {
 	UserID            string
 	UserEmail         string
 	WelcomeName       string
+	DisplayName       string
 	UserType          string
 	Notice            string
 	Error             string
+	UpdateNameAction  string
 	SidebarItems      []ProfileNavItem
 	Needs             []*Need
 	NeedSummaries     []ProfileNeedSummary
