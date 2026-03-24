@@ -7,10 +7,12 @@ exports.onExecutePostLogin = async (event, api) => {
 
   const displayName =
     event.user.user_metadata?.display_name ||
+    event.user.user_metadata?.given_name ||
     event.user.given_name ||
     event.user.nickname ||
     null;
-  if (displayName) {
-    api.idToken.setCustomClaim(`${namespace}/display_name`, displayName);
-  }
+  if (!displayName) return
+
+  api.idToken.setCustomClaim(`${namespace}/display_name`, displayName);
+
 };

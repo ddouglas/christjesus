@@ -438,22 +438,24 @@ func (s *Service) auth0ManagementToken(ctx context.Context) (string, error) {
 }
 
 func (s *Service) auth0UpdateUserDisplayName(ctx context.Context, authSubject, displayName string) error {
+	return s.auth0PatchUser(ctx, authSubject, map[string]any{
+		"user_metadata": map[string]string{"display_name": displayName},
+	})
+}
+
+func (s *Service) auth0PatchUser(ctx context.Context, authSubject string, body map[string]any) error {
 	token, err := s.auth0ManagementToken(ctx)
 	if err != nil {
 		return fmt.Errorf("get management token: %w", err)
 	}
 
-	body, err := json.Marshal(map[string]any{
-		"user_metadata": map[string]string{
-			"display_name": displayName,
-		},
-	})
+	encoded, err := json.Marshal(body)
 	if err != nil {
-		return fmt.Errorf("marshal user update: %w", err)
+		return fmt.Errorf("marshal user patch: %w", err)
 	}
 
 	patchURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/api/v2/users/" + url.PathEscape(authSubject)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, patchURL, strings.NewReader(string(body)))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, patchURL, strings.NewReader(string(encoded)))
 	if err != nil {
 		return fmt.Errorf("create patch request: %w", err)
 	}
@@ -467,7 +469,7 @@ func (s *Service) auth0UpdateUserDisplayName(ctx context.Context, authSubject, d
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("user update failed with status %d", resp.StatusCode)
+		return fmt.Errorf("user patch failed with status %d", resp.StatusCode)
 	}
 
 	return nil

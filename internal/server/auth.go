@@ -179,6 +179,14 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 
 	s.clearAuthFlowCookies(w)
 
+	// If Auth0 has no given_name for this user (typical for database-connection
+	// registrations), send them to profile completion before continuing.
+	// The redirect cookie is left intact so it can be consumed after completion.
+	if strings.TrimSpace(claims.GivenName) == "" {
+		http.Redirect(w, r, s.route(RouteCompleteProfile, nil), http.StatusSeeOther)
+		return
+	}
+
 	s.clearRedirectCookie(w)
 
 	redirectCookie, err := r.Cookie(internal.COOKIE_REDIRECT_NAME)

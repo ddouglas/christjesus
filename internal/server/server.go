@@ -214,6 +214,8 @@ func (s *Service) buildRouter(r *flow.Mux, csrfKey []byte) {
 			r.HandleFunc(RoutePattern(RouteProfileNeedEditReview), s.handlePostProfileNeedEditReview, http.MethodPost)
 			r.HandleFunc(RoutePattern(RouteProfileDonationReceipt), s.handleGetProfileDonationReceipt, http.MethodGet)
 			r.HandleFunc(RoutePattern(RouteProfileUpdateName), s.handlePostProfileUpdateName, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteCompleteProfile), s.handleGetCompleteProfile, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteCompleteProfile), s.handlePostCompleteProfile, http.MethodPost)
 
 			r.HandleFunc(RoutePattern(RouteOnboarding), s.handleGetOnboarding, http.MethodGet)
 			r.HandleFunc(RoutePattern(RouteOnboarding), s.handlePostOnboarding, http.MethodPost)

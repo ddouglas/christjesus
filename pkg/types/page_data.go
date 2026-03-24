@@ -311,6 +311,13 @@ type DonorConfirmationPageData struct {
 	BasePageData
 }
 
+type CompleteProfilePageData struct {
+	BasePageData
+	Error      string
+	GivenName  string
+	FamilyName string
+}
+
 type ProfileNavItem struct {
 	Label    string
 	Href     string
