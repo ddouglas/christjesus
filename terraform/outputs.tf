@@ -21,3 +21,12 @@ output "auth0_db_connection_name" {
 output "auth0_admin_role_name" {
   value = auth0_role.admin.name
 }
+
+output "auth0_mgmt_client_id" {
+  value = auth0_client.mgmt.client_id
+}
+
+output "auth0_mgmt_client_secret" {
+  value     = auth0_client_credentials.mgmt.client_secret
+  sensitive = true
+}

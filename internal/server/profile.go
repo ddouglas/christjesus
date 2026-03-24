@@ -385,12 +385,10 @@ func (s *Service) handlePostProfileUpdateName(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if strings.TrimSpace(s.config.Auth0MgmtClientID) != "" && strings.TrimSpace(s.config.Auth0MgmtClientSecret) != "" {
-		if err := s.auth0UpdateUserDisplayName(ctx, authSubject, displayName); err != nil {
-			s.logger.WithError(err).WithField("auth_subject", authSubject).Error("failed to update Auth0 user display name")
-			s.redirectProfileWithError(w, r, "Unable to update profile. Please try again later.")
-			return
-		}
+	if err := s.auth0UpdateUserDisplayName(ctx, authSubject, displayName); err != nil {
+		s.logger.WithError(err).WithField("auth_subject", authSubject).Error("failed to update Auth0 user display name")
+		s.redirectProfileWithError(w, r, "Unable to update profile. Please try again later.")
+		return
 	}
 
 	state.DisplayName = displayName

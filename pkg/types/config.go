@@ -29,8 +29,8 @@ type Config struct {
 	Auth0LogoutURL    string `envconfig:"AUTH0_LOGOUT_URL" default:"http://localhost:8080/"`
 
 	// Auth0 Management API (M2M application credentials for profile updates)
-	Auth0MgmtClientID     string `envconfig:"AUTH0_MGMT_CLIENT_ID"`
-	Auth0MgmtClientSecret string `envconfig:"AUTH0_MGMT_CLIENT_SECRET"`
+	Auth0MgmtClientID     string `envconfig:"AUTH0_MGMT_CLIENT_ID" required:"true"`
+	Auth0MgmtClientSecret string `envconfig:"AUTH0_MGMT_CLIENT_SECRET" required:"true"`
 
 	// S3-compatible object storage (Tigris)
 	S3BucketName         string `envconfig:"S3_BUCKET_NAME" required:"true"`
