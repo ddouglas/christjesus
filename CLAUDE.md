@@ -69,6 +69,8 @@ The justfile loads `.env` automatically. Create `.env` from `.env.example`.
 | `AUTH0_DOMAIN` | Auth0 tenant domain (e.g. `yourtenant.us.auth0.com`) |
 | `AUTH0_CLIENT_ID` | Auth0 application client ID |
 | `AUTH0_CLIENT_SECRET` | Auth0 application client secret |
+| `AUTH0_MGMT_CLIENT_ID` | Auth0 M2M client ID for Management API (profile updates) |
+| `AUTH0_MGMT_CLIENT_SECRET` | Auth0 M2M client secret for Management API |
 | `S3_BUCKET_NAME` | Tigris bucket name for document uploads |
 
 **Optional with defaults:**
@@ -130,6 +132,21 @@ Auth0 handles identity using the **Authorization Code (OIDC)** flow.
 - `cja_csrf` — gorilla/csrf CSRF token
 
 Auth0 infrastructure (tenant, client, roles, actions) is managed via Terraform in `terraform/`.
+
+**Auth0 CLI** — useful for local admin tasks (bulk user deletion, inspecting users, etc.):
+
+```bash
+brew tap auth0/auth0-cli
+brew install auth0
+auth0 login
+```
+
+Bulk delete all users in a connection:
+```bash
+auth0 users search --query "*" --number 100 \
+  | jq -r '.[].user_id' \
+  | xargs -I {} auth0 users delete {}
+```
 
 ---
 
