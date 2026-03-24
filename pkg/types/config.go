@@ -16,8 +16,9 @@ type Config struct {
 	// Auth settings (derived from Auth0Domain/Auth0ClientID in loadConfig)
 	AuthIssuerURL  string `envconfig:"-"`
 	AuthClientID   string `envconfig:"-"`
-	AuthAdminClaim string `envconfig:"AUTH_ADMIN_CLAIM" default:"https://christjesus.app/claims/roles"`
-	AuthAdminValue string `envconfig:"AUTH_ADMIN_VALUE" default:"admin"`
+	AuthAdminClaim       string `envconfig:"AUTH_ADMIN_CLAIM" default:"https://christjesus.app/claims/roles"`
+	AuthAdminValue       string `envconfig:"AUTH_ADMIN_VALUE" default:"admin"`
+	AuthDisplayNameClaim string `envconfig:"AUTH_DISPLAY_NAME_CLAIM" default:"https://christjesus.app/claims/display_name"`
 
 	// Auth0 settings
 	Auth0Domain       string `envconfig:"AUTH0_DOMAIN"`

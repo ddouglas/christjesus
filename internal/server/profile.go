@@ -25,7 +25,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	userEmail, _ := ctx.Value(contextKeyEmail).(string)
 	userName, _ := ctx.Value(contextKeyUserName).(string)
 	if strings.TrimSpace(userName) == "" {
-		userName = displayNameFromEmail(userEmail)
+		userName = "Friend"
 	}
 
 	userType := ""

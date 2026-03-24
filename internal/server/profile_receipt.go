@@ -62,7 +62,7 @@ func (s *Service) handleGetProfileDonationReceipt(w http.ResponseWriter, r *http
 	userEmail, _ := ctx.Value(contextKeyEmail).(string)
 	userName, _ := ctx.Value(contextKeyUserName).(string)
 	if strings.TrimSpace(userName) == "" {
-		userName = displayNameFromEmail(userEmail)
+		userName = "Friend"
 	}
 
 	needLabel := strings.TrimSpace(derefString(need.ShortDescription))

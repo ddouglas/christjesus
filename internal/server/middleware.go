@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -31,6 +32,7 @@ type authUserState struct {
 	UserID      string
 	AuthSubject string
 	Email       string
+	DisplayName string
 	GivenName   string
 	FamilyName  string
 	UserType    string
@@ -43,12 +45,13 @@ type responseWriter struct {
 }
 
 type AuthClaims struct {
-	Subject    string
-	Email      string
-	GivenName  string
-	FamilyName string
-	Nonce      string
-	IsAdmin    bool
+	Subject     string
+	Email       string
+	DisplayName string
+	GivenName   string
+	FamilyName  string
+	Nonce       string
+	IsAdmin     bool
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
@@ -118,6 +121,10 @@ func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 		if email == "" {
 			email = strings.TrimSpace(claims.Email)
 		}
+		displayName := strings.TrimSpace(state.DisplayName)
+		if displayName == "" {
+			displayName = strings.TrimSpace(claims.DisplayName)
+		}
 		givenName := strings.TrimSpace(state.GivenName)
 		if givenName == "" {
 			givenName = strings.TrimSpace(claims.GivenName)
@@ -132,8 +139,8 @@ func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 		if email != "" {
 			ctx = context.WithValue(ctx, contextKeyEmail, email)
 		}
-		if givenName != "" {
-			ctx = context.WithValue(ctx, contextKeyUserName, givenName)
+		if displayName != "" {
+			ctx = context.WithValue(ctx, contextKeyUserName, displayName)
 		}
 		if strings.TrimSpace(state.UserType) != "" {
 			ctx = context.WithValue(ctx, contextKeyUserType, strings.TrimSpace(state.UserType))
@@ -243,6 +250,14 @@ func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (
 		email = ""
 	}
 
+	var displayName string
+	if claim := strings.TrimSpace(s.config.AuthDisplayNameClaim); claim != "" {
+		if err := token.Get(claim, &displayName); err != nil {
+			displayName = ""
+		}
+	}
+	displayName = strings.TrimSpace(displayName)
+
 	var givenName string
 	if err := token.Get("given_name", &givenName); err != nil {
 		givenName = ""
@@ -276,12 +291,13 @@ func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (
 	}
 
 	return AuthClaims{
-		Subject:    subject,
-		Email:      email,
-		GivenName:  givenName,
-		FamilyName: familyName,
-		Nonce:      nonce,
-		IsAdmin:    isAdmin,
+		Subject:     subject,
+		Email:       email,
+		DisplayName: displayName,
+		GivenName:   givenName,
+		FamilyName:  familyName,
+		Nonce:       nonce,
+		IsAdmin:     isAdmin,
 	}, nil
 }
 
@@ -375,17 +391,28 @@ func (s *Service) RequireAdmin(next http.Handler) http.Handler {
 }
 
 func (s *Service) csrfMiddleware(key []byte) func(http.Handler) http.Handler {
-	return csrf.Protect(key,
+	secure := s.config.Environment != "development"
+
+	opts := []csrf.Option{
 		csrf.CookieName("cja_csrf"),
 		csrf.FieldName("csrf_token"),
-		csrf.Secure(true),
+		csrf.Secure(secure),
 		csrf.SameSite(csrf.SameSiteLaxMode),
 		csrf.Path("/"),
 		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			s.logger.WithField("path", r.URL.Path).Warn("CSRF validation failed")
+			s.logger.WithFields(logrus.Fields{
+				"path":   r.URL.Path,
+				"reason": csrf.FailureReason(r).Error(),
+			}).Warn("CSRF validation failed")
 			http.Error(w, "forbidden", http.StatusForbidden)
 		})),
-	)
+	}
+
+	if u, err := url.Parse(s.config.AppBaseURL); err == nil && u.Host != "" {
+		opts = append(opts, csrf.TrustedOrigins([]string{u.Host}))
+	}
+
+	return csrf.Protect(key, opts...)
 }
 
 func (s *Service) StripTrailingSlash(next http.Handler) http.Handler {
