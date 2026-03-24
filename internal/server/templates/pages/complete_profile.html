@@ -26,8 +26,10 @@
     </div>
 
     <div class="space-y-2">
-      <label for="family_name" class="text-sm font-medium text-foreground">Last Name</label>
-      <input type="text" id="family_name" name="family_name" value="{{.FamilyName}}" maxlength="100"
+      <label for="family_name" class="text-sm font-medium text-foreground">
+        Last Name <span class="text-[color:var(--cj-error)]">*</span>
+      </label>
+      <input type="text" id="family_name" name="family_name" required value="{{.FamilyName}}" maxlength="100"
         class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         placeholder="Enter your last name" />
     </div>

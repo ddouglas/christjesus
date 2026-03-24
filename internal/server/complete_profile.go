@@ -43,6 +43,10 @@ func (s *Service) handlePostCompleteProfile(w http.ResponseWriter, r *http.Reque
 		renderErr("First name is required.")
 		return
 	}
+	if familyName == "" {
+		renderErr("Last name is required.")
+		return
+	}
 	if len([]rune(givenName)) > 100 || len([]rune(familyName)) > 100 {
 		renderErr("Name must be 100 characters or fewer.")
 		return
@@ -60,20 +64,14 @@ func (s *Service) handlePostCompleteProfile(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	metadata := map[string]string{"given_name": givenName}
-	if familyName != "" {
-		metadata["family_name"] = familyName
-	}
-
-	patchBody := map[string]any{
-		"given_name":    givenName,
-		"user_metadata": metadata,
-	}
-	if familyName != "" {
-		patchBody["family_name"] = familyName
-	}
-
-	if err := s.auth0PatchUser(ctx, authSubject, patchBody); err != nil {
+	if err := s.auth0PatchUser(ctx, authSubject, map[string]any{
+		"given_name":  givenName,
+		"family_name": familyName,
+		"user_metadata": map[string]string{
+			"given_name":  givenName,
+			"family_name": familyName,
+		},
+	}); err != nil {
 		s.logger.WithError(err).WithField("auth_subject", authSubject).Error("failed to complete user profile on Auth0")
 		renderErr("Unable to save your profile. Please try again.")
 		return
