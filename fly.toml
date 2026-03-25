@@ -8,6 +8,13 @@ primary_region = 'iad'
 
 [build]
 
+[env]
+  ENVIRONMENT = "development"
+  APP_BASE_URL = "https://christjesus.fly.dev"
+  S3_BUCKET_NAME = "christjesus-documents-development"
+  AUTH0_CALLBACK_URL = "https://christjesus.fly.dev/auth/callback"
+  AUTH0_LOGOUT_URL = "https://christjesus.fly.dev"
+
 [http_service]
   internal_port = 8080
   force_https = true
