@@ -8,3 +8,8 @@ const (
 	COOKIE_AUTH_STATE        = "cja_auth_state"
 	COOKIE_AUTH_NONCE        = "cja_auth_nonce"
 )
+
+const (
+	AuthAdminClaim string = "https://christjesus.app/claims/roles"
+	AuthAdminValue string = "admin"
+)

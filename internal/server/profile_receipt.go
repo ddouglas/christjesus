@@ -59,10 +59,11 @@ func (s *Service) handleGetProfileDonationReceipt(w http.ResponseWriter, r *http
 		return
 	}
 
-	userEmail, _ := ctx.Value(contextKeyEmail).(string)
-	userName, _ := ctx.Value(contextKeyUserName).(string)
-	if strings.TrimSpace(userName) == "" {
-		userName = displayNameFromEmail(userEmail)
+	session, ok := sessionFromRequest(r)
+	if !ok {
+		s.logger.Error("session not found on context")
+		s.internalServerError(w)
+		return
 	}
 
 	needLabel := strings.TrimSpace(derefString(need.ShortDescription))
@@ -103,7 +104,7 @@ func (s *Service) handleGetProfileDonationReceipt(w http.ResponseWriter, r *http
 		Status:      formatDonationStatus(intent.PaymentStatus),
 		IsAnonymous: intent.IsAnonymous,
 		CreatedAt:   intent.CreatedAt.Format("Jan 2, 2006 3:04 PM MST"),
-	}, userName, userEmail, s.config.AppBaseURL)
+	}, session.DisplayName, session.Email, s.config.AppBaseURL)
 	if err != nil {
 		s.logger.WithError(err).WithField("intent_id", intent.ID).Error("failed to generate donation receipt pdf")
 		s.internalServerError(w)

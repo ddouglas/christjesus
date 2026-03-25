@@ -5,39 +5,68 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 )
 
 func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	userID, err := s.userIDFromContext(ctx)
-	if err != nil {
-		s.logger.WithError(err).Error("user id not found in context")
-		s.internalServerError(w)
+	session, ok := sessionFromRequest(r)
+	if !ok {
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
 	}
 
-	user, err := s.userRepo.User(ctx, userID)
-	if err != nil {
-		if !errors.Is(err, types.ErrUserNotFound) {
-			s.logger.WithError(err).WithField("user_id", userID).Error("failed to load user from datastore")
-			s.internalServerError(w)
-			return
-		}
-	} else if user.UserType != nil {
-		switch *user.UserType {
-		case string(types.UserTypeNeed):
-			s.redirectNeedOnboarding(ctx, w, r, userID)
-			return
-		case string(types.UserTypeDonor):
-			http.Redirect(w, r, s.route(RouteOnboardingDonorPreferences, nil), http.StatusSeeOther)
-			return
-		}
+	if strings.TrimSpace(session.GivenName) == "" {
+		http.Redirect(w, r, s.route(RouteOnboardingAboutYou, nil), http.StatusSeeOther)
+		return
 	}
+
+	if strings.TrimSpace(session.UserType) == "" {
+		http.Redirect(w, r, s.route(RouteOnboardingHowWeServeYou, nil), http.StatusSeeOther)
+		return
+	}
+
+	ctx := r.Context()
+	switch session.UserType {
+	case string(types.UserTypeNeed):
+		s.redirectNeedOnboarding(ctx, w, r, session.UserID)
+	case string(types.UserTypeDonor):
+		http.Redirect(w, r, s.route(RouteOnboardingDonorPreferences, nil), http.StatusSeeOther)
+	default:
+		http.Redirect(w, r, s.route(RouteOnboardingHowWeServeYou, nil), http.StatusSeeOther)
+	}
+}
+
+func (s *Service) handleGetOnboardingHowWeServeYou(w http.ResponseWriter, r *http.Request) {
+	// ctx := r.Context()
+
+	// userID, err := s.userIDFromContext(ctx)
+	// if err != nil {
+	// 	s.logger.WithError(err).Error("user id not found in context")
+	// 	s.internalServerError(w)
+	// 	return
+	// }
+
+	// user, err := s.userRepo.User(ctx, userID)
+	// if err != nil {
+	// 	if !errors.Is(err, types.ErrUserNotFound) {
+	// 		s.logger.WithError(err).WithField("user_id", userID).Error("failed to load user from datastore")
+	// 		s.internalServerError(w)
+	// 		return
+	// 	}
+	// } else if user.UserType != nil {
+	// 	switch *user.UserType {
+	// 	case string(types.UserTypeNeed):
+	// 		s.redirectNeedOnboarding(ctx, w, r, userID)
+	// 		return
+	// 	case string(types.UserTypeDonor):
+	// 		http.Redirect(w, r, s.route(RouteOnboardingDonorPreferences, nil), http.StatusSeeOther)
+	// 		return
+	// 	}
+	// }
 
 	data := &types.OnboardingPageData{BasePageData: types.BasePageData{Title: "Onboarding"}}
 
-	err = s.renderTemplate(w, r, "page.onboarding", data)
+	err := s.renderTemplate(w, r, "page.onboarding", data)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to render need welcome page")
 		s.internalServerError(w)
@@ -49,7 +78,7 @@ type onboardingDirector struct {
 	Path string `form:"path"`
 }
 
-func (s *Service) handlePostOnboarding(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handlePostOnboardingHowWeServeYou(w http.ResponseWriter, r *http.Request) {
 
 	var ctx = r.Context()
 
@@ -151,34 +180,16 @@ func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWri
 		return
 	}
 
-	stepPath := "welcome"
-	switch need.CurrentStep {
-	case types.NeedStepWelcome:
-		stepPath = "welcome"
-	case types.NeedStepLocation:
-		stepPath = "location"
-	case types.NeedStepCategories:
-		stepPath = "categories"
-	case types.NeedStepStory:
-		stepPath = "story"
-	case types.NeedStepDocuments:
-		stepPath = "documents"
-	case types.NeedStepReview:
-		stepPath = "review"
-	case types.NeedStepComplete:
-		stepPath = "confirmation"
+	nextRouteByStep := map[types.NeedStep]RouteName{
+		types.NeedStepWelcome:    RouteOnboardingNeedWelcome,
+		types.NeedStepLocation:   RouteOnboardingNeedLocation,
+		types.NeedStepCategories: RouteOnboardingNeedCategories,
+		types.NeedStepStory:      RouteOnboardingNeedStory,
+		types.NeedStepDocuments:  RouteOnboardingNeedDocuments,
+		types.NeedStepReview:     RouteOnboardingNeedReview,
+		types.NeedStepComplete:   RouteOnboardingNeedConfirmation,
 	}
-
-	nextRouteByStep := map[string]RouteName{
-		"welcome":      RouteOnboardingNeedWelcome,
-		"location":     RouteOnboardingNeedLocation,
-		"categories":   RouteOnboardingNeedCategories,
-		"story":        RouteOnboardingNeedStory,
-		"documents":    RouteOnboardingNeedDocuments,
-		"review":       RouteOnboardingNeedReview,
-		"confirmation": RouteOnboardingNeedConfirmation,
-	}
-	nextRoute, ok := nextRouteByStep[stepPath]
+	nextRoute, ok := nextRouteByStep[need.CurrentStep]
 	if !ok {
 		nextRoute = RouteOnboardingNeedWelcome
 	}

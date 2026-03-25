@@ -35,7 +35,7 @@ func serve(cCtx *cli.Context) error {
 	defer stop()
 
 	logger := logrus.New()
-	logger.SetFormatter(&logrus.JSONFormatter{})
+	// logger.SetFormatter(&logrus.JSONFormatter{})
 
 	config, err := loadConfig()
 	if err != nil {

@@ -213,10 +213,14 @@ func (s *Service) buildRouter(r *flow.Mux, csrfKey []byte) {
 			r.HandleFunc(RoutePattern(RouteProfileNeedEditReview), s.handleGetProfileNeedEditReview, http.MethodGet)
 			r.HandleFunc(RoutePattern(RouteProfileNeedEditReview), s.handlePostProfileNeedEditReview, http.MethodPost)
 			r.HandleFunc(RoutePattern(RouteProfileDonationReceipt), s.handleGetProfileDonationReceipt, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteProfileUpdateName), s.handlePostProfileUpdateName, http.MethodPost)
 
 			r.HandleFunc(RoutePattern(RouteOnboarding), s.handleGetOnboarding, http.MethodGet)
-			r.HandleFunc(RoutePattern(RouteOnboarding), s.handlePostOnboarding, http.MethodPost)
-
+			// r.HandleFunc(RoutePattern(RouteOnboarding), s.handlePostOnboarding, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingAboutYou), s.handleGetOnboardingAboutYou, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboardingAboutYou), s.handlePostOnboardingAboutYou, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingHowWeServeYou), s.handleGetOnboardingHowWeServeYou, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteOnboardingHowWeServeYou), s.handlePostOnboardingHowWeServeYou, http.MethodPost)
 			r.HandleFunc(RoutePattern(RouteOnboardingNeedWelcome), s.handleGetOnboardingNeedWelcome, http.MethodGet)
 			r.HandleFunc(RoutePattern(RouteOnboardingNeedWelcome), s.handlePostOnboardingNeedWelcome, http.MethodPost)
 			r.HandleFunc(RoutePattern(RouteOnboardingNeedLocation), s.handleGetOnboardingNeedLocation, http.MethodGet)
@@ -403,9 +407,15 @@ func templateFuncMap() template.FuncMap {
 }
 
 func (s *Service) userIDFromContext(ctx context.Context) (string, error) {
-	userID, ok := ctx.Value(contextKeyUserID).(string)
+
+	session, ok := ctx.Value(contextKeySession).(*AuthSession)
 	if !ok {
-		return "", fmt.Errorf("user id not found in context")
+		return "", fmt.Errorf("session not found on context")
 	}
-	return userID, nil
+
+	if session.UserID == "" {
+		return "", fmt.Errorf("user id not found on context")
+	}
+
+	return session.UserID, nil
 }

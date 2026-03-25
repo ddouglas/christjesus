@@ -2,6 +2,8 @@ resource "auth0_tenant" "christjesus" {
   friendly_name = var.workspace != "production" ? "ChristJesus ${title(var.workspace)}" : "ChristJesus"
 }
 
+data "auth0_tenant" "current" {}
+
 resource "auth0_connection" "users" {
   name     = "${var.auth0_db_connection_name}-${var.workspace}"
   strategy = "auth0"
@@ -42,6 +44,24 @@ resource "auth0_client_credentials" "web" {
   client_id = auth0_client.web.id
 
   authentication_method = "client_secret_post"
+}
+
+resource "auth0_client" "mgmt" {
+  name     = "ChristJesus Management"
+  app_type = "non_interactive"
+
+  grant_types = ["client_credentials"]
+}
+
+resource "auth0_client_credentials" "mgmt" {
+  client_id             = auth0_client.mgmt.id
+  authentication_method = "client_secret_post"
+}
+
+resource "auth0_client_grant" "mgmt_users" {
+  client_id = auth0_client.mgmt.id
+  audience  = "https://${data.auth0_tenant.current.domain}/api/v2/"
+  scopes    = ["update:users"]
 }
 
 

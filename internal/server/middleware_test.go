@@ -46,7 +46,9 @@ func TestRequireAdmin_NonAdminForbidden(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
-	req = req.WithContext(context.WithValue(req.Context(), contextKeyUserID, "user_123"))
+	req = req.WithContext(context.WithValue(req.Context(), contextKeySession, &AuthSession{
+		UserID: "user_123",
+	}))
 	rr := httptest.NewRecorder()
 
 	h.ServeHTTP(rr, req)
@@ -68,8 +70,10 @@ func TestRequireAdmin_AdminPasses(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
-	ctx := context.WithValue(req.Context(), contextKeyUserID, "admin_123")
-	ctx = context.WithValue(ctx, contextKeyIsAdmin, true)
+	ctx := context.WithValue(req.Context(), contextKeySession, &AuthSession{
+		UserID:  "admin_123",
+		IsAdmin: true,
+	})
 	req = req.WithContext(ctx)
 	rr := httptest.NewRecorder()
 

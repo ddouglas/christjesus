@@ -60,6 +60,7 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
 	}
+
 	nonceCookie, err := r.Cookie(internal.COOKIE_AUTH_NONCE)
 	if err != nil {
 		s.clearAuthFlowCookies(w)
@@ -178,7 +179,14 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 
 	s.clearAuthFlowCookies(w)
 
-	s.clearRedirectCookie(w)
+	// If Auth0 has no given_name for this user (typical for database-connection
+	// registrations), send them to profile completion before continuing.
+	// The redirect cookie is left intact so it can be consumed after completion.
+	if strings.TrimSpace(claims.GivenName) == "" {
+		s.clearRedirectCookie(w)
+		http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
+		return
+	}
 
 	redirectCookie, err := r.Cookie(internal.COOKIE_REDIRECT_NAME)
 	if err != nil {
@@ -353,7 +361,7 @@ func (s *Service) handlePostLogout(w http.ResponseWriter, r *http.Request) {
 	s.clearAccessTokenCookie(w)
 	s.clearAuthUserStateCookie(w)
 	s.clearRedirectCookie(w)
-	s.clearRegisterConfirmCookie(w)
+	// s.clearRegisterConfirmCookie(w)
 	s.clearAuthFlowCookies(w)
 	logoutURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/v2/logout"
 	v := url.Values{}

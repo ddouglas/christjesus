@@ -169,7 +169,14 @@ func (s *Service) handleGetAdminNeedReview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	viewerUserID, _ := r.Context().Value(contextKeyUserID).(string)
+	session, ok := sessionFromRequest(r)
+	if !ok {
+		s.logger.WithError(err).WithField("need_id", needID).Error("failed to fetch need review messages for admin review")
+		s.internalServerError(w)
+		return
+	}
+
+	viewerUserID := session.UserID
 
 	timeline := make([]*types.AdminNeedTimelineItem, 0, len(moderationTimeline))
 	for _, item := range moderationTimeline {
@@ -370,11 +377,14 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	actorUserID, ok := r.Context().Value(contextKeyUserID).(string)
-	if !ok || strings.TrimSpace(actorUserID) == "" {
+	session, ok := sessionFromRequest(r)
+	if !ok {
+		s.logger.Error("session not found on context")
 		s.redirectAdminNeedReviewWithError(w, r, needID, "missing actor identity")
 		return
 	}
+
+	actorUserID := session.UserID
 
 	var reasonPtr *string
 	if reason != "" {
@@ -434,11 +444,14 @@ func (s *Service) handlePostAdminNeedMessage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	actorUserID, ok := r.Context().Value(contextKeyUserID).(string)
-	if !ok || strings.TrimSpace(actorUserID) == "" {
+	session, ok := sessionFromRequest(r)
+	if !ok {
+		s.logger.Error("session not found on context")
 		s.redirectAdminNeedReviewWithError(w, r, needID, "missing actor identity")
 		return
 	}
+
+	actorUserID := session.UserID
 
 	if _, err := s.needsRepo.Need(r.Context(), needID); err != nil {
 		if errors.Is(err, types.ErrNeedNotFound) {

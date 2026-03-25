@@ -4,4 +4,5 @@ exports.onExecutePostLogin = async (event, api) => {
 
   api.idToken.setCustomClaim(`${namespace}/roles`, roles);
   api.accessToken.setCustomClaim(`${namespace}/roles`, roles);
+
 };

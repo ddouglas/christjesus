@@ -14,10 +14,10 @@ type Config struct {
 	StripeWebhookSecret  string `envconfig:"STRIPE_WEBHOOK_SECRET"`
 
 	// Auth settings (derived from Auth0Domain/Auth0ClientID in loadConfig)
-	AuthIssuerURL  string `envconfig:"-"`
-	AuthClientID   string `envconfig:"-"`
-	AuthAdminClaim string `envconfig:"AUTH_ADMIN_CLAIM" default:"https://christjesus.app/claims/roles"`
-	AuthAdminValue string `envconfig:"AUTH_ADMIN_VALUE" default:"admin"`
+	AuthIssuerURL string `envconfig:"-"`
+	AuthClientID  string `envconfig:"-"`
+
+	AuthDisplayNameClaim string `envconfig:"AUTH_DISPLAY_NAME_CLAIM" default:"https://christjesus.app/claims/display_name"`
 
 	// Auth0 settings
 	Auth0Domain       string `envconfig:"AUTH0_DOMAIN"`
@@ -26,6 +26,10 @@ type Config struct {
 	Auth0Audience     string `envconfig:"AUTH0_AUDIENCE"`
 	Auth0CallbackURL  string `envconfig:"AUTH0_CALLBACK_URL" default:"http://localhost:8080/auth/callback"`
 	Auth0LogoutURL    string `envconfig:"AUTH0_LOGOUT_URL" default:"http://localhost:8080/"`
+
+	// Auth0 Management API (M2M application credentials for profile updates)
+	Auth0MgmtClientID     string `envconfig:"AUTH0_MGMT_CLIENT_ID" required:"true"`
+	Auth0MgmtClientSecret string `envconfig:"AUTH0_MGMT_CLIENT_SECRET" required:"true"`
 
 	// S3-compatible object storage (Tigris)
 	S3BucketName         string `envconfig:"S3_BUCKET_NAME" required:"true"`

@@ -2,6 +2,8 @@ package server
 
 import (
 	"christjesus/pkg/types"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,24 +17,22 @@ import (
 func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := s.userIDFromContext(ctx)
-	if err != nil {
-		s.logger.WithError(err).Error("user id not found in context")
+	session, ok := sessionFromRequest(r)
+	if !ok {
+		s.logger.Error("session not found on context")
 		s.internalServerError(w)
 		return
 	}
 
-	userEmail, _ := ctx.Value(contextKeyEmail).(string)
-	userName, _ := ctx.Value(contextKeyUserName).(string)
-	if strings.TrimSpace(userName) == "" {
-		userName = displayNameFromEmail(userEmail)
+	if strings.TrimSpace(session.DisplayName) == "" {
+		session.DisplayName = "Friend"
 	}
 
 	userType := ""
-	user, err := s.userRepo.User(ctx, userID)
+	user, err := s.userRepo.User(ctx, session.UserID)
 	if err != nil {
 		if !errors.Is(err, types.ErrUserNotFound) {
-			s.logger.WithError(err).WithField("user_id", userID).Error("failed to fetch user for profile")
+			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to fetch user for profile")
 			s.internalServerError(w)
 			return
 		}
@@ -44,10 +44,10 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	needSummaries := make([]types.ProfileNeedSummary, 0)
 	donationSummaries := make([]types.ProfileDonationSummary, 0)
 	if userType == string(types.UserTypeNeed) {
-		needs, err := s.needsRepo.NeedsByUser(ctx, userID)
+		needs, err := s.needsRepo.NeedsByUser(ctx, session.UserID)
 		if err != nil {
 			if !errors.Is(err, types.ErrNeedNotFound) {
-				s.logger.WithError(err).WithField("user_id", userID).Error("failed to fetch needs for profile")
+				s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to fetch needs for profile")
 				s.internalServerError(w)
 				return
 			}
@@ -61,7 +61,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 			allAssignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
 			if err != nil {
-				s.logger.WithError(err).WithField("user_id", userID).Error("failed to batch fetch need category assignments for profile")
+				s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to batch fetch need category assignments for profile")
 				s.internalServerError(w)
 				return
 			}
@@ -127,9 +127,9 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if userType == string(types.UserTypeDonor) {
-		intents, err := s.donationIntentRepo.DonationIntentsByDonorUserID(ctx, userID)
+		intents, err := s.donationIntentRepo.DonationIntentsByDonorUserID(ctx, session.UserID)
 		if err != nil {
-			s.logger.WithError(err).WithField("user_id", userID).Error("failed to fetch donation intents for profile")
+			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to fetch donation intents for profile")
 			s.internalServerError(w)
 			return
 		}
@@ -152,16 +152,18 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		needsByID := make(map[string]*types.Need)
 		needs, err := s.needsRepo.NeedsByIDs(ctx, distinctNeedIDs)
 		if err != nil {
-			s.logger.WithError(err).WithField("user_id", userID).Error("failed to batch fetch needs for donor profile")
+			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to batch fetch needs for donor profile")
 			s.internalServerError(w)
 			return
 		}
+
 		for _, need := range needs {
 			if need == nil {
 				continue
 			}
 			needsByID[need.ID] = need
 		}
+
 		for _, needID := range distinctNeedIDs {
 			needLabel := "Need request"
 			if need, ok := needsByID[needID]; ok {
@@ -201,12 +203,14 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.ProfilePageData{
 		BasePageData:      types.BasePageData{Title: "My Profile"},
-		UserID:            userID,
-		UserEmail:         userEmail,
-		WelcomeName:       userName,
+		UserID:            session.UserID,
+		UserEmail:         session.Email,
+		WelcomeName:       session.DisplayName,
+		DisplayName:       session.DisplayName,
 		UserType:          userType,
 		Notice:            strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:             strings.TrimSpace(r.URL.Query().Get("error")),
+		UpdateNameAction:  s.route(RouteProfileUpdateName, nil),
 		SidebarItems:      buildProfileSidebar(userType),
 		Needs:             myNeeds,
 		NeedSummaries:     needSummaries,
@@ -351,9 +355,130 @@ func formatDonationStatus(status string) string {
 	}
 }
 
+func (s *Service) handlePostProfileUpdateName(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if err := r.ParseForm(); err != nil {
+		s.redirectProfileWithError(w, r, "Invalid form submission.")
+		return
+	}
+
+	displayName := strings.TrimSpace(r.FormValue("display_name"))
+	if displayName == "" {
+		s.redirectProfileWithError(w, r, "Display name cannot be empty.")
+		return
+	}
+	if len([]rune(displayName)) > 100 {
+		s.redirectProfileWithError(w, r, "Display name must be 100 characters or fewer.")
+		return
+	}
+
+	state, ok := s.authUserStateFromRequest(r)
+	if !ok {
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
+
+	authSubject := strings.TrimSpace(state.AuthSubject)
+	if authSubject == "" {
+		s.redirectProfileWithError(w, r, "Unable to update profile: missing identity.")
+		return
+	}
+
+	if err := s.auth0UpdateUserDisplayName(ctx, authSubject, displayName); err != nil {
+		s.logger.WithError(err).WithField("auth_subject", authSubject).Error("failed to update Auth0 user display name")
+		s.redirectProfileWithError(w, r, "Unable to update profile. Please try again later.")
+		return
+	}
+
+	// state.DisplayName = displayName
+	s.setAuthUserStateCookie(w, state, s.config.SessionMaxAgeSec)
+
+	s.redirectProfileWithNotice(w, r, "Display name updated.")
+}
+
+func (s *Service) auth0ManagementToken(ctx context.Context) (string, error) {
+	payload := map[string]string{
+		"client_id":     s.config.Auth0MgmtClientID,
+		"client_secret": s.config.Auth0MgmtClientSecret,
+		"audience":      strings.TrimRight(s.auth0DomainURL(), "/") + "/api/v2/",
+		"grant_type":    "client_credentials",
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("marshal token request: %w", err)
+	}
+
+	tokenURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/oauth/token"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(string(body)))
+	if err != nil {
+		return "", fmt.Errorf("create token request: %w", err)
+	}
+	req.Header.Set("content-type", "application/json")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("execute token request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("decode token response: %w", err)
+	}
+
+	if resp.StatusCode >= 400 || strings.TrimSpace(result.AccessToken) == "" {
+		return "", fmt.Errorf("management token request failed with status %d", resp.StatusCode)
+	}
+
+	return result.AccessToken, nil
+}
+
+func (s *Service) auth0UpdateUserDisplayName(ctx context.Context, authSubject, displayName string) error {
+	return s.auth0PatchUser(ctx, authSubject, map[string]any{
+		"user_metadata": map[string]string{"display_name": displayName},
+	})
+}
+
+func (s *Service) auth0PatchUser(ctx context.Context, authSubject string, body map[string]any) error {
+	token, err := s.auth0ManagementToken(ctx)
+	if err != nil {
+		return fmt.Errorf("get management token: %w", err)
+	}
+
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshal user patch: %w", err)
+	}
+
+	patchURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/api/v2/users/" + url.PathEscape(authSubject)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, patchURL, strings.NewReader(string(encoded)))
+	if err != nil {
+		return fmt.Errorf("create patch request: %w", err)
+	}
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("authorization", "Bearer "+token)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("execute patch request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("user patch failed with status %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 func buildProfileSidebar(userType string) []types.ProfileNavItem {
 	items := []types.ProfileNavItem{
 		{Label: "Profile Overview", Href: "#overview", Active: true, Section: "overview", ShowItem: true},
+		{Label: "Edit Profile", Href: "#edit-profile", Active: false, Section: "edit-profile", ShowItem: true},
 		{Label: "My Needs", Href: "#my-needs", Active: false, Section: "my-needs", ShowItem: userType == string(types.UserTypeNeed)},
 		{Label: "Need Status", Href: "#need-status", Active: false, Section: "need-status", ShowItem: userType == string(types.UserTypeNeed)},
 		{Label: "Donation History", Href: "#donations", Active: false, Section: "donations", ShowItem: userType == string(types.UserTypeDonor)},

@@ -13,6 +13,7 @@ require (
 	github.com/georgysavva/scany/v2 v2.1.4
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/go-playground/form/v4 v4.3.0
+	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/securecookie v1.1.2
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/k0kubun/pp/v3 v3.5.1
@@ -43,7 +44,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
-	github.com/gorilla/csrf v1.7.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect

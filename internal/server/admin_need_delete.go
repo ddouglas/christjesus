@@ -53,11 +53,14 @@ func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *h
 		return
 	}
 
-	actorUserID, ok := r.Context().Value(contextKeyUserID).(string)
-	if !ok || strings.TrimSpace(actorUserID) == "" {
+	session, ok := sessionFromRequest(r)
+	if !ok {
+		s.logger.Error("session not found on context")
 		s.redirectAdminNeedReviewWithError(w, r, needID, "missing actor identity")
 		return
 	}
+
+	actorUserID := session.UserID
 
 	if deleting {
 		if need.DeletedAt != nil {
