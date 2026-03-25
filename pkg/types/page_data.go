@@ -526,3 +526,76 @@ type AdminNeedTimelineItem struct {
 	Note       string
 	DocumentID string
 }
+
+type AdminUsersPageData struct {
+	BasePageData
+	Users        []*AdminUserListItem
+	Page         int
+	PageSize     int
+	TotalUsers   int
+	TotalPages   int
+	PrevHref     string
+	NextHref     string
+	Search       string
+	SelectedType string
+	FilterAction string
+	BackHref     string
+}
+
+type AdminUserListItem struct {
+	UserID     string
+	Email      string
+	GivenName  string
+	FamilyName string
+	UserType   string
+	CreatedAt  string
+	DetailHref string
+}
+
+type AdminUserDetailPageData struct {
+	BasePageData
+	UserID      string
+	Email       string
+	GivenName   string
+	FamilyName  string
+	AuthSubject string
+	UserType    string
+	CreatedAt   string
+	UpdatedAt   string
+	BackHref    string
+
+	// Recipient-specific
+	IsRecipient   bool
+	Needs         []*AdminUserNeedItem
+	HasNeeds      bool
+	TotalNeeds    int
+	NeedsSummary  string // e.g. "3 needs, 1 active, $450.00 raised"
+
+	// Donor-specific
+	IsDonor          bool
+	Donations        []*AdminUserDonationItem
+	HasDonations     bool
+	TotalDonations   int
+	DonationsSummary string // e.g. "5 donations, $1,200.00 total"
+}
+
+type AdminUserNeedItem struct {
+	NeedID          string
+	ShortDescription string
+	Status          NeedStatus
+	AmountNeeded    string
+	AmountRaised    string
+	FundingPercent  int
+	CreatedAt       string
+	ReviewHref      string
+}
+
+type AdminUserDonationItem struct {
+	IntentID    string
+	NeedID      string
+	NeedLabel   string
+	Amount      string
+	Status      string
+	IsAnonymous bool
+	CreatedAt   string
+}

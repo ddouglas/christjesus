@@ -27,6 +27,8 @@ const (
 	RouteAdminNeedDelete           RouteName = "admin.need.delete"
 	RouteAdminNeedRestore          RouteName = "admin.need.restore"
 	RouteAdminNeedMessage          RouteName = "admin.need.message"
+	RouteAdminUsers                RouteName = "admin.users"
+	RouteAdminUserDetail           RouteName = "admin.user.detail"
 	RouteProfileNeedDelete         RouteName = "profile.need.delete"
 	RouteProfileNeedReview         RouteName = "profile.need.review"
 	RouteProfileNeedReviewPost     RouteName = "profile.need.review.post"
@@ -101,6 +103,8 @@ var routePatterns = map[RouteName]string{
 	RouteAdminNeedDelete:               "/admin/needs/:needID/delete",
 	RouteAdminNeedRestore:              "/admin/needs/:needID/restore",
 	RouteAdminNeedMessage:              "/admin/needs/:needID/messages",
+	RouteAdminUsers:                    "/admin/users",
+	RouteAdminUserDetail:               "/admin/users/:userID",
 	RouteProfileNeedDelete:             "/profile/needs/:needID/delete",
 	RouteProfileNeedReview:             "/profile/needs/:needID/review",
 	RouteProfileNeedReviewPost:         "/profile/needs/:needID/review/messages",

@@ -1,0 +1,146 @@
+{{define "page.admin.user.detail"}}
+{{template "header" .}}
+<section class="mx-auto w-full max-w-4xl px-4 py-12 md:px-6">
+  <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Admin / Users</p>
+        <h1 class="mt-2 text-2xl font-semibold text-foreground">{{.GivenName}} {{.FamilyName}}</h1>
+      </div>
+      <div>
+        <a href="{{.BackHref}}" class="text-sm text-muted-foreground hover:text-foreground">Back to Users</a>
+      </div>
+    </div>
+
+    <dl class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wider text-muted-foreground">User ID</dt>
+        <dd class="mt-1 font-mono text-sm text-foreground">{{.UserID}}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Auth Subject</dt>
+        <dd class="mt-1 font-mono text-sm text-foreground">{{if .AuthSubject}}{{.AuthSubject}}{{else}}-{{end}}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Email</dt>
+        <dd class="mt-1 text-sm text-foreground">{{if .Email}}{{.Email}}{{else}}-{{end}}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wider text-muted-foreground">User Type</dt>
+        <dd class="mt-1 text-sm">
+          <span class="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium">{{.UserType}}</span>
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Given Name</dt>
+        <dd class="mt-1 text-sm text-foreground">{{if .GivenName}}{{.GivenName}}{{else}}-{{end}}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Family Name</dt>
+        <dd class="mt-1 text-sm text-foreground">{{if .FamilyName}}{{.FamilyName}}{{else}}-{{end}}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Created At</dt>
+        <dd class="mt-1 text-sm text-foreground">{{.CreatedAt}}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Updated At</dt>
+        <dd class="mt-1 text-sm text-foreground">{{.UpdatedAt}}</dd>
+      </div>
+    </dl>
+  </div>
+
+  {{if .IsRecipient}}
+  <div class="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-semibold text-foreground">Submitted Needs</h2>
+        {{if .HasNeeds}}
+        <p class="mt-1 text-xs text-muted-foreground">{{.NeedsSummary}}</p>
+        {{end}}
+      </div>
+    </div>
+
+    {{if .HasNeeds}}
+    <div class="mt-4 overflow-x-auto">
+      <table class="min-w-full divide-y divide-border text-sm">
+        <thead>
+          <tr class="text-left text-muted-foreground">
+            <th class="py-2 pr-4">Description</th>
+            <th class="py-2 pr-4">Status</th>
+            <th class="py-2 pr-4">Needed</th>
+            <th class="py-2 pr-4">Raised</th>
+            <th class="py-2 pr-4">Funded</th>
+            <th class="py-2 pr-4">Created</th>
+            <th class="py-2">Review</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {{range .Needs}}
+          <tr>
+            <td class="py-3 pr-4 max-w-[200px] truncate">{{if .ShortDescription}}{{.ShortDescription}}{{else}}-{{end}}</td>
+            <td class="py-3 pr-4">
+              <span class="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium">{{.Status}}</span>
+            </td>
+            <td class="py-3 pr-4">{{.AmountNeeded}}</td>
+            <td class="py-3 pr-4">{{.AmountRaised}}</td>
+            <td class="py-3 pr-4">{{.FundingPercent}}%</td>
+            <td class="py-3 pr-4">{{.CreatedAt}}</td>
+            <td class="py-3"><a href="{{.ReviewHref}}" class="text-[color:var(--cj-primary)] hover:underline">Open</a></td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <p class="mt-4 text-sm text-muted-foreground">No needs submitted yet.</p>
+    {{end}}
+  </div>
+  {{end}}
+
+  {{if .IsDonor}}
+  <div class="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-semibold text-foreground">Donation History</h2>
+        {{if .HasDonations}}
+        <p class="mt-1 text-xs text-muted-foreground">{{.DonationsSummary}}</p>
+        {{end}}
+      </div>
+    </div>
+
+    {{if .HasDonations}}
+    <div class="mt-4 overflow-x-auto">
+      <table class="min-w-full divide-y divide-border text-sm">
+        <thead>
+          <tr class="text-left text-muted-foreground">
+            <th class="py-2 pr-4">Need</th>
+            <th class="py-2 pr-4">Amount</th>
+            <th class="py-2 pr-4">Status</th>
+            <th class="py-2 pr-4">Anonymous</th>
+            <th class="py-2">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {{range .Donations}}
+          <tr>
+            <td class="py-3 pr-4 max-w-[200px] truncate">{{.NeedLabel}}</td>
+            <td class="py-3 pr-4">{{.Amount}}</td>
+            <td class="py-3 pr-4">
+              <span class="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium">{{.Status}}</span>
+            </td>
+            <td class="py-3 pr-4">{{if .IsAnonymous}}Yes{{else}}No{{end}}</td>
+            <td class="py-3">{{.CreatedAt}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <p class="mt-4 text-sm text-muted-foreground">No donations yet.</p>
+    {{end}}
+  </div>
+  {{end}}
+</section>
+{{template "footer" .}}
+{{end}}
