@@ -1,0 +1,90 @@
+{{define "page.admin.users"}}
+{{template "header" .}}
+<section class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
+  <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Admin</p>
+        <h1 class="mt-2 text-2xl font-semibold text-foreground">Users</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="{{.BackHref}}" class="text-sm text-muted-foreground hover:text-foreground">Back to Dashboard</a>
+      </div>
+    </div>
+
+    <form method="GET" action="{{.FilterAction}}" class="mt-6 flex flex-wrap items-end gap-3">
+      <div class="flex-1 min-w-[200px]">
+        <label for="search" class="block text-xs font-medium text-muted-foreground mb-1">Search</label>
+        <input type="text" id="search" name="search" value="{{.Search}}" placeholder="Name or email..."
+          class="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--cj-secondary)]" />
+      </div>
+      <div class="min-w-[140px]">
+        <label for="type" class="block text-xs font-medium text-muted-foreground mb-1">User Type</label>
+        <select id="type" name="type"
+          class="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--cj-secondary)]">
+          <option value="">All</option>
+          <option value="recipient" {{if eq .SelectedType "recipient"}}selected{{end}}>Recipient</option>
+          <option value="donor" {{if eq .SelectedType "donor"}}selected{{end}}>Donor</option>
+          <option value="sponsor" {{if eq .SelectedType "sponsor"}}selected{{end}}>Sponsor</option>
+        </select>
+      </div>
+      <button type="submit"
+        class="h-9 inline-flex items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+        Filter
+      </button>
+      {{if or .Search .SelectedType}}
+      <a href="{{.FilterAction}}"
+        class="h-9 inline-flex items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+        Clear
+      </a>
+      {{end}}
+    </form>
+
+    {{if .Users}}
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+      <p>Showing page {{.Page}} of {{.TotalPages}} ({{.TotalUsers}} users)</p>
+      <div class="flex items-center gap-2">
+        {{if .PrevHref}}
+        <a href="{{.PrevHref}}" class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">Previous</a>
+        {{end}}
+        {{if .NextHref}}
+        <a href="{{.NextHref}}" class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">Next</a>
+        {{end}}
+      </div>
+    </div>
+
+    <div class="mt-6 overflow-x-auto">
+      <table class="min-w-full divide-y divide-border text-sm">
+        <thead>
+          <tr class="text-left text-muted-foreground">
+            <th class="py-2 pr-4">Name</th>
+            <th class="py-2 pr-4">Email</th>
+            <th class="py-2 pr-4">Type</th>
+            <th class="py-2 pr-4">Created</th>
+            <th class="py-2">View</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {{range .Users}}
+          <tr>
+            <td class="py-3 pr-4">
+              <a href="{{.DetailHref}}" class="hover:underline">{{.GivenName}} {{.FamilyName}}</a>
+            </td>
+            <td class="py-3 pr-4 text-muted-foreground">{{.Email}}</td>
+            <td class="py-3 pr-4">
+              <span class="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium">{{.UserType}}</span>
+            </td>
+            <td class="py-3 pr-4">{{.CreatedAt}}</td>
+            <td class="py-3"><a href="{{.DetailHref}}" class="text-[color:var(--cj-primary)] hover:underline">Open</a></td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <p class="mt-6 text-sm text-muted-foreground">No users found.</p>
+    {{end}}
+  </div>
+</section>
+{{template "footer" .}}
+{{end}}

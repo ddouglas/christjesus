@@ -116,6 +116,78 @@ func (r *UserRepository) Update(ctx context.Context, userID string, user *types.
 	return nil
 }
 
+func (r *UserRepository) ListUsers(ctx context.Context, page, pageSize int, search, userType string) ([]*types.User, error) {
+	builder := psql().
+		Select(userColumns...).
+		From(userTableName).
+		OrderBy("created_at DESC")
+
+	search = strings.TrimSpace(search)
+	if search != "" {
+		like := "%" + search + "%"
+		builder = builder.Where(sq.Or{
+			sq.ILike{"email": like},
+			sq.ILike{"given_name": like},
+			sq.ILike{"family_name": like},
+		})
+	}
+
+	userType = strings.TrimSpace(userType)
+	if userType != "" {
+		builder = builder.Where(sq.Eq{"user_type": userType})
+	}
+
+	offset := (page - 1) * pageSize
+	builder = builder.Limit(uint64(pageSize)).Offset(uint64(offset))
+
+	query, args, err := builder.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate list users query: %w", err)
+	}
+
+	var users []*types.User
+	err = pgxscan.Select(ctx, r.pool, &users, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list users: %w", err)
+	}
+
+	return users, nil
+}
+
+func (r *UserRepository) CountUsers(ctx context.Context, search, userType string) (int, error) {
+	builder := psql().
+		Select("COUNT(*)").
+		From(userTableName)
+
+	search = strings.TrimSpace(search)
+	if search != "" {
+		like := "%" + search + "%"
+		builder = builder.Where(sq.Or{
+			sq.ILike{"email": like},
+			sq.ILike{"given_name": like},
+			sq.ILike{"family_name": like},
+		})
+	}
+
+	userType = strings.TrimSpace(userType)
+	if userType != "" {
+		builder = builder.Where(sq.Eq{"user_type": userType})
+	}
+
+	query, args, err := builder.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to generate count users query: %w", err)
+	}
+
+	var count int
+	err = r.pool.QueryRow(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count users: %w", err)
+	}
+
+	return count, nil
+}
+
 func (r *UserRepository) UpsertIdentity(ctx context.Context, authSubject, email, givenName, familyName string) (string, error) {
 	authSubject = strings.TrimSpace(authSubject)
 	if authSubject == "" {

@@ -262,6 +262,8 @@ func (s *Service) buildRouter(r *flow.Mux, csrfKey []byte) {
 			r.HandleFunc(RoutePattern(RouteAdminNeedDelete), s.handlePostAdminNeedDelete, http.MethodPost)
 			r.HandleFunc(RoutePattern(RouteAdminNeedRestore), s.handlePostAdminNeedRestore, http.MethodPost)
 			r.HandleFunc(RoutePattern(RouteAdminNeedMessage), s.handlePostAdminNeedMessage, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteAdminUsers), s.handleGetAdminUsers, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteAdminUserDetail), s.handleGetAdminUserDetail, http.MethodGet)
 		})
 	})
 
