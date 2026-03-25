@@ -5,7 +5,7 @@ import "time"
 type UserType string
 
 const (
-	UserTypeNeed    UserType = "need"
+	UserTypeRecipient UserType = "recipient"
 	UserTypeDonor   UserType = "donor"
 	UserTypeSponsor UserType = "sponsor"
 )

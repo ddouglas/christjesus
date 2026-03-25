@@ -27,7 +27,7 @@ func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	switch session.UserType {
-	case string(types.UserTypeNeed):
+	case string(types.UserTypeRecipient):
 		s.redirectNeedOnboarding(ctx, w, r, session.UserID)
 	case string(types.UserTypeDonor):
 		http.Redirect(w, r, s.route(RouteOnboardingDonorPreferences, nil), http.StatusSeeOther)
@@ -55,7 +55,7 @@ func (s *Service) handleGetOnboardingHowWeServeYou(w http.ResponseWriter, r *htt
 	// 	}
 	// } else if user.UserType != nil {
 	// 	switch *user.UserType {
-	// 	case string(types.UserTypeNeed):
+	// 	case string(types.UserTypeRecipient):
 	// 		s.redirectNeedOnboarding(ctx, w, r, userID)
 	// 		return
 	// 	case string(types.UserTypeDonor):
@@ -97,8 +97,8 @@ func (s *Service) handlePostOnboardingHowWeServeYou(w http.ResponseWriter, r *ht
 	}
 
 	switch onboarding.Path {
-	case "need":
-		userType := string(types.UserTypeNeed)
+	case "recipient":
+		userType := string(types.UserTypeRecipient)
 		err = s.setUserType(ctx, userType)
 		if err != nil {
 			s.logger.WithError(err).Error("failed to set user type")
