@@ -43,7 +43,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	myNeeds := make([]*types.Need, 0)
 	needSummaries := make([]types.ProfileNeedSummary, 0)
 	donationSummaries := make([]types.ProfileDonationSummary, 0)
-	if userType == string(types.UserTypeNeed) {
+	if userType == string(types.UserTypeRecipient) {
 		needs, err := s.needsRepo.NeedsByUser(ctx, session.UserID)
 		if err != nil {
 			if !errors.Is(err, types.ErrNeedNotFound) {
@@ -479,8 +479,8 @@ func buildProfileSidebar(userType string) []types.ProfileNavItem {
 	items := []types.ProfileNavItem{
 		{Label: "Profile Overview", Href: "#overview", Active: true, Section: "overview", ShowItem: true},
 		{Label: "Edit Profile", Href: "#edit-profile", Active: false, Section: "edit-profile", ShowItem: true},
-		{Label: "My Needs", Href: "#my-needs", Active: false, Section: "my-needs", ShowItem: userType == string(types.UserTypeNeed)},
-		{Label: "Need Status", Href: "#need-status", Active: false, Section: "need-status", ShowItem: userType == string(types.UserTypeNeed)},
+		{Label: "My Needs", Href: "#my-needs", Active: false, Section: "my-needs", ShowItem: userType == string(types.UserTypeRecipient)},
+		{Label: "Need Status", Href: "#need-status", Active: false, Section: "need-status", ShowItem: userType == string(types.UserTypeRecipient)},
 		{Label: "Donation History", Href: "#donations", Active: false, Section: "donations", ShowItem: userType == string(types.UserTypeDonor)},
 	}
 

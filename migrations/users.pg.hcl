@@ -16,7 +16,7 @@ table "users" {
   column "user_type" {
     type    = text
     null    = true
-    comment = "need, donor, sponsor"
+    comment = "recipient, donor, sponsor"
   }
 
   column "email" {
