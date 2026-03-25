@@ -60,6 +60,7 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
 	}
+
 	nonceCookie, err := r.Cookie(internal.COOKIE_AUTH_NONCE)
 	if err != nil {
 		s.clearAuthFlowCookies(w)
@@ -170,7 +171,6 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 		UserID:      userID,
 		AuthSubject: claims.Subject,
 		Email:       strings.TrimSpace(claims.Email),
-		DisplayName: claims.DisplayName,
 		GivenName:   strings.TrimSpace(claims.GivenName),
 		FamilyName:  strings.TrimSpace(claims.FamilyName),
 		UserType:    userType,
@@ -183,11 +183,10 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 	// registrations), send them to profile completion before continuing.
 	// The redirect cookie is left intact so it can be consumed after completion.
 	if strings.TrimSpace(claims.GivenName) == "" {
-		http.Redirect(w, r, s.route(RouteCompleteProfile, nil), http.StatusSeeOther)
+		s.clearRedirectCookie(w)
+		http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
 		return
 	}
-
-	s.clearRedirectCookie(w)
 
 	redirectCookie, err := r.Cookie(internal.COOKIE_REDIRECT_NAME)
 	if err != nil {
@@ -362,7 +361,7 @@ func (s *Service) handlePostLogout(w http.ResponseWriter, r *http.Request) {
 	s.clearAccessTokenCookie(w)
 	s.clearAuthUserStateCookie(w)
 	s.clearRedirectCookie(w)
-	s.clearRegisterConfirmCookie(w)
+	// s.clearRegisterConfirmCookie(w)
 	s.clearAuthFlowCookies(w)
 	logoutURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/v2/logout"
 	v := url.Values{}

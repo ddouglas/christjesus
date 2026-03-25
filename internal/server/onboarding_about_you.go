@@ -7,19 +7,24 @@ import (
 	"strings"
 )
 
-func (s *Service) handleGetCompleteProfile(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handleGetOnboardingAboutYou(w http.ResponseWriter, r *http.Request) {
 	state, ok := s.authUserStateFromRequest(r)
 	if ok && strings.TrimSpace(state.GivenName) != "" {
-		http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
 		return
 	}
 
-	s.renderTemplate(w, r, "page.complete_profile", &types.CompleteProfilePageData{
+	if err := s.renderTemplate(w, r, "page.onboarding.about_you", &types.CompleteProfilePageData{
 		BasePageData: types.BasePageData{Title: "Complete Your Profile"},
-	})
+	}); err != nil {
+		s.logger.WithError(err).Error("failed to render onboarding about you page")
+		s.internalServerError(w)
+		return
+	}
+
 }
 
-func (s *Service) handlePostCompleteProfile(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handlePostOnboardingAboutYou(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if err := r.ParseForm(); err != nil {
@@ -31,12 +36,15 @@ func (s *Service) handlePostCompleteProfile(w http.ResponseWriter, r *http.Reque
 	familyName := strings.TrimSpace(r.FormValue("family_name"))
 
 	renderErr := func(msg string) {
-		s.renderTemplate(w, r, "page.complete_profile", &types.CompleteProfilePageData{
+		err := s.renderTemplate(w, r, "page.onboarding.about_you", &types.CompleteProfilePageData{
 			BasePageData: types.BasePageData{Title: "Complete Your Profile"},
 			Error:        msg,
 			GivenName:    givenName,
 			FamilyName:   familyName,
 		})
+		if err != nil {
+			s.logger.WithError(err).Error("failed to render onboarding about you error")
+		}
 	}
 
 	if givenName == "" {
@@ -79,13 +87,12 @@ func (s *Service) handlePostCompleteProfile(w http.ResponseWriter, r *http.Reque
 
 	state.GivenName = givenName
 	state.FamilyName = familyName
-	state.DisplayName = givenName
 	s.setAuthUserStateCookie(w, state, s.config.SessionMaxAgeSec)
 
 	// Consume the pending redirect cookie if present, otherwise go home.
 	redirectCookie, err := r.Cookie(internal.COOKIE_REDIRECT_NAME)
 	if err != nil {
-		http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
 		return
 	}
 
@@ -93,7 +100,7 @@ func (s *Service) handlePostCompleteProfile(w http.ResponseWriter, r *http.Reque
 	if err := s.cookie.Decode(internal.COOKIE_REDIRECT_NAME, redirectCookie.Value, &path); err != nil ||
 		!strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
 		s.clearRedirectCookie(w)
-		http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
 		return
 	}
 

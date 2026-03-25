@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"christjesus/internal"
-	"christjesus/pkg/types"
 
 	"github.com/gorilla/csrf"
 	"github.com/lestrrat-go/jwx/v3/jwt"
@@ -20,19 +19,33 @@ import (
 type contextKey string
 
 const (
-	contextKeyUserID   contextKey = "user_id"
-	contextKeyEmail    contextKey = "email"
-	contextKeyUserName contextKey = "user_name"
-	contextKeyUserType contextKey = "user_type"
-	contextKeyIsAdmin  contextKey = "is_admin"
-	contextKeyUser     contextKey = "user"
+	contextKeySession contextKey = "session"
 )
+
+type AuthSession struct {
+	UserID      string
+	AuthSubject string
+	Email       string
+	GivenName   string
+	FamilyName  string
+	DisplayName string
+	UserType    string
+	IsAdmin     bool
+}
+
+func sessionFromRequest(r *http.Request) (*AuthSession, bool) {
+	return sessionFromContext(r.Context())
+}
+
+func sessionFromContext(ctx context.Context) (*AuthSession, bool) {
+	s, ok := ctx.Value(contextKeySession).(*AuthSession)
+	return s, ok && s != nil
+}
 
 type authUserState struct {
 	UserID      string
 	AuthSubject string
 	Email       string
-	DisplayName string
 	GivenName   string
 	FamilyName  string
 	UserType    string
@@ -45,13 +58,12 @@ type responseWriter struct {
 }
 
 type AuthClaims struct {
-	Subject     string
-	Email       string
-	DisplayName string
-	GivenName   string
-	FamilyName  string
-	Nonce       string
-	IsAdmin     bool
+	Subject    string
+	Email      string
+	GivenName  string
+	FamilyName string
+	Nonce      string
+	IsAdmin    bool
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
@@ -91,12 +103,19 @@ func (s *Service) LoggingMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(rw, r)
 
-		s.logger.WithFields(logrus.Fields{
+		entry := s.logger.WithFields(logrus.Fields{
 			"method":      r.Method,
 			"path":        r.URL.Path,
 			"status":      rw.statusCode,
 			"duration_ms": time.Since(started).Milliseconds(),
-		}).Info("http request")
+		})
+
+		if rw.statusCode >= 300 && rw.statusCode < 400 {
+			location := rw.Header().Get("location")
+			entry = entry.WithField("location", location)
+		}
+
+		entry.Info("http request")
 	})
 }
 
@@ -121,10 +140,7 @@ func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 		if email == "" {
 			email = strings.TrimSpace(claims.Email)
 		}
-		displayName := strings.TrimSpace(state.DisplayName)
-		if displayName == "" {
-			displayName = strings.TrimSpace(claims.DisplayName)
-		}
+
 		givenName := strings.TrimSpace(state.GivenName)
 		if givenName == "" {
 			givenName = strings.TrimSpace(claims.GivenName)
@@ -133,46 +149,22 @@ func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 		if familyName == "" {
 			familyName = strings.TrimSpace(claims.FamilyName)
 		}
+		displayName := strings.TrimSpace(givenName)
+		if displayName == "" {
+			displayName = "Friend"
+		}
 
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, contextKeyUserID, userID)
-		if email != "" {
-			ctx = context.WithValue(ctx, contextKeyEmail, email)
-		}
-		if displayName != "" {
-			ctx = context.WithValue(ctx, contextKeyUserName, displayName)
-		}
-		if strings.TrimSpace(state.UserType) != "" {
-			ctx = context.WithValue(ctx, contextKeyUserType, strings.TrimSpace(state.UserType))
-		}
-		ctx = context.WithValue(ctx, contextKeyIsAdmin, claims.IsAdmin)
 
-		var userTypePtr *string
-		if strings.TrimSpace(state.UserType) != "" {
-			userType := strings.TrimSpace(state.UserType)
-			userTypePtr = &userType
-		}
-		var emailPtr *string
-		if email != "" {
-			em := email
-			emailPtr = &em
-		}
-		var givenNamePtr *string
-		if givenName != "" {
-			gn := givenName
-			givenNamePtr = &gn
-		}
-		var familyNamePtr *string
-		if familyName != "" {
-			fn := familyName
-			familyNamePtr = &fn
-		}
-		ctx = context.WithValue(ctx, contextKeyUser, types.User{
-			ID:         userID,
-			UserType:   userTypePtr,
-			Email:      emailPtr,
-			GivenName:  givenNamePtr,
-			FamilyName: familyNamePtr,
+		ctx = context.WithValue(ctx, contextKeySession, &AuthSession{
+			UserID:      userID,
+			AuthSubject: state.AuthSubject,
+			Email:       email,
+			GivenName:   givenName,
+			FamilyName:  familyName,
+			DisplayName: displayName,
+			UserType:    strings.TrimSpace(state.UserType),
+			IsAdmin:     claims.IsAdmin,
 		})
 
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -194,13 +186,13 @@ func (s *Service) authUserStateFromRequest(r *http.Request) (authUserState, bool
 	return state, true
 }
 
-func (s *Service) authClaimsFromRequest(r *http.Request) (AuthClaims, bool) {
-	empty := AuthClaims{}
+func (s *Service) authClaimsFromRequest(r *http.Request) (*AuthClaims, bool) {
+	// empty := &AuthClaims{}
 
 	// 1. Get cookie
 	cookie, err := r.Cookie(internal.COOKIE_ACCESS_TOKEN_NAME)
 	if err != nil {
-		return empty, false
+		return nil, false
 	}
 
 	// 2. Decrypt token
@@ -208,24 +200,24 @@ func (s *Service) authClaimsFromRequest(r *http.Request) (AuthClaims, bool) {
 	err = s.cookie.Decode(internal.COOKIE_ACCESS_TOKEN_NAME, cookie.Value, &accessToken)
 	if err != nil {
 		s.logger.WithError(err).Debug("failed to decrypt access token")
-		return empty, false
+		return nil, false
 	}
 
 	claims, err := s.authClaimsFromToken(r.Context(), accessToken)
 	if err != nil {
-		return empty, false
+		return nil, false
 	}
 
 	return claims, true
 }
 
-func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (AuthClaims, error) {
-	empty := AuthClaims{}
+func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (*AuthClaims, error) {
+	// claims := new(AuthClaims)
 
 	set, err := s.jwksCache.Lookup(ctx, s.jwksURL)
 	if err != nil {
 		s.logger.WithError(err).Warn("failed to fetch JWKS")
-		return empty, err
+		return nil, err
 	}
 
 	token, err := jwt.Parse(
@@ -237,26 +229,18 @@ func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (
 	)
 	if err != nil {
 		s.logger.WithError(err).WithField("auth_issuer", strings.TrimSpace(s.config.AuthIssuerURL)).Warn("failed to parse JWT")
-		return empty, err
+		return nil, err
 	}
 
 	subject, ok := token.Subject()
 	if !ok || strings.TrimSpace(subject) == "" {
-		return empty, errors.New("missing subject claim")
+		return nil, errors.New("missing subject claim")
 	}
 
 	var email string
 	if err := token.Get("email", &email); err != nil {
 		email = ""
 	}
-
-	var displayName string
-	if claim := strings.TrimSpace(s.config.AuthDisplayNameClaim); claim != "" {
-		if err := token.Get(claim, &displayName); err != nil {
-			displayName = ""
-		}
-	}
-	displayName = strings.TrimSpace(displayName)
 
 	var givenName string
 	if err := token.Get("given_name", &givenName); err != nil {
@@ -277,8 +261,8 @@ func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (
 	nonce = strings.TrimSpace(nonce)
 
 	isAdmin := false
-	adminClaim := strings.TrimSpace(s.config.AuthAdminClaim)
-	adminValue := strings.TrimSpace(s.config.AuthAdminValue)
+	adminClaim := strings.TrimSpace(internal.AuthAdminClaim)
+	adminValue := strings.TrimSpace(internal.AuthAdminValue)
 	if adminClaim != "" {
 		if groups, ok := tokenStringSliceClaim(token, adminClaim); ok {
 			for _, group := range groups {
@@ -290,14 +274,13 @@ func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (
 		}
 	}
 
-	return AuthClaims{
-		Subject:     subject,
-		Email:       email,
-		DisplayName: displayName,
-		GivenName:   givenName,
-		FamilyName:  familyName,
-		Nonce:       nonce,
-		IsAdmin:     isAdmin,
+	return &AuthClaims{
+		Subject:    subject,
+		Email:      email,
+		GivenName:  givenName,
+		FamilyName: familyName,
+		Nonce:      nonce,
+		IsAdmin:    isAdmin,
 	}, nil
 }
 
@@ -316,12 +299,15 @@ func tokenStringSliceClaim(token jwt.Token, claim string) ([]string, bool) {
 	case []any:
 		out := make([]string, 0, len(v))
 		for _, item := range v {
-			if s, ok := item.(string); ok {
-				trimmed := strings.TrimSpace(s)
-				if trimmed != "" {
-					out = append(out, trimmed)
-				}
+			s, ok := item.(string)
+			if !ok {
+				continue
 			}
+			trimmed := strings.TrimSpace(s)
+			if trimmed == "" {
+				continue
+			}
+			out = append(out, trimmed)
 		}
 		if len(out) == 0 {
 			return nil, false
@@ -341,27 +327,24 @@ func tokenStringSliceClaim(token jwt.Token, claim string) ([]string, bool) {
 // RequireAuth middleware checks for valid access token and adds user to context
 func (s *Service) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID, ok := r.Context().Value(contextKeyUserID).(string)
-		if !ok || userID == "" {
+		session, ok := sessionFromRequest(r)
+		if !ok || session.UserID == "" {
 			s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
 			http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 			return
 		}
 
 		if !strings.HasPrefix(r.URL.Path, RoutePattern(RouteOnboarding)) {
-			userType, _ := r.Context().Value(contextKeyUserType).(string)
-			if strings.TrimSpace(userType) == "" {
+			if strings.TrimSpace(session.UserType) == "" {
 				http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
 				return
 			}
 		}
 
-		email, _ := r.Context().Value(contextKeyEmail).(string)
-
 		// 5. Add user info to context
 		s.logger.WithFields(logrus.Fields{
-			"user_id": userID,
-			"email":   email,
+			"user_id": session.UserID,
+			"email":   session.Email,
 		}).Debug("authenticated user")
 
 		// Continue to the next handler
@@ -373,15 +356,14 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 // RequireAdmin middleware enforces authenticated admin access.
 func (s *Service) RequireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID, ok := r.Context().Value(contextKeyUserID).(string)
-		if !ok || userID == "" {
+		session, ok := sessionFromRequest(r)
+		if !ok || session.UserID == "" {
 			s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
 			http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 			return
 		}
 
-		isAdmin, ok := r.Context().Value(contextKeyIsAdmin).(bool)
-		if !ok || !isAdmin {
+		if !session.IsAdmin {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}

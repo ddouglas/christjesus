@@ -99,14 +99,12 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var donorUserID *string
-	if userID, ok := ctx.Value(contextKeyUserID).(string); ok {
-		trimmed := strings.TrimSpace(userID)
-		if trimmed != "" {
-			donorUserID = &trimmed
-		}
+	var donorUserID string
+	if session, ok := sessionFromRequest(r); ok {
+		donorUserID = session.UserID
 	}
-	if donorUserID == nil {
+
+	if donorUserID == "" {
 		s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
 		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
 		return
@@ -115,7 +113,7 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	intent := &types.DonationIntent{
 		ID:              utils.NanoID(),
 		NeedID:          needID,
-		DonorUserID:     donorUserID,
+		DonorUserID:     utils.StringPtr(donorUserID),
 		AmountCents:     amountCents,
 		IsAnonymous:     isAnonymous,
 		PaymentProvider: types.DonationPaymentProviderStripe,
@@ -152,7 +150,7 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	successURL := s.absoluteRoute(RouteNeedDonateConfirmation, map[string]string{"needID": needID}, successQuery)
 	cancelURL := s.absoluteRoute(RouteNeedDonate, map[string]string{"needID": needID}, nil)
 
-	donorEmail := s.resolveDonorCheckoutEmail(ctx, r, donorUserID)
+	donorEmail := s.resolveDonorCheckoutEmail(ctx, r)
 
 	checkoutParams := &stripe.CheckoutSessionCreateParams{
 		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
@@ -429,9 +427,10 @@ func parseDonationAmountCents(raw string) (int, error) {
 	return amountDollars * 100, nil
 }
 
-func (s *Service) resolveDonorCheckoutEmail(ctx context.Context, r *http.Request, donorUserID *string) string {
-	if email, ok := ctx.Value(contextKeyEmail).(string); ok {
-		trimmed := strings.TrimSpace(email)
+func (s *Service) resolveDonorCheckoutEmail(ctx context.Context, r *http.Request) string {
+
+	if session, ok := sessionFromContext(ctx); ok {
+		trimmed := strings.TrimSpace(session.Email)
 		if trimmed != "" {
 			return trimmed
 		}
@@ -444,14 +443,6 @@ func (s *Service) resolveDonorCheckoutEmail(ctx context.Context, r *http.Request
 		}
 	}
 
-	if donorUserID == nil {
-		return ""
-	}
+	return ""
 
-	user, err := s.userRepo.User(ctx, *donorUserID)
-	if err != nil || user == nil || user.Email == nil {
-		return ""
-	}
-
-	return strings.TrimSpace(*user.Email)
 }

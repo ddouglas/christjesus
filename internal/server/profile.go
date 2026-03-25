@@ -17,24 +17,22 @@ import (
 func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, err := s.userIDFromContext(ctx)
-	if err != nil {
-		s.logger.WithError(err).Error("user id not found in context")
+	session, ok := sessionFromRequest(r)
+	if !ok {
+		s.logger.Error("session not found on context")
 		s.internalServerError(w)
 		return
 	}
 
-	userEmail, _ := ctx.Value(contextKeyEmail).(string)
-	userName, _ := ctx.Value(contextKeyUserName).(string)
-	if strings.TrimSpace(userName) == "" {
-		userName = "Friend"
+	if strings.TrimSpace(session.DisplayName) == "" {
+		session.DisplayName = "Friend"
 	}
 
 	userType := ""
-	user, err := s.userRepo.User(ctx, userID)
+	user, err := s.userRepo.User(ctx, session.UserID)
 	if err != nil {
 		if !errors.Is(err, types.ErrUserNotFound) {
-			s.logger.WithError(err).WithField("user_id", userID).Error("failed to fetch user for profile")
+			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to fetch user for profile")
 			s.internalServerError(w)
 			return
 		}
@@ -46,10 +44,10 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	needSummaries := make([]types.ProfileNeedSummary, 0)
 	donationSummaries := make([]types.ProfileDonationSummary, 0)
 	if userType == string(types.UserTypeNeed) {
-		needs, err := s.needsRepo.NeedsByUser(ctx, userID)
+		needs, err := s.needsRepo.NeedsByUser(ctx, session.UserID)
 		if err != nil {
 			if !errors.Is(err, types.ErrNeedNotFound) {
-				s.logger.WithError(err).WithField("user_id", userID).Error("failed to fetch needs for profile")
+				s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to fetch needs for profile")
 				s.internalServerError(w)
 				return
 			}
@@ -63,7 +61,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 			allAssignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
 			if err != nil {
-				s.logger.WithError(err).WithField("user_id", userID).Error("failed to batch fetch need category assignments for profile")
+				s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to batch fetch need category assignments for profile")
 				s.internalServerError(w)
 				return
 			}
@@ -129,9 +127,9 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if userType == string(types.UserTypeDonor) {
-		intents, err := s.donationIntentRepo.DonationIntentsByDonorUserID(ctx, userID)
+		intents, err := s.donationIntentRepo.DonationIntentsByDonorUserID(ctx, session.UserID)
 		if err != nil {
-			s.logger.WithError(err).WithField("user_id", userID).Error("failed to fetch donation intents for profile")
+			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to fetch donation intents for profile")
 			s.internalServerError(w)
 			return
 		}
@@ -154,16 +152,18 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		needsByID := make(map[string]*types.Need)
 		needs, err := s.needsRepo.NeedsByIDs(ctx, distinctNeedIDs)
 		if err != nil {
-			s.logger.WithError(err).WithField("user_id", userID).Error("failed to batch fetch needs for donor profile")
+			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to batch fetch needs for donor profile")
 			s.internalServerError(w)
 			return
 		}
+
 		for _, need := range needs {
 			if need == nil {
 				continue
 			}
 			needsByID[need.ID] = need
 		}
+
 		for _, needID := range distinctNeedIDs {
 			needLabel := "Need request"
 			if need, ok := needsByID[needID]; ok {
@@ -203,10 +203,10 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.ProfilePageData{
 		BasePageData:      types.BasePageData{Title: "My Profile"},
-		UserID:            userID,
-		UserEmail:         userEmail,
-		WelcomeName:       userName,
-		DisplayName:       userName,
+		UserID:            session.UserID,
+		UserEmail:         session.Email,
+		WelcomeName:       session.DisplayName,
+		DisplayName:       session.DisplayName,
 		UserType:          userType,
 		Notice:            strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:             strings.TrimSpace(r.URL.Query().Get("error")),
@@ -391,7 +391,7 @@ func (s *Service) handlePostProfileUpdateName(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	state.DisplayName = displayName
+	// state.DisplayName = displayName
 	s.setAuthUserStateCookie(w, state, s.config.SessionMaxAgeSec)
 
 	s.redirectProfileWithNotice(w, r, "Display name updated.")

@@ -10,13 +10,12 @@ import (
 )
 
 func (s *Service) renderTemplate(w http.ResponseWriter, r *http.Request, templateName string, data any) error {
-	userID, _ := r.Context().Value(contextKeyUserID).(string)
-	userEmail, _ := r.Context().Value(contextKeyEmail).(string)
-	userName, _ := r.Context().Value(contextKeyUserName).(string)
-	isAdmin, _ := r.Context().Value(contextKeyIsAdmin).(bool)
 
-	if userName == "" {
-		userName = "Friend"
+	var userID, userEmail, userName string
+	var isAdmin bool
+	if session, ok := sessionFromRequest(r); ok {
+		userID, userEmail, userName = session.UserID, session.Email, session.DisplayName
+		isAdmin = session.IsAdmin
 	}
 
 	if setter, ok := data.(types.CSRFFieldSetter); ok {

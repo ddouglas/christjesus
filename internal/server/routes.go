@@ -44,12 +44,15 @@ const (
 	RouteProfileNeedEditReview     RouteName = "profile.need.edit.review"
 	RouteProfileDonationReceipt    RouteName = "profile.donation.receipt"
 	RouteProfileUpdateName         RouteName = "profile.update.name"
-	RouteCompleteProfile           RouteName = "complete.profile"
 
-	RouteOnboarding                    RouteName = "onboarding"
-	RouteOnboardingDonorWelcome        RouteName = "onboarding.donor.welcome"
-	RouteOnboardingDonorPreferences    RouteName = "onboarding.donor.preferences"
-	RouteOnboardingDonorConfirmation   RouteName = "onboarding.donor.confirmation"
+	RouteOnboarding              RouteName = "onboarding"
+	RouteOnboardingAboutYou      RouteName = "onboarding.about.you"
+	RouteOnboardingHowWeServeYou RouteName = "onboarding.how.we.serve.you"
+
+	RouteOnboardingDonorWelcome      RouteName = "onboarding.donor.welcome"
+	RouteOnboardingDonorPreferences  RouteName = "onboarding.donor.preferences"
+	RouteOnboardingDonorConfirmation RouteName = "onboarding.donor.confirmation"
+
 	RouteOnboardingSponsorIndividual   RouteName = "onboarding.sponsor.individual.welcome"
 	RouteOnboardingSponsorOrganization RouteName = "onboarding.sponsor.organization.welcome"
 
@@ -115,13 +118,12 @@ var routePatterns = map[RouteName]string{
 	RouteProfileNeedEditReview:         "/profile/needs/:needID/edit/review",
 	RouteProfileDonationReceipt:        "/profile/donations/:intentID/receipt",
 	RouteProfileUpdateName:             "/profile/update/name",
-	RouteCompleteProfile:               "/complete-profile",
 	RouteOnboarding:                    "/onboarding",
+	RouteOnboardingAboutYou:            "/onboarding/about-you",
+	RouteOnboardingHowWeServeYou:       "/onboarding/how-we-serve-you",
 	RouteOnboardingDonorWelcome:        "/onboarding/donor/welcome",
 	RouteOnboardingDonorPreferences:    "/onboarding/donor/preferences",
 	RouteOnboardingDonorConfirmation:   "/onboarding/donor/confirmation",
-	RouteOnboardingSponsorIndividual:   "/onboarding/sponsor/individual/welcome",
-	RouteOnboardingSponsorOrganization: "/onboarding/sponsor/organization/welcome",
 	RouteOnboardingNeedWelcome:         "/onboarding/need/:needID/welcome",
 	RouteOnboardingNeedLocation:        "/onboarding/need/:needID/location",
 	RouteOnboardingNeedCategories:      "/onboarding/need/:needID/categories",
@@ -146,6 +148,9 @@ var routePatterns = map[RouteName]string{
 	RouteNeedDonate:                    "/need/:needID/donate",
 	RouteNeedDonateConfirmation:        "/need/:needID/donate/confirmation",
 	RouteStripeWebhook:                 "/webhooks/stripe",
+
+	// RouteOnboardingSponsorIndividual:   "/onboarding/sponsor/individual/welcome",
+	// RouteOnboardingSponsorOrganization: "/onboarding/sponsor/organization/welcome",
 }
 
 var routeTokenRE = regexp.MustCompile(`:([a-zA-Z0-9_]+)`)

@@ -143,7 +143,7 @@ auth0 login
 
 Bulk delete all users in a connection:
 ```bash
-auth0 users search --query "*" --number 100 \
+auth0 users search --query "*" --json \
   | jq -r '.[].user_id' \
   | xargs -I {} auth0 users delete {}
 ```
