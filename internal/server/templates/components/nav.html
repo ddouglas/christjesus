@@ -1,43 +1,37 @@
 {{define "component.nav"}}
-<header class="border-b border-border bg-white/80 backdrop-blur">
+<header class="border-b border-[color:var(--border)] bg-[color:var(--cream)]/80 backdrop-blur">
   <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 md:px-6">
     <a href="{{route "home" nil}}" class="flex items-center gap-2">
-      <span class="text-xl font-semibold text-[color:var(--cj-primary)]">ChristJesus.app</span>
+      <span class="font-display text-2xl font-semibold text-[#0D1B2A]">Christ<span class="text-[color:var(--cj-secondary)]">Jesus</span>.app</span>
     </a>
-    <nav class="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-      <a href="{{route "browse" nil}}" class="transition-colors hover:text-foreground">Browse Needs</a>
-      <a href="{{route "categories" nil}}" class="transition-colors hover:text-foreground">Categories</a>
-      <a href="{{route "map" nil}}" class="transition-colors hover:text-foreground">Map</a>
-      <a href="{{route "guidelines" nil}}" class="transition-colors hover:text-foreground">Guidelines</a>
-      {{if .Navbar.IsAdmin}}<a href="{{route "admin.dashboard" nil}}" class="transition-colors hover:text-foreground">Admin</a>{{end}}
+    <nav class="hidden items-center gap-6 text-sm text-[color:var(--ink-soft)] md:flex">
+      <a href="{{route "browse" nil}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Browse Needs</a>
+      <a href="{{route "categories" nil}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Categories</a>
+      <a href="{{route "map" nil}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Map</a>
+      <a href="{{route "guidelines" nil}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Guidelines</a>
+      {{if .Navbar.IsAdmin}}<a href="{{route "admin.dashboard" nil}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Admin</a>{{end}}
     </nav>
     <div class="flex items-center gap-3">
       {{if .Navbar.IsAuthenticated}}
       <div class="hidden items-center gap-3 md:flex">
-        <span class="text-sm text-muted-foreground">Welcome, {{.Navbar.UserName}}</span>
+        <span class="text-sm text-[color:var(--ink-soft)]">Welcome, {{.Navbar.UserName}}</span>
         <details data-profile-menu class="group relative">
-          <summary class="flex h-9 w-9 cursor-pointer list-none items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
+          <summary class="flex h-9 w-9 cursor-pointer list-none items-center justify-center overflow-hidden rounded-full border border-[color:var(--border)] bg-[color:var(--gold-pale)]">
             <img src="{{.Navbar.AvatarURL}}" alt="Profile" class="h-full w-full object-cover" />
           </summary>
-          <div class="absolute right-0 z-20 mt-2 w-44 rounded-md border border-border bg-[color:var(--popover)] p-1 opacity-100 shadow-lg">
-            <a href="{{route "profile" nil}}" class="block rounded px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted">Profile</a>
-            <div class="my-1 border-t border-border"></div>
+          <div class="absolute right-0 z-20 mt-2 w-44 rounded-md border border-[color:var(--border)] bg-[color:var(--cream)] p-1 shadow-lg">
+            <a href="{{route "profile" nil}}" class="block rounded px-3 py-2 text-sm text-foreground transition-colors hover:bg-[color:var(--gold-pale)]">Profile</a>
+            <div class="my-1 border-t border-[color:var(--border)]"></div>
             <form method="POST" action="{{route "logout" nil}}">
               {{.CSRFField}}
-              <button type="submit" class="block w-full rounded px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted">Log Out</button>
+              <button type="submit" class="block w-full rounded px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-[color:var(--gold-pale)]">Log Out</button>
             </form>
           </div>
         </details>
       </div>
       {{else}}
-        <a href="{{route "login" nil}}" class="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex">Sign In</a>
+        <a href="{{route "login" nil}}" class="hidden text-sm text-[color:var(--ink-soft)] transition-colors hover:text-[color:var(--cj-secondary)] md:inline-flex">Sign In</a>
         {{end}}
-
-        <!--
-      <a href="{{route "share" nil}}"
-        class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">Share
-        Your Story</a>
-      -->
     </div>
   </div>
 </header>

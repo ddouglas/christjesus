@@ -10,7 +10,7 @@
     </title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/tokens.css" />
     <script>
       tailwind.config = {
@@ -31,6 +31,18 @@
               'accent-foreground': 'var(--accent-foreground)',
               border: 'var(--border)',
               destructive: 'var(--destructive)',
+              gold: 'var(--gold)',
+              'gold-light': 'var(--gold-light)',
+              'gold-pale': 'var(--gold-pale)',
+              midnight: 'var(--midnight)',
+              'midnight-mid': 'var(--midnight-mid)',
+              ink: 'var(--ink)',
+              'ink-soft': 'var(--ink-soft)',
+              cream: 'var(--cream)',
+            },
+            fontFamily: {
+              sans: ['Jost', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              display: ['Cormorant Garamond', 'Georgia', 'serif'],
             },
           },
         },
@@ -64,10 +76,10 @@
     </style>
   </head>
 
-  <body class="bg-background text-foreground min-h-screen">
-    <div class="min-h-screen bg-background text-foreground">
+  <body class="bg-[#FAF7F0] text-foreground min-h-screen">
+    <div class="flex min-h-screen flex-col bg-[#FAF7F0] text-foreground">
       {{template "component.nav" .}}
-      <main>
+      <main class="flex-1">
         {{end}}
 
         {{define "footer"}}
