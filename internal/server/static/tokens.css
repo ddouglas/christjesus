@@ -1,43 +1,60 @@
 :root {
   --radius: 0.625rem;
-  --background: #ffffff;
-  --foreground: #0f172a;
+
+  /* Core palette — refreshed from design mockup */
+  --gold: #C9A84C;
+  --gold-light: #E8C97A;
+  --gold-pale: #F5EDDA;
+  --midnight: #0D1B2A;
+  --midnight-mid: #1C2E42;
+  --ink: #1A1610;
+  --ink-soft: #3D3528;
+  --cream: #FAF7F0;
+  --rule: rgba(201, 168, 76, 0.25);
+
+  /* Semantic mappings */
+  --background: #FAF7F0;
+  --foreground: #2E2719;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: var(--ink);
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #1b3a52;
+  --popover-foreground: var(--ink);
+  --primary: var(--midnight);
   --primary-foreground: #f8fafc;
-  --secondary: #e6a944;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #4a9b9f;
-  --accent-foreground: #0f172a;
+  --secondary: var(--gold);
+  --secondary-foreground: var(--midnight);
+  --muted: var(--gold-pale);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--gold);
+  --accent-foreground: var(--midnight);
   --destructive: #ef4444;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #94a3b8;
-  --sidebar: #f8fafc;
-  --sidebar-foreground: #0f172a;
-  --sidebar-primary: #1b3a52;
+  --border: var(--rule);
+  --input: rgba(201, 168, 76, 0.25);
+  --ring: var(--gold);
+  --sidebar: var(--cream);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--midnight);
   --sidebar-primary-foreground: #f8fafc;
-  --sidebar-accent: #e2e8f0;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #94a3b8;
+  --sidebar-accent: var(--gold-pale);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--rule);
+  --sidebar-ring: var(--gold);
 
-  --cj-success: #10b981;
+  /* Status colors */
+  --cj-success: #5C9E70;
   --cj-warning: #f59e0b;
-  --cj-error: #ef4444;
+  --cj-error: #A85252;
   --cj-info: #3b82f6;
-  --cj-primary: #1b3a52;
-  --cj-secondary: #e6a944;
-  --cj-accent: #4a9b9f;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --font-accent: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  /* Shortcuts used in Tailwind classes */
+  --cj-primary: var(--midnight);
+  --cj-secondary: var(--gold);
+  --cj-accent: var(--gold-light);
+
+  /* Typography */
+  --font-sans: "Jost", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cormorant Garamond", "Georgia", serif;
+  --font-accent: "Jost", ui-sans-serif, system-ui, sans-serif;
 }
 
 .dark {
@@ -103,7 +120,7 @@ h6 {
 }
 
 .btn-primary:hover {
-  background-color: #152e41;
+  background-color: var(--midnight-mid);
 }
 
 .btn-outline {
@@ -140,5 +157,5 @@ h6 {
 
 /* Gradient Backgrounds */
 .bg-gradient-hero {
-  background: linear-gradient(to bottom right, #ffffff, #f8fafc, #fffbeb);
+  background: linear-gradient(to bottom right, var(--cream), #f5f0e8, var(--gold-pale));
 }

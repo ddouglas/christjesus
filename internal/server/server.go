@@ -187,6 +187,7 @@ func (s *Service) buildRouter(r *flow.Mux, csrfKey []byte) {
 		r.HandleFunc(RoutePattern(RouteCategories), s.handleCategories, http.MethodGet)
 		r.HandleFunc(RoutePattern(RouteCategoryNeeds), s.handleCategoryNeeds, http.MethodGet)
 		r.HandleFunc(RoutePattern(RouteNeedDetail), s.handleNeedDetail, http.MethodGet)
+		r.HandleFunc(RoutePattern(RouteGuidelines), s.handleGetGuidelines, http.MethodGet)
 
 		r.Group(func(r *flow.Mux) {
 			r.Use(s.RequireAuth)

@@ -198,6 +198,8 @@ docs/                 # ADRs, design documents, QA plans
 - **Logging:** `github.com/sirupsen/logrus` (structured JSON)
 - **CSRF:** All state-mutating routes use `gorilla/csrf` except `/webhooks/stripe` (uses Stripe signature verification)
 - **Templates:** Embedded via `//go:embed` and served SSR — no frontend framework
+- **CSS:** Tailwind via CDN with custom design tokens in `internal/server/static/tokens.css`. Colors defined as CSS variables **cannot** be used as bare Tailwind utility classes (e.g. `bg-midnight` won't work). Use the bracket syntax instead: `bg-[#0D1B2A]` or `text-[color:var(--cj-secondary)]`. The existing `[color:var(--cj-*)]` pattern is the established convention.
+- **Design tokens:** Palette is gold (`#C9A84C`) + midnight (`#0D1B2A`) + cream (`#FAF7F0`) + warm ink text. Fonts are Jost (body) + Cormorant Garamond (headings/display).
 - **Tests:** Standard library `testing` only — no testify or gomock
 - **Formatting:** `go fmt` (no golangci-lint configured)
 
