@@ -98,10 +98,7 @@ func serve(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to register supabase jwk with cache: %w", err)
 	}
 
-	var uspsClient *usps.Client
-	if config.USPSConsumerKey != "" && config.USPSConsumerSecret != "" {
-		uspsClient = usps.NewClient(config.USPSConsumerKey, config.USPSConsumerSecret)
-	}
+	uspsClient := usps.NewClient(config.USPSConsumerKey, config.USPSConsumerSecret)
 
 	srv, err := server.New(server.Options{
 		Config:                      config,

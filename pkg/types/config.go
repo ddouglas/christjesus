@@ -40,8 +40,8 @@ type Config struct {
 	TigrisSecretKey      string `envconfig:"TIGRIS_SECRET_KEY"`
 
 	// USPS Address Validation API (OAuth2 client credentials)
-	USPSConsumerKey    string `envconfig:"USPS_CONSUMER_KEY"`
-	USPSConsumerSecret string `envconfig:"USPS_CONSUMER_SECRET"`
+	USPSConsumerKey    string `envconfig:"USPS_CONSUMER_KEY" required:"true"`
+	USPSConsumerSecret string `envconfig:"USPS_CONSUMER_SECRET" required:"true"`
 
 	// Auth Configuration
 	CookieName       string `envconfig:"SESSION_COOKIE_NAME" default:"session_id"`

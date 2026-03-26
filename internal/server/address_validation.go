@@ -13,10 +13,6 @@ import (
 // configured, it silently skips validation.
 // Returns a user-facing error message if the address is invalid, or empty string on success.
 func (s *Service) validateAndStandardizeAddress(ctx context.Context, addr *types.UserAddress) string {
-	if s.uspsClient == nil {
-		return ""
-	}
-
 	if addr.Address == nil || addr.State == nil {
 		return ""
 	}
