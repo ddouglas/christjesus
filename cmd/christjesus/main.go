@@ -16,6 +16,7 @@ func main() {
 			seedCommand,
 			reconcileDonationsCommand,
 			nanoidCommand,
+			importZipsCommand,
 		},
 	}
 
