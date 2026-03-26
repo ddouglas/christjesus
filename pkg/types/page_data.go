@@ -284,6 +284,7 @@ type NeedLocationPageData struct {
 	NewAddress        *UserAddressForm
 	FormAction        string
 	BackHref          string
+	Error             string
 }
 
 type NeedSubmittedPageData struct {

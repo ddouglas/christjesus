@@ -14,6 +14,7 @@ import (
 	"christjesus/internal/db"
 	"christjesus/internal/server"
 	"christjesus/internal/store"
+	"christjesus/internal/usps"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -97,11 +98,14 @@ func serve(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to register supabase jwk with cache: %w", err)
 	}
 
+	uspsClient := usps.NewClient(config.USPSConsumerKey, config.USPSConsumerSecret)
+
 	srv, err := server.New(server.Options{
 		Config:                      config,
 		Logger:                      logger,
 		S3Client:                    s3Client,
 		StripeClient:                stripeClient,
+		USPSClient:                  uspsClient,
 		NeedsRepo:                   needsRepo,
 		ProgressRepo:                progressRepo,
 		CategoryRepo:                categoryRepo,

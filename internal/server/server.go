@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"christjesus/internal/store"
+	"christjesus/internal/usps"
 	"christjesus/pkg/types"
 
 	"github.com/alexedwards/flow"
@@ -37,6 +38,7 @@ type Service struct {
 
 	s3Client     *s3.Client
 	stripeClient *stripe.Client
+	uspsClient   *usps.Client
 
 	needsRepo                   *store.NeedRepository
 	progressRepo                *store.NeedProgressRepository
@@ -71,6 +73,7 @@ type Options struct {
 	Logger       *logrus.Logger
 	S3Client     *s3.Client
 	StripeClient *stripe.Client
+	USPSClient   *usps.Client
 
 	NeedsRepo                   *store.NeedRepository
 	ProgressRepo                *store.NeedProgressRepository
@@ -101,6 +104,7 @@ func New(opts Options) (*Service, error) {
 
 		s3Client:     opts.S3Client,
 		stripeClient: opts.StripeClient,
+		uspsClient:   opts.USPSClient,
 
 		needsRepo:                   opts.NeedsRepo,
 		progressRepo:                opts.ProgressRepo,
