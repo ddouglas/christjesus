@@ -53,6 +53,7 @@ const (
 
 	RouteOnboardingDonorWelcome      RouteName = "onboarding.donor.welcome"
 	RouteOnboardingDonorPreferences  RouteName = "onboarding.donor.preferences"
+	RouteOnboardingDonorSkip         RouteName = "onboarding.donor.skip"
 	RouteOnboardingDonorConfirmation RouteName = "onboarding.donor.confirmation"
 
 	RouteOnboardingSponsorIndividual   RouteName = "onboarding.sponsor.individual.welcome"
@@ -127,6 +128,7 @@ var routePatterns = map[RouteName]string{
 	RouteOnboardingHowWeServeYou:       "/onboarding/how-we-serve-you",
 	RouteOnboardingDonorWelcome:        "/onboarding/donor/welcome",
 	RouteOnboardingDonorPreferences:    "/onboarding/donor/preferences",
+	RouteOnboardingDonorSkip:           "/onboarding/donor/skip",
 	RouteOnboardingDonorConfirmation:   "/onboarding/donor/confirmation",
 	RouteOnboardingNeedWelcome:         "/onboarding/need/:needID/welcome",
 	RouteOnboardingNeedLocation:        "/onboarding/need/:needID/location",

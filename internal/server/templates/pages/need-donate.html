@@ -20,7 +20,7 @@
       <p class="mt-6 text-sm text-muted-foreground">{{derefOr .ShortDescription "Support this neighbor by learning more and contributing if you can."}}</p>
 
       <div class="mt-8 rounded-lg border border-border bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
-        Goal: ${{div .AmountNeededCents 100}} • Raised: ${{div .AmountRaisedCents 100}}
+        Goal: ${{formatCents .AmountNeededCents}} • Raised: ${{formatCents .AmountRaisedCents}}
       </div>
     </section>
 
@@ -30,6 +30,11 @@
 
       <form method="post" action="{{route "need.donate" (dict "needID" .NeedID)}}" class="mt-7 space-y-6">
         {{.CSRFField}}
+        {{if gt .RemainingCents 0}}
+        <div class="rounded-lg border border-[color:var(--cj-accent)]/30 bg-[color:var(--cj-accent)]/10 px-4 py-3 text-sm font-medium text-foreground">
+          Only ${{formatCents .RemainingCents}} to fully fund this need!
+        </div>
+        {{end}}
         <div class="grid grid-cols-2 gap-3">
           {{range .PresetAmounts}}
           <label class="block cursor-pointer">

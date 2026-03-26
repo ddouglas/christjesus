@@ -38,13 +38,14 @@ func (d *BasePageData) SetCSRFField(field template.HTML) {
 
 type HomePageData struct {
 	BasePageData
-	Notice       string
-	Error        string
-	FeaturedNeed *BrowseNeedCard
-	Needs        []*BrowseNeedCard
-	Categories   []CategoryData
-	Stats        StatsData
-	Steps        []StepData
+	Notice           string
+	Error            string
+	FeaturedNeed     *BrowseNeedCard
+	Needs            []*BrowseNeedCard
+	RecommendedNeeds []*BrowseNeedCard
+	Categories       []CategoryData
+	Stats            StatsData
+	Steps            []StepData
 }
 
 type BrowsePageData struct {
@@ -53,6 +54,7 @@ type BrowsePageData struct {
 	Categories           []*NeedCategory
 	Cities               []string
 	Filters              BrowseFilters
+	PreferencesApplied   bool
 	LoadResultsOnRender  bool
 	ShowResultsSkeletons bool
 	Page                 int
@@ -141,6 +143,7 @@ type NeedDonatePageData struct {
 	ShortDescription  *string
 	AmountNeededCents int
 	AmountRaisedCents int
+	RemainingCents    int
 	SelectedPreset    int
 	CustomAmount      string
 	PrivateMessage    string
@@ -157,6 +160,7 @@ type NeedDonateConfirmationPageData struct {
 	AmountCents        int
 	IsAnonymous        bool
 	PrimaryCategory    string
+	PrimaryCategoryID  string
 	PaymentStatus      string
 	StatusLabel        string
 	StatusTitle        string
@@ -165,6 +169,7 @@ type NeedDonateConfirmationPageData struct {
 	ShowRetryCTA       bool
 	ShowReceiptDetails bool
 	DonationDate       string
+	RelatedNeeds       []*BrowseNeedCard
 }
 
 type LoginPageData struct {
@@ -326,6 +331,12 @@ type ProfileNavItem struct {
 	ShowItem bool
 }
 
+type DonorImpactStats struct {
+	TotalGivenCents int
+	NeedsSupported  int
+	NeedsFunded     int
+}
+
 type ProfilePageData struct {
 	BasePageData
 	UserID            string
@@ -342,6 +353,7 @@ type ProfilePageData struct {
 	DonationSummaries []ProfileDonationSummary
 	HasNeeds          bool
 	HasDonations      bool
+	ImpactStats       DonorImpactStats
 }
 
 type ProfileNeedSummary struct {

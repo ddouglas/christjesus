@@ -39,6 +39,18 @@
       </a>
     </div>
   </div>
+
+  {{if .RelatedNeeds}}
+  <div class="mt-8">
+    <h2 class="text-xl font-semibold text-foreground">Needs like this</h2>
+    <p class="mt-1 text-sm text-muted-foreground">Other needs in the same category that could use your support.</p>
+    <div class="mt-4 grid gap-6 md:grid-cols-3">
+      {{range .RelatedNeeds}}
+      {{template "component.need.card" .}}
+      {{end}}
+    </div>
+  </div>
+  {{end}}
 </div>
 
 {{template "footer" .}}

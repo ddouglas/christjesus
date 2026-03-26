@@ -66,6 +66,13 @@
       </div>
     </div>
     {{else}}
+      {{if .PreferencesApplied}}
+      <div class="rounded-md border border-[color:var(--cj-accent)]/30 bg-[color:var(--cj-accent)]/10 px-4 py-2 text-sm text-foreground">
+        Filtered by your preferences.
+        <a href="{{routeq "browse" nil (dict "show_all" "1")}}" class="ml-1 font-medium text-[color:var(--cj-primary)] hover:underline">Show all</a>
+      </div>
+      {{end}}
+
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="text-sm text-muted-foreground">
           Showing {{len .Needs}} of {{.TotalNeeds}} needs

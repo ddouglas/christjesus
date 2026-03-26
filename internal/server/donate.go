@@ -256,6 +256,29 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 		return
 	}
 
+	primaryCategoryID := ""
+	var relatedNeeds []*types.BrowseNeedCard
+	assignments, aErr := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
+	if aErr != nil {
+		s.logger.WithError(aErr).WithField("need_id", needID).Warn("failed to load category assignments for confirmation related needs")
+	} else {
+		for _, a := range assignments {
+			if a.IsPrimary {
+				primaryCategoryID = a.CategoryID
+				break
+			}
+		}
+	}
+
+	if primaryCategoryID != "" {
+		relNeeds, rErr := s.needsRepo.NeedsByCategoryExcluding(ctx, primaryCategoryID, needID, 3)
+		if rErr != nil {
+			s.logger.WithError(rErr).WithField("need_id", needID).Warn("failed to load related needs for confirmation")
+		} else if len(relNeeds) > 0 {
+			relatedNeeds = s.buildNeedCards(ctx, relNeeds, "confirmation related needs")
+		}
+	}
+
 	data := &types.NeedDonateConfirmationPageData{
 		BasePageData:       types.BasePageData{Title: "Donation Confirmation"},
 		NeedID:             need.ID,
@@ -264,6 +287,7 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 		AmountCents:        intent.AmountCents,
 		IsAnonymous:        intent.IsAnonymous,
 		PrimaryCategory:    primaryCategory,
+		PrimaryCategoryID:  primaryCategoryID,
 		PaymentStatus:      intent.PaymentStatus,
 		StatusLabel:        donationStatusLabel(intent.PaymentStatus),
 		StatusTitle:        donationStatusTitle(intent.PaymentStatus, ownerName),
@@ -272,6 +296,7 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 		ShowRetryCTA:       intent.PaymentStatus == types.DonationPaymentStatusFailed || intent.PaymentStatus == types.DonationPaymentStatusCanceled,
 		ShowReceiptDetails: intent.PaymentStatus == types.DonationPaymentStatusFinalized,
 		DonationDate:       donationConfirmationDate(intent),
+		RelatedNeeds:       relatedNeeds,
 	}
 
 	if err := s.renderTemplate(w, r, "page.need-donate-confirmation", data); err != nil {
@@ -362,11 +387,45 @@ func (s *Service) buildNeedDonatePageData(ctx context.Context, needID string, da
 	data.ShortDescription = need.ShortDescription
 	data.AmountNeededCents = need.AmountNeededCents
 	data.AmountRaisedCents = need.AmountRaisedCents
-	if len(data.PresetAmounts) == 0 {
-		data.PresetAmounts = donatePresetAmounts
+
+	remainingCents := need.AmountNeededCents - need.AmountRaisedCents
+	if remainingCents < 0 {
+		remainingCents = 0
 	}
+	data.RemainingCents = remainingCents
+
+	data.PresetAmounts = buildSmartPresets(remainingCents, donatePresetAmounts)
 
 	return data, nil
+}
+
+func buildSmartPresets(remainingCents int, standardPresets []int) []int {
+	if remainingCents <= 0 {
+		return standardPresets
+	}
+
+	remainingDollars := remainingCents / 100
+	if remainingCents%100 != 0 {
+		remainingDollars++
+	}
+
+	isStandard := false
+	for _, preset := range standardPresets {
+		if preset == remainingDollars {
+			isStandard = true
+			break
+		}
+	}
+
+	presets := make([]int, 0, len(standardPresets)+1)
+	if !isStandard {
+		presets = append(presets, remainingDollars)
+	}
+	for _, preset := range standardPresets {
+		presets = append(presets, preset)
+	}
+
+	return presets
 }
 
 func (s *Service) loadNeedDonateSummary(ctx context.Context, needID string) (*types.Need, string, string, error) {

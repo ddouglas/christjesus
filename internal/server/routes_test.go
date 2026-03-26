@@ -44,6 +44,12 @@ func TestBuildRoute_SelectedRouteShapes(t *testing.T) {
 			},
 			expected: "/onboarding/need/need_123/documents/doc_456/delete",
 		},
+		{
+			name:     "donor skip no parameters",
+			route:    RouteOnboardingDonorSkip,
+			params:   nil,
+			expected: "/onboarding/donor/skip",
+		},
 	}
 
 	for _, tt := range tests {

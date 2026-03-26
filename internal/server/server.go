@@ -243,6 +243,7 @@ func (s *Service) buildRouter(r *flow.Mux, csrfKey []byte) {
 			r.HandleFunc(RoutePattern(RouteOnboardingDonorWelcome), s.handleGetOnboardingDonorWelcome, http.MethodGet)
 			r.HandleFunc(RoutePattern(RouteOnboardingDonorPreferences), s.handleGetOnboardingDonorPreferences, http.MethodGet)
 			r.HandleFunc(RoutePattern(RouteOnboardingDonorPreferences), s.handlePostOnboardingDonorPreferences, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteOnboardingDonorSkip), s.handlePostOnboardingDonorSkip, http.MethodPost)
 			r.HandleFunc(RoutePattern(RouteOnboardingDonorConfirmation), s.handleGetOnboardingDonorConfirmation, http.MethodGet)
 
 			r.HandleFunc(RoutePattern(RouteNeedDonate), s.handleGetNeedDonate, http.MethodGet)
@@ -336,6 +337,15 @@ func templateFuncMap() template.FuncMap {
 	}
 
 	return template.FuncMap{
+		"formatCents": func(cents any) string {
+			c := toInt64(cents)
+			if c < 0 {
+				c = 0
+			}
+			dollars := c / 100
+			remainder := c % 100
+			return fmt.Sprintf("%d.%02d", dollars, remainder)
+		},
 		"div": func(a, b any) int64 {
 			a64 := toInt64(a)
 			b64 := toInt64(b)

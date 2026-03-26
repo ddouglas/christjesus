@@ -362,6 +362,47 @@ func (r *DonationIntentRepository) DonationIntentsByDonorUserID(ctx context.Cont
 	return intents, nil
 }
 
+func (r *DonationIntentRepository) DonorImpactStats(ctx context.Context, donorUserID string) (types.DonorImpactStats, error) {
+	query := fmt.Sprintf(`
+		WITH donor_finalized AS (
+			SELECT need_id, amount_cents
+			FROM %s
+			WHERE donor_user_id = $1 AND payment_status = $2
+		),
+		totals AS (
+			SELECT
+				COALESCE(SUM(amount_cents), 0) AS total_given_cents,
+				COUNT(DISTINCT need_id) AS needs_supported
+			FROM donor_finalized
+		),
+		funded AS (
+			SELECT COUNT(*) AS needs_funded
+			FROM (
+				SELECT n.id
+				FROM %s n
+				WHERE n.deleted_at IS NULL
+				  AND EXISTS (SELECT 1 FROM donor_finalized df WHERE df.need_id = n.id)
+				  AND n.amount_needed_cents > 0
+				  AND n.amount_raised_cents >= n.amount_needed_cents
+			) funded_needs
+		)
+		SELECT totals.total_given_cents, totals.needs_supported, funded.needs_funded
+		FROM totals, funded
+	`, donationIntentTableName, needTableName)
+
+	stats := types.DonorImpactStats{}
+	err := r.pool.QueryRow(ctx, query, donorUserID, types.DonationPaymentStatusFinalized).Scan(
+		&stats.TotalGivenCents,
+		&stats.NeedsSupported,
+		&stats.NeedsFunded,
+	)
+	if err != nil {
+		return types.DonorImpactStats{}, fmt.Errorf("failed to fetch donor impact stats: %w", err)
+	}
+
+	return stats, nil
+}
+
 func (r *DonationIntentRepository) HomeImpactStats(ctx context.Context) (types.StatsData, error) {
 	query := fmt.Sprintf(`
 		WITH finalized AS (

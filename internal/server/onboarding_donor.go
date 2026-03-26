@@ -192,6 +192,22 @@ func (s *Service) handlePostOnboardingDonorPreferences(w http.ResponseWriter, r 
 	http.Redirect(w, r, s.route(RouteOnboardingDonorConfirmation, nil), http.StatusSeeOther)
 }
 
+func (s *Service) handlePostOnboardingDonorSkip(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	donorType := string(types.UserTypeDonor)
+	err := s.setUserType(ctx, donorType)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to set user type for donor skip")
+		s.internalServerError(w)
+		return
+	}
+
+	s.updateAuthUserTypeCookie(w, r, donorType)
+
+	http.Redirect(w, r, s.route(RouteBrowse, nil), http.StatusSeeOther)
+}
+
 func (s *Service) handleGetOnboardingDonorConfirmation(w http.ResponseWriter, r *http.Request) {
 	data := &types.DonorConfirmationPageData{BasePageData: types.BasePageData{Title: "Donor Onboarding Complete"}}
 

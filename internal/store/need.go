@@ -375,6 +375,43 @@ func (r *NeedRepository) AdminExplorerNeedsCountByStatus(ctx context.Context) (m
 	return counts, nil
 }
 
+func (r *NeedRepository) NeedsByCategoryExcluding(ctx context.Context, categoryID, excludeNeedID string, limit int) ([]*types.Need, error) {
+	if limit <= 0 {
+		limit = 3
+	}
+
+	cols := make([]string, len(needColumns))
+	for i, c := range needColumns {
+		cols[i] = "n." + c
+	}
+
+	qb := psql().Select(cols...).
+		From(browseFromClause).
+		LeftJoin(browseJoinPrimaryCategory).
+		Where(sq.Eq{"n.status": []types.NeedStatus{types.NeedStatusActive, types.NeedStatusFunded}}).
+		Where(sq.Eq{"n.deleted_at": nil}).
+		Where(sq.Eq{"nca.category_id": categoryID}).
+		Where(sq.NotEq{"n.id": excludeNeedID}).
+		OrderBy("n.created_at DESC").
+		Limit(uint64(limit))
+
+	query, args, err := qb.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate needs by category excluding query: %w", err)
+	}
+
+	needs := make([]*types.Need, 0)
+	err = pgxscan.Select(ctx, r.pool, &needs, query, args...)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return needs, nil
+		}
+		return nil, fmt.Errorf("failed to fetch needs by category excluding: %w", err)
+	}
+
+	return needs, nil
+}
+
 func (r *NeedRepository) LatestNeeds(ctx context.Context, limit int) ([]*types.Need, error) {
 	if limit <= 0 {
 		limit = 5

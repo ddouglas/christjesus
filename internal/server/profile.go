@@ -201,6 +201,16 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var impactStats types.DonorImpactStats
+	if userType == string(types.UserTypeDonor) {
+		stats, err := s.donationIntentRepo.DonorImpactStats(ctx, session.UserID)
+		if err != nil {
+			s.logger.WithError(err).WithField("user_id", session.UserID).Warn("failed to fetch donor impact stats for profile")
+		} else {
+			impactStats = stats
+		}
+	}
+
 	data := &types.ProfilePageData{
 		BasePageData:      types.BasePageData{Title: "My Profile"},
 		UserID:            session.UserID,
@@ -217,6 +227,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		DonationSummaries: donationSummaries,
 		HasNeeds:          len(myNeeds) > 0,
 		HasDonations:      len(donationSummaries) > 0,
+		ImpactStats:       impactStats,
 	}
 
 	err = s.renderTemplate(w, r, "page.profile", data)

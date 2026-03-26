@@ -111,6 +111,24 @@
       {{end}}
 
       {{if eq .UserType "donor"}}
+      <div class="rounded-xl border bg-background p-6">
+        <h2 class="text-xl font-semibold text-foreground">Your Giving Impact</h2>
+        <div class="mt-4 grid gap-4 sm:grid-cols-3">
+          <div class="rounded-lg border border-border bg-muted/30 px-4 py-4 text-center">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Given</p>
+            <p class="mt-1 text-2xl font-semibold text-foreground">${{div .ImpactStats.TotalGivenCents 100}}</p>
+          </div>
+          <div class="rounded-lg border border-border bg-muted/30 px-4 py-4 text-center">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Needs Supported</p>
+            <p class="mt-1 text-2xl font-semibold text-foreground">{{.ImpactStats.NeedsSupported}}</p>
+          </div>
+          <div class="rounded-lg border border-border bg-muted/30 px-4 py-4 text-center">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Needs Fully Funded</p>
+            <p class="mt-1 text-2xl font-semibold text-foreground">{{.ImpactStats.NeedsFunded}}</p>
+          </div>
+        </div>
+      </div>
+
       <div id="donations" class="rounded-xl border bg-background p-6">
         <h2 class="text-xl font-semibold text-foreground">Donation History</h2>
         {{if .HasDonations}}

@@ -71,6 +71,26 @@
     </div>
   </section>
 
+  {{if .RecommendedNeeds}}
+  <!-- Section: Recommended for You -->
+  <section class="bg-amber-50/50 py-12">
+    <div class="mx-auto w-full max-w-6xl px-4 md:px-6">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-2xl font-semibold text-foreground">Recommended for you</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Based on your saved category preferences.</p>
+        </div>
+        <a href="{{route "browse" nil}}" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
+      </div>
+      <div class="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {{range .RecommendedNeeds}}
+        {{template "component.need.card" .}}
+        {{end}}
+      </div>
+    </div>
+  </section>
+  {{end}}
+
   <!-- Section 3: Need Categories -->
   <section class="bg-slate-50 py-12">
     <div class="mx-auto w-full max-w-6xl px-4 md:px-6">

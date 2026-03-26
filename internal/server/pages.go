@@ -39,15 +39,43 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var recommendedNeeds []*types.BrowseNeedCard
+	if session, ok := sessionFromRequest(r); ok && session.UserType == string(types.UserTypeDonor) {
+		assignments, err := s.donorPreferenceAssignRepo.AssignmentsByUserID(ctx, session.UserID)
+		if err != nil {
+			s.logger.WithError(err).Warn("failed to load donor preference categories for home recommendations")
+		} else if len(assignments) > 0 {
+			catIDs := make(map[string]bool, len(assignments))
+			for _, a := range assignments {
+				catIDs[a.CategoryID] = true
+			}
+			recFilters := types.BrowseFilters{
+				CategoryIDs: catIDs,
+				FundingMax:  100,
+				ViewMode:    "grid",
+				SortBy:      "urgency",
+				Page:        1,
+				PageSize:    4,
+			}
+			recData, err := s.buildBrowseResultsPageData(ctx, recFilters)
+			if err != nil {
+				s.logger.WithError(err).Warn("failed to build recommended needs for home")
+			} else {
+				recommendedNeeds = recData.Needs
+			}
+		}
+	}
+
 	data := &types.HomePageData{
-		BasePageData: types.BasePageData{Title: ""},
-		Notice:       r.URL.Query().Get("notice"),
-		Error:        r.URL.Query().Get("error"),
-		FeaturedNeed: featuredNeed,
-		Needs:        featuredNeeds,
-		Categories:   s.buildHomeCategories(ctx),
-		Stats:        s.buildHomeStats(ctx),
-		Steps:        getSteps(),
+		BasePageData:     types.BasePageData{Title: ""},
+		Notice:           r.URL.Query().Get("notice"),
+		Error:            r.URL.Query().Get("error"),
+		FeaturedNeed:     featuredNeed,
+		Needs:            featuredNeeds,
+		RecommendedNeeds: recommendedNeeds,
+		Categories:       s.buildHomeCategories(ctx),
+		Stats:            s.buildHomeStats(ctx),
+		Steps:            getSteps(),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -338,6 +366,22 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	filters := parseBrowseFilters(r.URL.Query())
 
+	preferencesApplied := false
+	showAll := r.URL.Query().Get("show_all") == "1"
+	if len(filters.CategoryIDs) == 0 && !showAll {
+		if session, ok := sessionFromRequest(r); ok && session.UserType == string(types.UserTypeDonor) {
+			assignments, err := s.donorPreferenceAssignRepo.AssignmentsByUserID(ctx, session.UserID)
+			if err != nil {
+				s.logger.WithError(err).Warn("failed to load donor preference categories for browse")
+			} else if len(assignments) > 0 {
+				for _, a := range assignments {
+					filters.CategoryIDs[a.CategoryID] = true
+				}
+				preferencesApplied = true
+			}
+		}
+	}
+
 	if isHXRequest(r) {
 		data, err := s.buildBrowseResultsPageData(ctx, filters)
 		if err != nil {
@@ -347,6 +391,7 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		}
 
 		data.BasePageData = types.BasePageData{Title: "Browse Needs"}
+		data.PreferencesApplied = preferencesApplied
 		data.LoadResultsOnRender = false
 		data.ShowResultsSkeletons = false
 
@@ -376,6 +421,7 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		Categories:           categories,
 		Cities:               cityOptions,
 		Filters:              filters,
+		PreferencesApplied:   preferencesApplied,
 		LoadResultsOnRender:  true,
 		ShowResultsSkeletons: true,
 	}
