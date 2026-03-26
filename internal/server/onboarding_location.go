@@ -5,6 +5,8 @@ import (
 	"christjesus/pkg/types"
 	"net/http"
 	"strings"
+
+	"github.com/k0kubun/pp/v3"
 )
 
 func (s *Service) handleGetOnboardingNeedLocation(w http.ResponseWriter, r *http.Request) {
@@ -120,6 +122,8 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 	var selectedAddress *types.UserAddress
 	usesNonPrimaryAddress := false
 
+	pp.Print(selection)
+
 	if selection != "new" {
 		addressID := selection
 		if addressID == "" {
@@ -161,6 +165,8 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 			s.internalServerError(w)
 			return
 		}
+
+		pp.Print("Location :: ", location)
 
 		if location.Address == nil || strings.TrimSpace(*location.Address) == "" ||
 			location.City == nil || strings.TrimSpace(*location.City) == "" ||
