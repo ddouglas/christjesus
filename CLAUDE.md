@@ -72,6 +72,8 @@ The justfile loads `.env` automatically. Create `.env` from `.env.example`.
 | `AUTH0_MGMT_CLIENT_ID` | Auth0 M2M client ID for Management API (profile updates) |
 | `AUTH0_MGMT_CLIENT_SECRET` | Auth0 M2M client secret for Management API |
 | `S3_BUCKET_NAME` | Tigris bucket name for document uploads |
+| `USPS_CONSUMER_KEY` | USPS API OAuth2 client ID for address validation |
+| `USPS_CONSUMER_SECRET` | USPS API OAuth2 client secret for address validation |
 
 **Optional with defaults:**
 | Variable | Default | Description |
@@ -93,8 +95,6 @@ The justfile loads `.env` automatically. Create `.env` from `.env.example`.
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `TIGRIS_ACCESS_KEY` | Tigris S3 access key |
 | `TIGRIS_SECRET_KEY` | Tigris S3 secret key |
-
-> **Note:** The `.env.example` file has stale `COGNITO_*` variables — ignore those. The active config uses `AUTH0_*` variables defined in `pkg/types/config.go`.
 
 ---
 
