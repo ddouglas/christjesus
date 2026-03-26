@@ -187,6 +187,25 @@ func (s *Service) handlePostOnboardingNeedLocation(w http.ResponseWriter, r *htt
 			IsPrimary:            setNewAsPrimary,
 		}
 
+		if validationErr := s.validateAndStandardizeAddress(ctx, selectedAddress); validationErr != "" {
+			data := &types.NeedLocationPageData{
+				BasePageData:      types.BasePageData{Title: "Need Location"},
+				ID:                needID,
+				Addresses:         addresses,
+				HasAddresses:      len(addresses) > 0,
+				SelectedAddressID: "new",
+				NewAddress:        location,
+				FormAction:        s.route(RouteOnboardingNeedLocation, map[string]string{"needID": needID}),
+				BackHref:          s.route(RouteOnboardingNeedWelcome, map[string]string{"needID": needID}),
+				Error:             validationErr,
+			}
+			if err := s.renderTemplate(w, r, "page.onboarding.need.location", data); err != nil {
+				s.logger.WithError(err).Error("failed to render need location page with validation error")
+				s.internalServerError(w)
+			}
+			return
+		}
+
 		err = s.userAddressRepo.Create(ctx, selectedAddress)
 		if err != nil {
 			s.logger.WithError(err).WithField("user_id", userID).Error("failed to create user address")

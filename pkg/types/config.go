@@ -39,6 +39,10 @@ type Config struct {
 	TigrisAccessKey      string `envconfig:"TIGRIS_ACCESS_KEY"`
 	TigrisSecretKey      string `envconfig:"TIGRIS_SECRET_KEY"`
 
+	// USPS Address Validation API (OAuth2 client credentials)
+	USPSConsumerKey    string `envconfig:"USPS_CONSUMER_KEY"`
+	USPSConsumerSecret string `envconfig:"USPS_CONSUMER_SECRET"`
+
 	// Auth Configuration
 	CookieName       string `envconfig:"SESSION_COOKIE_NAME" default:"session_id"`
 	SessionMaxAgeSec int    `envconfig:"SESSION_MAX_AGE_SEC" default:"604800"` // 7 days
