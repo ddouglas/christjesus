@@ -60,9 +60,10 @@ func (r *NeedRepository) Need(ctx context.Context, needID string) (*types.Need, 
 }
 
 type BrowseNeedsFilter struct {
-	City        string
+	ZipCode     string
+	RadiusMiles *float64
 	CategoryIDs []string
-	Urgency string
+	Urgency     string
 	FundingMax  int
 	Search      string
 	SortBy      string
@@ -70,12 +71,18 @@ type BrowseNeedsFilter struct {
 	PageSize    int
 }
 
+type BrowseNeedRow struct {
+	types.Need
+	DistanceMiles *float64 `db:"distance_miles"`
+}
+
 const (
 	browseFromClause = needTableName + " n"
 
-	browseJoinSelectedAddr = "christjesus.user_addresses sa ON sa.id = n.user_address_id"
-	browseJoinPrimaryAddr  = "christjesus.user_addresses pa ON pa.user_id = n.user_id AND pa.is_primary = true AND n.user_address_id IS NULL"
+	browseJoinSelectedAddr    = "christjesus.user_addresses sa ON sa.id = n.user_address_id"
+	browseJoinPrimaryAddr     = "christjesus.user_addresses pa ON pa.user_id = n.user_id AND pa.is_primary = true AND n.user_address_id IS NULL"
 	browseJoinPrimaryCategory = "christjesus.need_category_assignments nca ON nca.need_id = n.id AND nca.is_primary = true"
+	browseJoinZipCentroid     = "christjesus.zip_centroids zc ON zc.zip_code = COALESCE(sa.zip_code, pa.zip_code)"
 
 	browseFundingPercentExpr = "CASE WHEN n.amount_needed_cents > 0 THEN (n.amount_raised_cents * 100 / n.amount_needed_cents) ELSE 0 END"
 	browseUrgencyWeightExpr  = "CASE WHEN n.amount_needed_cents <= 0 THEN 1 WHEN (n.amount_raised_cents * 100 / n.amount_needed_cents) < 35 THEN 3 WHEN (n.amount_raised_cents * 100 / n.amount_needed_cents) < 70 THEN 2 ELSE 1 END"
@@ -87,13 +94,27 @@ func browseBaseQuery(columns ...string) sq.SelectBuilder {
 		LeftJoin(browseJoinSelectedAddr).
 		LeftJoin(browseJoinPrimaryAddr).
 		LeftJoin(browseJoinPrimaryCategory).
+		LeftJoin(browseJoinZipCentroid).
 		Where(sq.Eq{"n.status": []types.NeedStatus{types.NeedStatusActive, types.NeedStatusFunded}}).
 		Where(sq.Eq{"n.deleted_at": nil})
 }
 
 func applyBrowseFilters(qb sq.SelectBuilder, f BrowseNeedsFilter) sq.SelectBuilder {
-	if f.City != "" {
-		qb = qb.Where("LOWER(COALESCE(sa.city, pa.city)) = LOWER(?)", f.City)
+	donorGeogSubquery := "(SELECT geog FROM christjesus.zip_centroids WHERE zip_code = ?)"
+	if f.ZipCode != "" {
+		qb = qb.Column(
+			fmt.Sprintf("ST_Distance(zc.geog, %s) / 1609.344 AS distance_miles", donorGeogSubquery),
+			f.ZipCode,
+		)
+		if f.RadiusMiles != nil {
+			radiusMeters := *f.RadiusMiles * 1609.344
+			qb = qb.Where(
+				fmt.Sprintf("(zc.geog IS NULL OR ST_DWithin(zc.geog, %s, ?))", donorGeogSubquery),
+				f.ZipCode, radiusMeters,
+			)
+		}
+	} else {
+		qb = qb.Column("NULL::float8 AS distance_miles")
 	}
 	if len(f.CategoryIDs) > 0 {
 		qb = qb.Where(sq.Eq{"nca.category_id": f.CategoryIDs})
@@ -117,7 +138,7 @@ func applyBrowseFilters(qb sq.SelectBuilder, f BrowseNeedsFilter) sq.SelectBuild
 	return qb
 }
 
-func (r *NeedRepository) BrowseNeedsPage(ctx context.Context, f BrowseNeedsFilter) ([]*types.Need, error) {
+func (r *NeedRepository) BrowseNeedsPage(ctx context.Context, f BrowseNeedsFilter) ([]*BrowseNeedRow, error) {
 	if f.Page < 1 {
 		f.Page = 1
 	}
@@ -136,10 +157,12 @@ func (r *NeedRepository) BrowseNeedsPage(ctx context.Context, f BrowseNeedsFilte
 	switch f.SortBy {
 	case "newest":
 		qb = qb.OrderBy("n.created_at DESC")
+	case "nearest":
+		qb = qb.OrderBy("distance_miles ASC NULLS LAST", "n.created_at DESC")
 	case "closest":
-		qb = qb.OrderBy(browseFundingPercentExpr + " DESC", "n.created_at DESC")
+		qb = qb.OrderBy(browseFundingPercentExpr+" DESC", "n.created_at DESC")
 	default: // "urgency"
-		qb = qb.OrderBy(browseUrgencyWeightExpr + " DESC", "n.created_at DESC")
+		qb = qb.OrderBy(browseUrgencyWeightExpr+" DESC", "n.created_at DESC")
 	}
 
 	offset := uint64((f.Page - 1) * f.PageSize)
@@ -151,16 +174,16 @@ func (r *NeedRepository) BrowseNeedsPage(ctx context.Context, f BrowseNeedsFilte
 		return nil, fmt.Errorf("failed to generate browse needs page query: %w", err)
 	}
 
-	needs := make([]*types.Need, 0)
-	err = pgxscan.Select(ctx, r.pool, &needs, query, args...)
+	rows := make([]*BrowseNeedRow, 0)
+	err = pgxscan.Select(ctx, r.pool, &rows, query, args...)
 	if err != nil {
 		if pgxscan.NotFound(err) {
-			return needs, nil
+			return rows, nil
 		}
 		return nil, fmt.Errorf("failed to fetch browse needs page: %w", err)
 	}
 
-	return needs, nil
+	return rows, nil
 }
 
 func (r *NeedRepository) BrowseNeedsCount(ctx context.Context, f BrowseNeedsFilter) (int, error) {
@@ -180,39 +203,6 @@ func (r *NeedRepository) BrowseNeedsCount(ctx context.Context, f BrowseNeedsFilt
 	return total, nil
 }
 
-func (r *NeedRepository) BrowseDistinctCities(ctx context.Context) ([]string, error) {
-	qb := psql().
-		Select("DISTINCT COALESCE(sa.city, pa.city) AS city").
-		From(browseFromClause).
-		LeftJoin(browseJoinSelectedAddr).
-		LeftJoin(browseJoinPrimaryAddr).
-		Where(sq.Eq{"n.status": []types.NeedStatus{types.NeedStatusActive, types.NeedStatusFunded}}).
-		Where(sq.Eq{"n.deleted_at": nil}).
-		Where("COALESCE(sa.city, pa.city) IS NOT NULL").
-		OrderBy("city")
-
-	query, args, err := qb.ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate browse distinct cities query: %w", err)
-	}
-
-	cities := make([]string, 0)
-	rows, err := r.pool.Query(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch browse distinct cities: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var city string
-		if err := rows.Scan(&city); err != nil {
-			return nil, fmt.Errorf("failed to scan browse city row: %w", err)
-		}
-		cities = append(cities, city)
-	}
-
-	return cities, nil
-}
 
 func (r *NeedRepository) ModerationQueueNeeds(ctx context.Context) ([]*types.Need, error) {
 	return r.ModerationQueueNeedsPage(ctx, 1, 500)

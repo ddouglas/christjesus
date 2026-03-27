@@ -22,9 +22,9 @@ const (
 // Client is a USPS API client that handles OAuth2 token management
 // and address validation.
 type Client struct {
-	httpClient   *http.Client
-	baseURL      string
-	consumerKey  string
+	httpClient     *http.Client
+	baseURL        string
+	consumerKey    string
 	consumerSecret string
 
 	mu          sync.Mutex
@@ -108,12 +108,12 @@ type AddressInput struct {
 
 // StandardizedAddress is the result of a successful address validation.
 type StandardizedAddress struct {
-	StreetAddress string
+	StreetAddress    string
 	SecondaryAddress string
-	City          string
-	State         string
-	ZIPCode       string
-	ZIPPlus4      string
+	City             string
+	State            string
+	ZIPCode          string
+	ZIPPlus4         string
 }
 
 // addressResponse represents the USPS address validation API response.

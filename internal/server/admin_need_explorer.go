@@ -52,8 +52,6 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-
-
 	items := make([]*types.AdminNeedExplorerItem, 0, len(needs))
 	for _, need := range needs {
 		if need == nil {

@@ -6,8 +6,8 @@ type UserType string
 
 const (
 	UserTypeRecipient UserType = "recipient"
-	UserTypeDonor   UserType = "donor"
-	UserTypeSponsor UserType = "sponsor"
+	UserTypeDonor     UserType = "donor"
+	UserTypeSponsor   UserType = "sponsor"
 )
 
 type User struct {

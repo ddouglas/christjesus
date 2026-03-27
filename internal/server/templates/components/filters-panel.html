@@ -13,13 +13,17 @@
   -->
 
   <div>
-    <p class="text-sm font-semibold text-foreground">City</p>
-    <select name="city"
-      class="mt-2 flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
-      <option value="">All cities</option>
-      {{range .Cities}}
-      <option value="{{.}}" {{if eq $.Filters.City .}}selected{{end}}>{{.}}</option>
-      {{end}}
+    <p class="text-sm font-semibold text-foreground">Location</p>
+    <input type="text" name="zip" value="{{.Filters.ZipCode}}" placeholder="ZIP code (e.g. 28202)" maxlength="5" inputmode="numeric" pattern="\d{5}"
+      class="mt-2 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+    <select name="radius"
+      class="mt-2 flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring">
+      <option value="">Select radius</option>
+      <option value="5" {{if eq .Filters.Radius "5"}}selected{{end}}>5 miles</option>
+      <option value="15" {{if eq .Filters.Radius "15"}}selected{{end}}>15 miles</option>
+      <option value="25" {{if eq .Filters.Radius "25"}}selected{{end}}>25 miles</option>
+      <option value="50" {{if eq .Filters.Radius "50"}}selected{{end}}>50 miles</option>
+      <option value="anywhere" {{if eq .Filters.Radius "anywhere"}}selected{{end}}>Anywhere</option>
     </select>
   </div>
 
