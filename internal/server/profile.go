@@ -482,6 +482,7 @@ func buildProfileSidebar(userType string) []types.ProfileNavItem {
 		{Label: "My Needs", Href: "#my-needs", Active: false, Section: "my-needs", ShowItem: userType == string(types.UserTypeRecipient)},
 		{Label: "Need Status", Href: "#need-status", Active: false, Section: "need-status", ShowItem: userType == string(types.UserTypeRecipient)},
 		{Label: "Donation History", Href: "#donations", Active: false, Section: "donations", ShowItem: userType == string(types.UserTypeDonor)},
+		{Label: "My Preferences", Href: RoutePattern(RouteProfileDonorPreferences), Active: false, Section: "my-preferences", ShowItem: userType == string(types.UserTypeDonor)},
 	}
 
 	filtered := make([]types.ProfileNavItem, 0, len(items))
