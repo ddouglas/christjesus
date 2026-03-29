@@ -333,20 +333,24 @@ type ProfileNavItem struct {
 
 type ProfilePageData struct {
 	BasePageData
-	UserID            string
-	UserEmail         string
-	WelcomeName       string
-	DisplayName       string
-	UserType          string
-	Notice            string
-	Error             string
-	UpdateNameAction  string
-	SidebarItems      []ProfileNavItem
-	Needs             []*Need
-	NeedSummaries     []ProfileNeedSummary
-	DonationSummaries []ProfileDonationSummary
-	HasNeeds          bool
-	HasDonations      bool
+	UserID                  string
+	UserEmail               string
+	WelcomeName             string
+	DisplayName             string
+	UserType                string
+	Notice                  string
+	Error                   string
+	EditMode                bool
+	UpdateNameAction        string
+	UpdateEmailAction       string
+	SendPasswordResetAction string
+	IsDatabaseUser          bool
+	SidebarItems            []ProfileNavItem
+	Needs                   []*Need
+	NeedSummaries           []ProfileNeedSummary
+	DonationSummaries       []ProfileDonationSummary
+	HasNeeds                bool
+	HasDonations            bool
 }
 
 type ProfileDonorPreferencesPageData struct {

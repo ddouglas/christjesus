@@ -202,21 +202,25 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.ProfilePageData{
-		BasePageData:      types.BasePageData{Title: "My Profile"},
-		UserID:            session.UserID,
-		UserEmail:         session.Email,
-		WelcomeName:       session.DisplayName,
-		DisplayName:       session.DisplayName,
-		UserType:          userType,
-		Notice:            strings.TrimSpace(r.URL.Query().Get("notice")),
-		Error:             strings.TrimSpace(r.URL.Query().Get("error")),
-		UpdateNameAction:  s.route(RouteProfileUpdateName, nil),
-		SidebarItems:      buildProfileSidebar(userType),
-		Needs:             myNeeds,
-		NeedSummaries:     needSummaries,
-		DonationSummaries: donationSummaries,
-		HasNeeds:          len(myNeeds) > 0,
-		HasDonations:      len(donationSummaries) > 0,
+		BasePageData:            types.BasePageData{Title: "My Profile"},
+		UserID:                  session.UserID,
+		UserEmail:               session.Email,
+		WelcomeName:             session.DisplayName,
+		DisplayName:             session.DisplayName,
+		UserType:                userType,
+		Notice:                  strings.TrimSpace(r.URL.Query().Get("notice")),
+		Error:                   strings.TrimSpace(r.URL.Query().Get("error")),
+		EditMode:                r.URL.Query().Get("edit") == "1",
+		UpdateNameAction:        s.route(RouteProfileUpdateName, nil),
+		UpdateEmailAction:       s.route(RouteProfileUpdateEmail, nil),
+		SendPasswordResetAction: s.route(RouteProfileSendPasswordReset, nil),
+		IsDatabaseUser:          strings.HasPrefix(session.AuthSubject, "auth0|"),
+		SidebarItems:            buildProfileSidebar(userType),
+		Needs:                   myNeeds,
+		NeedSummaries:           needSummaries,
+		DonationSummaries:       donationSummaries,
+		HasNeeds:                len(myNeeds) > 0,
+		HasDonations:            len(donationSummaries) > 0,
 	}
 
 	err = s.renderTemplate(w, r, "page.profile", data)
@@ -314,6 +318,15 @@ func (s *Service) redirectProfileWithError(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, s.routeWithQuery(RouteProfile, nil, v), http.StatusSeeOther)
 }
 
+// redirectProfileEditWithError redirects to the profile page with an error and
+// edit=1 so the edit section auto-opens, keeping the user in context.
+func (s *Service) redirectProfileEditWithError(w http.ResponseWriter, r *http.Request, msg string) {
+	v := url.Values{}
+	v.Set("error", msg)
+	v.Set("edit", "1")
+	http.Redirect(w, r, s.routeWithQuery(RouteProfile, nil, v), http.StatusSeeOther)
+}
+
 func formatUSDFromCents(cents int) string {
 	dollars := float64(cents) / 100.0
 	return fmt.Sprintf("$%.2f", dollars)
@@ -359,17 +372,17 @@ func (s *Service) handlePostProfileUpdateName(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 
 	if err := r.ParseForm(); err != nil {
-		s.redirectProfileWithError(w, r, "Invalid form submission.")
+		s.redirectProfileEditWithError(w, r, "Invalid form submission.")
 		return
 	}
 
 	displayName := strings.TrimSpace(r.FormValue("display_name"))
 	if displayName == "" {
-		s.redirectProfileWithError(w, r, "Display name cannot be empty.")
+		s.redirectProfileEditWithError(w, r, "Display name cannot be empty.")
 		return
 	}
 	if len([]rune(displayName)) > 100 {
-		s.redirectProfileWithError(w, r, "Display name must be 100 characters or fewer.")
+		s.redirectProfileEditWithError(w, r, "Display name must be 100 characters or fewer.")
 		return
 	}
 
@@ -381,20 +394,94 @@ func (s *Service) handlePostProfileUpdateName(w http.ResponseWriter, r *http.Req
 
 	authSubject := strings.TrimSpace(state.AuthSubject)
 	if authSubject == "" {
-		s.redirectProfileWithError(w, r, "Unable to update profile: missing identity.")
+		s.redirectProfileEditWithError(w, r, "Unable to update profile: missing identity.")
 		return
 	}
 
 	if err := s.auth0UpdateUserDisplayName(ctx, authSubject, displayName); err != nil {
 		s.logger.WithError(err).WithField("auth_subject", authSubject).Error("failed to update Auth0 user display name")
-		s.redirectProfileWithError(w, r, "Unable to update profile. Please try again later.")
+		s.redirectProfileEditWithError(w, r, "Unable to update display name. Please try again later.")
 		return
 	}
 
-	// state.DisplayName = displayName
+	state.DisplayName = displayName
 	s.setAuthUserStateCookie(w, state, s.config.SessionMaxAgeSec)
 
 	s.redirectProfileWithNotice(w, r, "Display name updated.")
+}
+
+func (s *Service) handlePostProfileUpdateEmail(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if err := r.ParseForm(); err != nil {
+		s.redirectProfileEditWithError(w, r, "Invalid form submission.")
+		return
+	}
+
+	email := strings.TrimSpace(r.FormValue("email"))
+	if email == "" {
+		s.redirectProfileEditWithError(w, r, "Email cannot be empty.")
+		return
+	}
+	if !strings.Contains(email, "@") {
+		s.redirectProfileEditWithError(w, r, "Please enter a valid email address.")
+		return
+	}
+
+	state, ok := s.authUserStateFromRequest(r)
+	if !ok {
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
+
+	authSubject := strings.TrimSpace(state.AuthSubject)
+	if authSubject == "" {
+		s.redirectProfileEditWithError(w, r, "Unable to update profile: missing identity.")
+		return
+	}
+
+	if err := s.auth0PatchUser(ctx, authSubject, map[string]any{
+		"email":          email,
+		"email_verified": false,
+	}); err != nil {
+		s.logger.WithError(err).WithField("auth_subject", authSubject).Error("failed to update Auth0 user email")
+		s.redirectProfileEditWithError(w, r, "Unable to update email. Please try again later.")
+		return
+	}
+
+	state.Email = email
+	s.setAuthUserStateCookie(w, state, s.config.SessionMaxAgeSec)
+
+	s.redirectProfileWithNotice(w, r, "Email updated. Check your inbox to verify the new address.")
+}
+
+func (s *Service) handlePostProfileSendPasswordReset(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	state, ok := s.authUserStateFromRequest(r)
+	if !ok {
+		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		return
+	}
+
+	authSubject := strings.TrimSpace(state.AuthSubject)
+	if authSubject == "" {
+		s.redirectProfileEditWithError(w, r, "Unable to send reset email: missing identity.")
+		return
+	}
+
+	if !strings.HasPrefix(authSubject, "auth0|") {
+		s.redirectProfileEditWithError(w, r, "Password reset is not available for social login accounts.")
+		return
+	}
+
+	if err := s.auth0SendPasswordResetTicket(ctx, authSubject); err != nil {
+		s.logger.WithError(err).WithField("auth_subject", authSubject).Error("failed to send Auth0 password reset ticket")
+		s.redirectProfileEditWithError(w, r, "Unable to send password reset email. Please try again later.")
+		return
+	}
+
+	s.redirectProfileWithNotice(w, r, "Password reset email sent. Check your inbox.")
 }
 
 func (s *Service) auth0ManagementToken(ctx context.Context) (string, error) {
@@ -475,10 +562,49 @@ func (s *Service) auth0PatchUser(ctx context.Context, authSubject string, body m
 	return nil
 }
 
+func (s *Service) auth0SendPasswordResetTicket(ctx context.Context, authSubject string) error {
+	token, err := s.auth0ManagementToken(ctx)
+	if err != nil {
+		return fmt.Errorf("get management token: %w", err)
+	}
+
+	resultURL := s.absoluteRoute(RouteProfile, nil, nil)
+
+	payload := map[string]any{
+		"user_id":    authSubject,
+		"result_url": resultURL,
+		"ttl_sec":    3600,
+	}
+
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal ticket request: %w", err)
+	}
+
+	ticketURL := strings.TrimRight(s.auth0DomainURL(), "/") + "/api/v2/tickets/password-change"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, ticketURL, strings.NewReader(string(encoded)))
+	if err != nil {
+		return fmt.Errorf("create ticket request: %w", err)
+	}
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("authorization", "Bearer "+token)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("execute ticket request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("password reset ticket request failed with status %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 func buildProfileSidebar(userType string) []types.ProfileNavItem {
 	items := []types.ProfileNavItem{
 		{Label: "Profile Overview", Href: "#overview", Active: true, Section: "overview", ShowItem: true},
-		{Label: "Edit Profile", Href: "#edit-profile", Active: false, Section: "edit-profile", ShowItem: true},
 		{Label: "My Needs", Href: "#my-needs", Active: false, Section: "my-needs", ShowItem: userType == string(types.UserTypeRecipient)},
 		{Label: "Need Status", Href: "#need-status", Active: false, Section: "need-status", ShowItem: userType == string(types.UserTypeRecipient)},
 		{Label: "Donation History", Href: "#donations", Active: false, Section: "donations", ShowItem: userType == string(types.UserTypeDonor)},
@@ -487,9 +613,10 @@ func buildProfileSidebar(userType string) []types.ProfileNavItem {
 
 	filtered := make([]types.ProfileNavItem, 0, len(items))
 	for _, item := range items {
-		if item.ShowItem {
-			filtered = append(filtered, item)
+		if !item.ShowItem {
+			continue
 		}
+		filtered = append(filtered, item)
 	}
 
 	return filtered

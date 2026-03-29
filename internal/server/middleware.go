@@ -48,6 +48,7 @@ type authUserState struct {
 	Email       string
 	GivenName   string
 	FamilyName  string
+	DisplayName string
 	UserType    string
 	IsAdmin     bool
 }
@@ -58,12 +59,13 @@ type responseWriter struct {
 }
 
 type AuthClaims struct {
-	Subject    string
-	Email      string
-	GivenName  string
-	FamilyName string
-	Nonce      string
-	IsAdmin    bool
+	Subject     string
+	Email       string
+	GivenName   string
+	FamilyName  string
+	DisplayName string
+	Nonce       string
+	IsAdmin     bool
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
@@ -149,7 +151,13 @@ func (s *Service) AttachAuthContext(next http.Handler) http.Handler {
 		if familyName == "" {
 			familyName = strings.TrimSpace(claims.FamilyName)
 		}
-		displayName := strings.TrimSpace(givenName)
+		displayName := strings.TrimSpace(state.DisplayName)
+		if displayName == "" {
+			displayName = strings.TrimSpace(claims.DisplayName)
+		}
+		if displayName == "" {
+			displayName = strings.TrimSpace(givenName)
+		}
 		if displayName == "" {
 			displayName = "Friend"
 		}
@@ -255,6 +263,12 @@ func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (
 	}
 	familyName = strings.TrimSpace(familyName)
 
+	var displayName string
+	if err := token.Get(internal.AuthDisplayNameClaim, &displayName); err != nil {
+		displayName = ""
+	}
+	displayName = strings.TrimSpace(displayName)
+
 	var nonce string
 	if err := token.Get("nonce", &nonce); err != nil {
 		nonce = ""
@@ -276,12 +290,13 @@ func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (
 	}
 
 	return &AuthClaims{
-		Subject:    subject,
-		Email:      email,
-		GivenName:  givenName,
-		FamilyName: familyName,
-		Nonce:      nonce,
-		IsAdmin:    isAdmin,
+		Subject:     subject,
+		Email:       email,
+		GivenName:   givenName,
+		FamilyName:  familyName,
+		DisplayName: displayName,
+		Nonce:       nonce,
+		IsAdmin:     isAdmin,
 	}, nil
 }
 
