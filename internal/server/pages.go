@@ -801,6 +801,15 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	isSaved := false
+	if session, ok := sessionFromRequest(r); ok && session.UserID != "" {
+		isSaved, err = s.savedNeedRepo.IsSaved(ctx, session.UserID, needID)
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Warn("failed to check if need is saved")
+			isSaved = false
+		}
+	}
+
 	data := &types.NeedDetailPageData{
 		BasePageData:        types.BasePageData{Title: "Need Details"},
 		ID:                  needID,
@@ -816,6 +825,9 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		SecondaryCategories: secondaryCategories,
 		Documents:           reviewDocs,
 		RelatedNeeds:        relatedNeeds,
+		IsSaved:             isSaved,
+		SaveNeedAction:      s.route(RouteNeedSave, Param("needID", needID)),
+		UnsaveNeedAction:    s.route(RouteNeedUnsave, Param("needID", needID)),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

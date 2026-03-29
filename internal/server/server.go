@@ -51,6 +51,7 @@ type Service struct {
 	donorPreferenceRepo         *store.DonorPreferenceRepository
 	donorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
 	donationIntentRepo          *store.DonationIntentRepository
+	savedNeedRepo               *store.SavedNeedRepository
 
 	cookie           *securecookie.SecureCookie
 	jwksCache        *jwk.Cache
@@ -86,6 +87,7 @@ type Options struct {
 	DonorPreferenceRepo         *store.DonorPreferenceRepository
 	DonorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
 	DonationIntentRepo          *store.DonationIntentRepository
+	SavedNeedRepo               *store.SavedNeedRepository
 
 	JWKCache *jwk.Cache
 	JWKSURL  string
@@ -117,6 +119,7 @@ func New(opts Options) (*Service, error) {
 		donorPreferenceRepo:         opts.DonorPreferenceRepo,
 		donorPreferenceAssignRepo:   opts.DonorPreferenceAssignRepo,
 		donationIntentRepo:          opts.DonationIntentRepo,
+		savedNeedRepo:               opts.SavedNeedRepo,
 
 		cookie:           securecookie.New(hashKey, blockKey),
 		jwksCache:        opts.JWKCache,
@@ -255,6 +258,8 @@ func (s *Service) buildRouter(r *flow.Mux, csrfKey []byte) {
 			r.HandleFunc(RoutePattern(RouteNeedDonate), s.handleGetNeedDonate, http.MethodGet)
 			r.HandleFunc(RoutePattern(RouteNeedDonate), s.handlePostNeedDonate, http.MethodPost)
 			r.HandleFunc(RoutePattern(RouteNeedDonateConfirmation), s.handleGetNeedDonateConfirmation, http.MethodGet)
+			r.HandleFunc(RoutePattern(RouteNeedSave), s.handlePostNeedSave, http.MethodPost)
+			r.HandleFunc(RoutePattern(RouteNeedUnsave), s.handlePostNeedUnsave, http.MethodPost)
 		})
 
 		r.Group(func(r *flow.Mux) {

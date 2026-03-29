@@ -43,6 +43,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	myNeeds := make([]*types.Need, 0)
 	needSummaries := make([]types.ProfileNeedSummary, 0)
 	donationSummaries := make([]types.ProfileDonationSummary, 0)
+	savedNeedSummaries := make([]types.ProfileSavedNeedSummary, 0)
 
 	switch types.UserType(userType) {
 	case types.UserTypeRecipient:
@@ -62,6 +63,14 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		donationSummaries = summaries
+
+		saved, err := s.buildSavedNeedSummaries(ctx, session.UserID)
+		if err != nil {
+			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to build saved need summaries for profile")
+			s.internalServerError(w)
+			return
+		}
+		savedNeedSummaries = saved
 	}
 
 	data := &types.ProfilePageData{
@@ -82,8 +91,10 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		Needs:                   myNeeds,
 		NeedSummaries:           needSummaries,
 		DonationSummaries:       donationSummaries,
+		SavedNeedSummaries:      savedNeedSummaries,
 		HasNeeds:                len(myNeeds) > 0,
 		HasDonations:            len(donationSummaries) > 0,
+		HasSavedNeeds:           len(savedNeedSummaries) > 0,
 		SubmitNeedHref:          s.route(RouteOnboarding),
 	}
 
@@ -239,6 +250,115 @@ func (s *Service) buildDonationSummaries(ctx context.Context, userID string) ([]
 			IsFinalized: isFinalized,
 			IsAnonymous: intent.IsAnonymous,
 			CreatedAt:   intent.CreatedAt.Format("Jan 2, 2006"),
+		})
+	}
+
+	return summaries, nil
+}
+
+func (s *Service) buildSavedNeedSummaries(ctx context.Context, userID string) ([]types.ProfileSavedNeedSummary, error) {
+	saved, err := s.savedNeedRepo.SavedNeedsByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch saved needs: %w", err)
+	}
+	if len(saved) == 0 {
+		return []types.ProfileSavedNeedSummary{}, nil
+	}
+
+	needIDs := make([]string, 0, len(saved))
+	for _, sn := range saved {
+		needIDs = append(needIDs, sn.NeedID)
+	}
+
+	needs, err := s.needsRepo.NeedsByIDs(ctx, needIDs)
+	if err != nil {
+		return nil, fmt.Errorf("fetch needs for saved summary: %w", err)
+	}
+
+	needByID := make(map[string]*types.Need, len(needs))
+	for _, n := range needs {
+		if n != nil {
+			needByID[n.ID] = n
+		}
+	}
+
+	allAssignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
+	if err != nil {
+		return nil, fmt.Errorf("fetch category assignments for saved needs: %w", err)
+	}
+
+	primaryCategoryIDByNeed := make(map[string]string)
+	uniqueCategoryIDs := make(map[string]bool)
+	for _, a := range allAssignments {
+		if a.IsPrimary {
+			primaryCategoryIDByNeed[a.NeedID] = a.CategoryID
+			uniqueCategoryIDs[a.CategoryID] = true
+		}
+	}
+
+	categoryIDs := make([]string, 0, len(uniqueCategoryIDs))
+	for id := range uniqueCategoryIDs {
+		categoryIDs = append(categoryIDs, id)
+	}
+
+	categoryNameByID := make(map[string]string)
+	if len(categoryIDs) > 0 {
+		categories, err := s.categoryRepo.CategoriesByIDs(ctx, categoryIDs)
+		if err != nil {
+			return nil, fmt.Errorf("fetch categories for saved needs: %w", err)
+		}
+		for _, cat := range categories {
+			if cat != nil {
+				categoryNameByID[cat.ID] = cat.Name
+			}
+		}
+	}
+
+	ownerIDs := make([]string, 0, len(needs))
+	seenOwners := make(map[string]bool)
+	for _, n := range needs {
+		if n != nil && !seenOwners[n.UserID] {
+			ownerIDs = append(ownerIDs, n.UserID)
+			seenOwners[n.UserID] = true
+		}
+	}
+	ownerNameByID := make(map[string]string, len(ownerIDs))
+	for _, ownerID := range ownerIDs {
+		user, err := s.userRepo.User(ctx, ownerID)
+		if err == nil {
+			ownerNameByID[ownerID] = userDisplayName(user)
+		} else {
+			ownerNameByID[ownerID] = "Anonymous"
+		}
+	}
+
+	summaries := make([]types.ProfileSavedNeedSummary, 0, len(saved))
+	for _, sn := range saved {
+		need, ok := needByID[sn.NeedID]
+		if !ok {
+			continue
+		}
+
+		categoryName := "Uncategorized"
+		if catID, ok := primaryCategoryIDByNeed[sn.NeedID]; ok {
+			if name, ok := categoryNameByID[catID]; ok {
+				categoryName = name
+			}
+		}
+
+		urgencyLabel, urgencyDotClass := browseUrgency(need.Urgency)
+		fundingPct := fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents)
+
+		summaries = append(summaries, types.ProfileSavedNeedSummary{
+			NeedID:          sn.NeedID,
+			OwnerName:       ownerNameByID[need.UserID],
+			CategoryName:    categoryName,
+			AmountNeeded:    formatUSDFromCents(need.AmountNeededCents),
+			FundingPercent:  fundingPct,
+			UrgencyLabel:    urgencyLabel,
+			UrgencyDotClass: urgencyDotClass,
+			DetailHref:      s.route(RouteNeedDetail, Param("needID", sn.NeedID)),
+			UnsaveAction:    s.route(RouteNeedUnsave, Param("needID", sn.NeedID)),
 		})
 	}
 
