@@ -59,6 +59,8 @@ type BrowsePageData struct {
 	TotalPages           int
 	PrevHref             string
 	NextHref             string
+	PrefsApplied         bool
+	HasDonorPrefs        bool
 }
 
 type BrowseFilters struct {
@@ -72,6 +74,7 @@ type BrowseFilters struct {
 	SortBy      string
 	Page        int
 	PageSize    int
+	UsePrefs    string
 }
 
 type BrowseNeedCard struct {

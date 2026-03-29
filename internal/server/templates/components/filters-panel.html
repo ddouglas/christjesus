@@ -3,6 +3,25 @@
   hx-push-url="true" hx-indicator="#browse-loading" class="space-y-6 rounded-xl border border-border bg-white p-4 shadow-sm">
   <input type="hidden" id="browse-view-input" name="view" value="{{.Filters.ViewMode}}" />
   <input type="hidden" id="browse-sort-input" name="sort" value="{{.Filters.SortBy}}" />
+  <input type="hidden" name="use_prefs" value="{{.Filters.UsePrefs}}" />
+
+  {{if .PrefsApplied}}
+  <div class="flex items-center justify-between">
+    <span class="text-xs text-muted-foreground">Using your preferences</span>
+    <a href="{{route "browse" nil}}?use_prefs=0"
+      class="inline-flex h-7 items-center justify-center rounded-md border border-border px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted">
+      Disable
+    </a>
+  </div>
+  {{else if .HasDonorPrefs}}
+  <div class="flex items-center justify-between">
+    <span class="text-xs text-muted-foreground">Preferences off</span>
+    <a href="{{route "browse" nil}}"
+      class="inline-flex h-7 items-center justify-center rounded-md border border-border px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted">
+      Enable
+    </a>
+  </div>
+  {{end}}
 
   <!--
   <div>
