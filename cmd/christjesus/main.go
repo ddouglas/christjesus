@@ -18,6 +18,7 @@ func main() {
 			nanoidCommand,
 			importZipsCommand,
 			e2eResetCommand,
+			debugBrowseCommand,
 		},
 	}
 

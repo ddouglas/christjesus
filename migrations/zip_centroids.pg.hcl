@@ -18,7 +18,7 @@ table "zip_centroids" {
   }
 
   column "geog" {
-    type    = sql("christjesus.geography(Point, 4326)")
+    type    = sql("extensions.geography(Point, 4326)")
     null    = true
     comment = "PostGIS geography point derived from latitude/longitude"
   }
