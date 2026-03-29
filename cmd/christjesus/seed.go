@@ -49,6 +49,7 @@ var seedCommand = &cli.Command{
 		assignmentRepo := store.NewAssignmentRepository(pool)
 		storyRepo := store.NewStoryRepository(pool)
 		userRepo := store.NewUserRepository(pool)
+		addressRepo := store.NewUserAddressRepository(pool)
 
 		// Seed categories
 		logrus.Info("Seeding categories...")
@@ -63,7 +64,7 @@ var seedCommand = &cli.Command{
 
 		if fakeNeedsCount > 0 {
 			logrus.Info("Seeding fake users...")
-			if err := seed.SeedFakeUsers(ctx, userRepo); err != nil {
+			if err := seed.SeedFakeUsers(ctx, userRepo, addressRepo); err != nil {
 				return fmt.Errorf("failed to seed fake users: %w", err)
 			}
 			logrus.Info("Fake users seeded successfully")

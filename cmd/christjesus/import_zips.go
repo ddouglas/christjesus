@@ -170,7 +170,9 @@ func parseZCTAFile(r io.Reader) ([]zipCentroid, error) {
 	return rows, nil
 }
 
-func loadZipCentroids(ctx context.Context, pool interface{ Begin(ctx context.Context) (pgx.Tx, error) }, rows []zipCentroid) error {
+func loadZipCentroids(ctx context.Context, pool interface {
+	Begin(ctx context.Context) (pgx.Tx, error)
+}, rows []zipCentroid) error {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -193,10 +195,20 @@ func loadZipCentroids(ctx context.Context, pool interface{ Begin(ctx context.Con
 		return fmt.Errorf("copy into zip_centroids: %w", err)
 	}
 
+	logrus.WithField("copied", copyCount).Info("COPY complete, populating geography column")
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE christjesus.zip_centroids
+		SET geog = ST_SetSRID(ST_MakePoint(longitude::float8, latitude::float8), 4326)::geography
+		WHERE geog IS NULL
+	`); err != nil {
+		return fmt.Errorf("populate geog column: %w", err)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
 
-	logrus.WithField("copied", copyCount).Info("COPY complete")
+	logrus.WithField("copied", copyCount).Info("zip_centroids table populated with geography data")
 	return nil
 }

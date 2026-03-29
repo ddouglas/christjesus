@@ -15,17 +15,20 @@ type fakeUserSeed struct {
 	GivenName  string
 	FamilyName string
 	UserType   types.UserType
+	ZipCode    string
+	City       string
+	State      string
 }
 
 var fakeUsers = []fakeUserSeed{
-	{ID: "11111111-1111-1111-1111-111111111111", Email: "ava.williams+seed1@example.com", GivenName: "Ava", FamilyName: "Williams", UserType: types.UserTypeRecipient},
-	{ID: "22222222-2222-2222-2222-222222222222", Email: "liam.johnson+seed2@example.com", GivenName: "Liam", FamilyName: "Johnson", UserType: types.UserTypeRecipient},
-	{ID: "33333333-3333-3333-3333-333333333333", Email: "noah.brown+seed3@example.com", GivenName: "Noah", FamilyName: "Brown", UserType: types.UserTypeRecipient},
-	{ID: "44444444-4444-4444-4444-444444444444", Email: "mia.davis+seed4@example.com", GivenName: "Mia", FamilyName: "Davis", UserType: types.UserTypeRecipient},
-	{ID: "55555555-5555-5555-5555-555555555555", Email: "elijah.garcia+seed5@example.com", GivenName: "Elijah", FamilyName: "Garcia", UserType: types.UserTypeRecipient},
-	{ID: "66666666-6666-6666-6666-666666666666", Email: "olivia.miller+seed6@example.com", GivenName: "Olivia", FamilyName: "Miller", UserType: types.UserTypeRecipient},
-	{ID: "77777777-7777-7777-7777-777777777777", Email: "ethan.moore+seed7@example.com", GivenName: "Ethan", FamilyName: "Moore", UserType: types.UserTypeRecipient},
-	{ID: "88888888-8888-8888-8888-888888888888", Email: "sophia.taylor+seed8@example.com", GivenName: "Sophia", FamilyName: "Taylor", UserType: types.UserTypeRecipient},
+	{ID: "11111111-1111-1111-1111-111111111111", Email: "ava.williams+seed1@example.com", GivenName: "Ava", FamilyName: "Williams", UserType: types.UserTypeRecipient, ZipCode: "28202", City: "Charlotte", State: "NC"},
+	{ID: "22222222-2222-2222-2222-222222222222", Email: "liam.johnson+seed2@example.com", GivenName: "Liam", FamilyName: "Johnson", UserType: types.UserTypeRecipient, ZipCode: "28205", City: "Charlotte", State: "NC"},
+	{ID: "33333333-3333-3333-3333-333333333333", Email: "noah.brown+seed3@example.com", GivenName: "Noah", FamilyName: "Brown", UserType: types.UserTypeRecipient, ZipCode: "28208", City: "Charlotte", State: "NC"},
+	{ID: "44444444-4444-4444-4444-444444444444", Email: "mia.davis+seed4@example.com", GivenName: "Mia", FamilyName: "Davis", UserType: types.UserTypeRecipient, ZipCode: "28210", City: "Charlotte", State: "NC"},
+	{ID: "55555555-5555-5555-5555-555555555555", Email: "elijah.garcia+seed5@example.com", GivenName: "Elijah", FamilyName: "Garcia", UserType: types.UserTypeRecipient, ZipCode: "28216", City: "Charlotte", State: "NC"},
+	{ID: "66666666-6666-6666-6666-666666666666", Email: "olivia.miller+seed6@example.com", GivenName: "Olivia", FamilyName: "Miller", UserType: types.UserTypeRecipient, ZipCode: "28269", City: "Charlotte", State: "NC"},
+	{ID: "77777777-7777-7777-7777-777777777777", Email: "ethan.moore+seed7@example.com", GivenName: "Ethan", FamilyName: "Moore", UserType: types.UserTypeRecipient, ZipCode: "28277", City: "Charlotte", State: "NC"},
+	{ID: "88888888-8888-8888-8888-888888888888", Email: "sophia.taylor+seed8@example.com", GivenName: "Sophia", FamilyName: "Taylor", UserType: types.UserTypeRecipient, ZipCode: "28203", City: "Charlotte", State: "NC"},
 }
 
 func seedFakeNeedUserIDs() []string {
@@ -38,7 +41,7 @@ func seedFakeNeedUserIDs() []string {
 	return ids
 }
 
-func SeedFakeUsers(ctx context.Context, userRepo *store.UserRepository) error {
+func SeedFakeUsers(ctx context.Context, userRepo *store.UserRepository, addressRepo *store.UserAddressRepository) error {
 	seeded := 0
 	for _, fakeUser := range fakeUsers {
 		existing, err := userRepo.User(ctx, fakeUser.ID)
@@ -60,19 +63,35 @@ func SeedFakeUsers(ctx context.Context, userRepo *store.UserRepository) error {
 				return fmt.Errorf("failed to create fake user %s: %w", fakeUser.ID, err)
 			}
 			seeded++
-			continue
+		} else {
+			userType := string(fakeUser.UserType)
+			existing.UserType = &userType
+			existing.Email = utils.StringPtr(fakeUser.Email)
+			existing.GivenName = utils.StringPtr(fakeUser.GivenName)
+			existing.FamilyName = utils.StringPtr(fakeUser.FamilyName)
+
+			if err := userRepo.Update(ctx, fakeUser.ID, existing); err != nil {
+				return fmt.Errorf("failed to update fake user %s: %w", fakeUser.ID, err)
+			}
+			seeded++
 		}
 
-		userType := string(fakeUser.UserType)
-		existing.UserType = &userType
-		existing.Email = utils.StringPtr(fakeUser.Email)
-		existing.GivenName = utils.StringPtr(fakeUser.GivenName)
-		existing.FamilyName = utils.StringPtr(fakeUser.FamilyName)
-
-		if err := userRepo.Update(ctx, fakeUser.ID, existing); err != nil {
-			return fmt.Errorf("failed to update fake user %s: %w", fakeUser.ID, err)
+		// Seed a primary address if the user doesn't already have one
+		if fakeUser.ZipCode != "" {
+			primaryAddr, _ := addressRepo.PrimaryByUserID(ctx, fakeUser.ID)
+			if primaryAddr == nil {
+				addr := &types.UserAddress{
+					ID:      utils.NanoID(),
+					UserID:  fakeUser.ID,
+					City:    utils.StringPtr(fakeUser.City),
+					State:   utils.StringPtr(fakeUser.State),
+					ZipCode: utils.StringPtr(fakeUser.ZipCode),
+				}
+				if err := addressRepo.CreateAsPrimary(ctx, addr); err != nil {
+					return fmt.Errorf("failed to create address for fake user %s: %w", fakeUser.ID, err)
+				}
+			}
 		}
-		seeded++
 	}
 
 	fmt.Printf("Fake users seeded: %d upserted\n", seeded)

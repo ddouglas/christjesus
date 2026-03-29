@@ -17,7 +17,18 @@ table "zip_centroids" {
     null = false
   }
 
+  column "geog" {
+    type    = sql("christjesus.geography(Point, 4326)")
+    null    = true
+    comment = "PostGIS geography point derived from latitude/longitude"
+  }
+
   primary_key {
     columns = [column.zip_code]
+  }
+
+  index "idx_zip_centroids_geog" {
+    columns = [column.geog]
+    type    = GiST
   }
 }

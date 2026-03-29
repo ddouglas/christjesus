@@ -338,6 +338,24 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	filters := parseBrowseFilters(r.URL.Query())
 
+	// Pre-populate ZIP/radius from donor preferences if logged in and no query params set
+	if filters.ZipCode == "" {
+		if session, ok := sessionFromContext(ctx); ok && session.UserID != "" {
+			pref, err := s.donorPreferenceRepo.ByUserID(ctx, session.UserID)
+			if err != nil {
+				s.logger.WithError(err).Warn("failed to fetch donor preferences for browse pre-population")
+			}
+			if pref != nil {
+				if pref.ZipCode != nil && *pref.ZipCode != "" {
+					filters.ZipCode = *pref.ZipCode
+				}
+				if pref.Radius != nil && *pref.Radius != "" {
+					filters.Radius = normalizeBrowseRadius(*pref.Radius)
+				}
+			}
+		}
+	}
+
 	if isHXRequest(r) {
 		data, err := s.buildBrowseResultsPageData(ctx, filters)
 		if err != nil {
@@ -366,15 +384,9 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cityOptions := []string{}
-	if filters.City != "" {
-		cityOptions = append(cityOptions, filters.City)
-	}
-
 	data := &types.BrowsePageData{
 		BasePageData:         types.BasePageData{Title: "Browse Needs"},
 		Categories:           categories,
-		Cities:               cityOptions,
 		Filters:              filters,
 		LoadResultsOnRender:  true,
 		ShowResultsSkeletons: true,
@@ -412,14 +424,15 @@ func parseBrowseFilters(query url.Values) types.BrowseFilters {
 
 	return types.BrowseFilters{
 		Search:      strings.TrimSpace(query.Get("search")),
-		City:        strings.TrimSpace(query.Get("city")),
+		ZipCode:     normalizeBrowseZipCode(query.Get("zip")),
+		Radius:      normalizeBrowseRadius(query.Get("radius")),
 		CategoryIDs: selectedCategories,
 		Urgency:     strings.TrimSpace(query.Get("urgency")),
-		FundingMax:      fundingMax,
-		ViewMode:        normalizeBrowseViewMode(query.Get("view")),
-		SortBy:          normalizeBrowseSortBy(query.Get("sort")),
-		Page:            parsePositiveInt(query.Get("page"), 1),
-		PageSize:        browseDefaultPageSize,
+		FundingMax:  fundingMax,
+		ViewMode:    normalizeBrowseViewMode(query.Get("view")),
+		SortBy:      normalizeBrowseSortBy(query.Get("sort")),
+		Page:        parsePositiveInt(query.Get("page"), 1),
+		PageSize:    browseDefaultPageSize,
 	}
 }
 
@@ -429,6 +442,33 @@ func normalizeBrowseViewMode(raw string) string {
 		return "list"
 	default:
 		return "grid"
+	}
+}
+
+func normalizeBrowseZipCode(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if len(trimmed) != 5 {
+		return ""
+	}
+	for _, c := range trimmed {
+		if c < '0' || c > '9' {
+			return ""
+		}
+	}
+	return trimmed
+}
+
+func normalizeBrowseRadius(raw string) string {
+	// Accept both "15" and "15-miles" (donor_preferences format)
+	trimmed := strings.TrimSpace(raw)
+	trimmed = strings.TrimSuffix(trimmed, "-miles")
+	switch trimmed {
+	case "5", "15", "25", "50":
+		return trimmed
+	case "anywhere":
+		return "anywhere"
+	default:
+		return ""
 	}
 }
 
@@ -445,14 +485,13 @@ func isHXRequest(r *http.Request) bool {
 	return strings.EqualFold(r.Header.Get("HX-Request"), "true")
 }
 
-func browseStoreFilter(filters types.BrowseFilters) store.BrowseNeedsFilter {
+func (s *Service) browseStoreFilter(filters types.BrowseFilters) store.BrowseNeedsFilter {
 	categoryIDs := make([]string, 0, len(filters.CategoryIDs))
 	for id := range filters.CategoryIDs {
 		categoryIDs = append(categoryIDs, id)
 	}
 
-	return store.BrowseNeedsFilter{
-		City:        filters.City,
+	sf := store.BrowseNeedsFilter{
 		CategoryIDs: categoryIDs,
 		Urgency:     filters.Urgency,
 		FundingMax:  filters.FundingMax,
@@ -461,10 +500,21 @@ func browseStoreFilter(filters types.BrowseFilters) store.BrowseNeedsFilter {
 		Page:        filters.Page,
 		PageSize:    filters.PageSize,
 	}
+
+	if filters.ZipCode != "" {
+		sf.ZipCode = filters.ZipCode
+		if filters.Radius != "" && filters.Radius != "anywhere" {
+			if radiusMiles, err := strconv.ParseFloat(filters.Radius, 64); err == nil {
+				sf.RadiusMiles = &radiusMiles
+			}
+		}
+	}
+
+	return sf
 }
 
 func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.BrowseFilters) (*types.BrowsePageData, error) {
-	sf := browseStoreFilter(filters)
+	sf := s.browseStoreFilter(filters)
 
 	totalNeeds, err := s.needsRepo.BrowseNeedsCount(ctx, sf)
 	if err != nil {
@@ -483,12 +533,22 @@ func (s *Service) buildBrowseResultsPageData(ctx context.Context, filters types.
 		sf.Page = totalPages
 	}
 
-	needs, err := s.needsRepo.BrowseNeedsPage(ctx, sf)
+	rows, err := s.needsRepo.BrowseNeedsPage(ctx, sf)
 	if err != nil {
 		return nil, err
 	}
 
+	needs := make([]*types.Need, 0, len(rows))
+	distanceByNeedID := make(map[string]*float64, len(rows))
+	for _, row := range rows {
+		needs = append(needs, &row.Need)
+		distanceByNeedID[row.Need.ID] = row.DistanceMiles
+	}
+
 	cards := s.buildNeedCards(ctx, needs, "browse needs")
+	for _, card := range cards {
+		card.DistanceMiles = distanceByNeedID[card.ID]
+	}
 
 	categories, err := s.categoryRepo.Categories(ctx)
 	if err != nil {
@@ -526,8 +586,11 @@ func (s *Service) buildBrowsePageHref(filters types.BrowseFilters, page int) str
 	if filters.Search != "" {
 		v.Set("search", filters.Search)
 	}
-	if filters.City != "" {
-		v.Set("city", filters.City)
+	if filters.ZipCode != "" {
+		v.Set("zip", filters.ZipCode)
+	}
+	if filters.Radius != "" {
+		v.Set("radius", filters.Radius)
 	}
 	for id := range filters.CategoryIDs {
 		v.Add("category", id)
@@ -565,7 +628,6 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-
 
 	ownerName := "Anonymous"
 	user, err := s.userRepo.User(ctx, need.UserID)
@@ -710,9 +772,9 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		OwnerName:           ownerName,
 		SelectedAddress:     selectedAddress,
 		CityState:           cityState,
-		UrgencyLabel:    urgencyLabel,
-		UrgencyDotClass: urgencyDotClass,
-		FundingPercent:  fundingPercent,
+		UrgencyLabel:        urgencyLabel,
+		UrgencyDotClass:     urgencyDotClass,
+		FundingPercent:      fundingPercent,
 		Story:               story,
 		PrimaryCategory:     primaryCategory,
 		SecondaryCategories: secondaryCategories,

@@ -51,7 +51,6 @@ type BrowsePageData struct {
 	BasePageData
 	Needs                []*BrowseNeedCard
 	Categories           []*NeedCategory
-	Cities               []string
 	Filters              BrowseFilters
 	LoadResultsOnRender  bool
 	ShowResultsSkeletons bool
@@ -63,15 +62,16 @@ type BrowsePageData struct {
 }
 
 type BrowseFilters struct {
-	Search          string
-	City            string
+	Search      string
+	ZipCode     string
+	Radius      string
 	CategoryIDs map[string]bool
 	Urgency     string
-	FundingMax      int
-	ViewMode        string
-	SortBy          string
-	Page            int
-	PageSize        int
+	FundingMax  int
+	ViewMode    string
+	SortBy      string
+	Page        int
+	PageSize    int
 }
 
 type BrowseNeedCard struct {
@@ -80,6 +80,7 @@ type BrowseNeedCard struct {
 	City              string
 	State             string
 	CityState         string
+	DistanceMiles     *float64
 	UrgencyLabel      string
 	UrgencyDotClass   string
 	PrimaryCategoryID string
@@ -123,9 +124,9 @@ type NeedDetailPageData struct {
 	OwnerName           string
 	SelectedAddress     *UserAddress
 	CityState           string
-	UrgencyLabel    string
-	UrgencyDotClass string
-	FundingPercent  int
+	UrgencyLabel        string
+	UrgencyDotClass     string
+	FundingPercent      int
 	Story               *NeedStory
 	PrimaryCategory     *NeedCategory
 	SecondaryCategories []*NeedCategory
@@ -453,10 +454,10 @@ type AdminNeedExplorerPageData struct {
 }
 
 type AdminNeedStatusCard struct {
-	Status  NeedStatus
-	Label   string
-	Count   int
-	Href    string
+	Status   NeedStatus
+	Label    string
+	Count    int
+	Href     string
 	IsActive bool
 }
 
@@ -566,11 +567,11 @@ type AdminUserDetailPageData struct {
 	BackHref    string
 
 	// Recipient-specific
-	IsRecipient   bool
-	Needs         []*AdminUserNeedItem
-	HasNeeds      bool
-	TotalNeeds    int
-	NeedsSummary  string // e.g. "3 needs, 1 active, $450.00 raised"
+	IsRecipient  bool
+	Needs        []*AdminUserNeedItem
+	HasNeeds     bool
+	TotalNeeds   int
+	NeedsSummary string // e.g. "3 needs, 1 active, $450.00 raised"
 
 	// Donor-specific
 	IsDonor          bool
@@ -581,14 +582,14 @@ type AdminUserDetailPageData struct {
 }
 
 type AdminUserNeedItem struct {
-	NeedID          string
+	NeedID           string
 	ShortDescription string
-	Status          NeedStatus
-	AmountNeeded    string
-	AmountRaised    string
-	FundingPercent  int
-	CreatedAt       string
-	ReviewHref      string
+	Status           NeedStatus
+	AmountNeeded     string
+	AmountRaised     string
+	FundingPercent   int
+	CreatedAt        string
+	ReviewHref       string
 }
 
 type AdminUserDonationItem struct {
