@@ -41,5 +41,21 @@
   </div>
 </div>
 
+{{if .SimilarNeeds}}
+<div class="mx-auto w-full max-w-3xl px-4 pb-10 md:px-6">
+  <section class="space-y-4">
+    <div>
+      <h2 class="text-lg font-semibold text-foreground">Needs like this</h2>
+      <p class="text-sm text-muted-foreground">Other active requests in {{.PrimaryCategory}}</p>
+    </div>
+    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      {{range .SimilarNeeds}}
+      {{template "component.need.card" .}}
+      {{end}}
+    </div>
+  </section>
+</div>
+{{end}}
+
 {{template "footer" .}}
 {{end}}
