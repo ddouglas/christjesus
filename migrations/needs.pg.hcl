@@ -60,6 +60,13 @@ table "needs" {
     comment = "DRAFT, SUBMITTED, READY_FOR_REVIEW, UNDER_REVIEW, CHANGES_REQUESTED, REJECTED, ACTIVE, FUNDED, CLOSED"
   }
 
+  column "urgency" {
+    type    = text
+    null    = false
+    default = "medium"
+    comment = "Admin-set urgency level: low, medium, high, urgent"
+  }
+
   column "verified_at" {
     type = timestamptz
     null = true

@@ -4,6 +4,15 @@ import (
 	"time"
 )
 
+type NeedUrgency string
+
+const (
+	NeedUrgencyLow    NeedUrgency = "low"
+	NeedUrgencyMedium NeedUrgency = "medium"
+	NeedUrgencyHigh   NeedUrgency = "high"
+	NeedUrgencyUrgent NeedUrgency = "urgent"
+)
+
 type NeedStatus string
 
 const (
@@ -45,10 +54,11 @@ type Need struct {
 	UserAddressID         *string `db:"user_address_id"`
 	UsesNonPrimaryAddress bool    `db:"uses_non_primary_address"`
 
-	AmountNeededCents int        `db:"amount_needed_cents"`
-	AmountRaisedCents int        `db:"amount_raised_cents"`
-	ShortDescription  *string    `db:"short_description"`
-	Status            NeedStatus `db:"status"`
+	AmountNeededCents int         `db:"amount_needed_cents"`
+	AmountRaisedCents int         `db:"amount_raised_cents"`
+	ShortDescription  *string     `db:"short_description"`
+	Status            NeedStatus  `db:"status"`
+	Urgency           NeedUrgency `db:"urgency"`
 	VerifiedAt        *time.Time `db:"verified_at"`
 	VerifiedBy        *string    `db:"verified_by"`
 	CurrentStep       NeedStep   `db:"current_step"`

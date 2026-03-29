@@ -291,6 +291,7 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 	documentID := strings.TrimSpace(r.FormValue("document_id"))
 	reason := strings.TrimSpace(r.FormValue("reason"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	urgencyInput := strings.ToLower(strings.TrimSpace(r.FormValue("urgency")))
 
 	var newStatus *types.NeedStatus
 	var actionType types.NeedModerationActionType
@@ -397,6 +398,18 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 	if err := store.WithTx(r.Context(), s.needsRepo, func(tx pgx.Tx) error {
 		if action == "approve" {
 			if err := s.needsRepo.PublishNeedTx(r.Context(), tx, needID); err != nil {
+				return err
+			}
+			urgency := types.NeedUrgencyMedium
+			switch urgencyInput {
+			case "low":
+				urgency = types.NeedUrgencyLow
+			case "high":
+				urgency = types.NeedUrgencyHigh
+			case "urgent":
+				urgency = types.NeedUrgencyUrgent
+			}
+			if err := s.needsRepo.SetNeedUrgencyTx(r.Context(), tx, needID, urgency); err != nil {
 				return err
 			}
 		} else if newStatus != nil {

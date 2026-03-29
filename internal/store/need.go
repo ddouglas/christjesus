@@ -85,7 +85,7 @@ const (
 	browseJoinZipCentroid     = "christjesus.zip_centroids zc ON zc.zip_code = COALESCE(sa.zip_code, pa.zip_code)"
 
 	browseFundingPercentExpr = "CASE WHEN n.amount_needed_cents > 0 THEN (n.amount_raised_cents * 100 / n.amount_needed_cents) ELSE 0 END"
-	browseUrgencyWeightExpr  = "CASE WHEN n.amount_needed_cents <= 0 THEN 1 WHEN (n.amount_raised_cents * 100 / n.amount_needed_cents) < 35 THEN 3 WHEN (n.amount_raised_cents * 100 / n.amount_needed_cents) < 70 THEN 2 ELSE 1 END"
+	browseUrgencyOrderExpr   = "CASE n.urgency WHEN 'urgent' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 2 END"
 )
 
 func browseBaseQuery(columns ...string) sq.SelectBuilder {
@@ -118,12 +118,8 @@ func applyBrowseWhereFilters(qb sq.SelectBuilder, f BrowseNeedsFilter) sq.Select
 	}
 	if f.Urgency != "" {
 		switch strings.ToLower(f.Urgency) {
-		case "high":
-			qb = qb.Where(browseUrgencyWeightExpr + " = 3")
-		case "medium":
-			qb = qb.Where(browseUrgencyWeightExpr + " = 2")
-		case "low":
-			qb = qb.Where(browseUrgencyWeightExpr + " = 1")
+		case "urgent", "high", "medium", "low":
+			qb = qb.Where(sq.Eq{"n.urgency": strings.ToLower(f.Urgency)})
 		}
 	}
 	if f.Search != "" {
@@ -172,7 +168,7 @@ func (r *NeedRepository) BrowseNeedsPage(ctx context.Context, f BrowseNeedsFilte
 	case "closest":
 		qb = qb.OrderBy(browseFundingPercentExpr+" DESC", "n.created_at DESC")
 	default: // "urgency"
-		qb = qb.OrderBy(browseUrgencyWeightExpr+" DESC", "n.created_at DESC")
+		qb = qb.OrderBy(browseUrgencyOrderExpr+" DESC", "n.created_at DESC")
 	}
 
 	offset := uint64((f.Page - 1) * f.PageSize)
@@ -548,6 +544,21 @@ func (r *NeedRepository) PublishNeed(ctx context.Context, needID string) error {
 
 func (r *NeedRepository) PublishNeedTx(ctx context.Context, tx pgx.Tx, needID string) error {
 	return r.publishNeedWithExec(ctx, tx, needID)
+}
+
+func (r *NeedRepository) SetNeedUrgencyTx(ctx context.Context, tx pgx.Tx, needID string, urgency types.NeedUrgency) error {
+	query, args, err := psql().
+		Update(needTableName).
+		Set("urgency", urgency).
+		Set("updated_at", time.Now()).
+		Where(sq.Eq{"id": needID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to generate set need urgency query for need %s: %w", needID, err)
+	}
+
+	_, err = tx.Exec(ctx, query, args...)
+	return utils.ErrorWrapOrNil(err, "failed to set need urgency")
 }
 
 func (r *NeedRepository) setNeedStatusWithExec(ctx context.Context, execer needExecer, needID string, status types.NeedStatus) error {

@@ -192,7 +192,7 @@ func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logCo
 			primaryCategoryID = strings.ToLower(strings.ReplaceAll(primaryCategory, " ", "-"))
 		}
 
-		urgencyLabel, urgencyDotClass := browseUrgency(need.Status, need.AmountNeededCents, need.AmountRaisedCents)
+		urgencyLabel, urgencyDotClass := browseUrgency(need.Urgency)
 
 		cards = append(cards, &types.BrowseNeedCard{
 			ID:                need.ID,
@@ -752,7 +752,7 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 
 	_, _, cityState := browseCityStateParts(selectedAddress)
 
-	urgencyLabel, urgencyDotClass := browseUrgency(need.Status, need.AmountNeededCents, need.AmountRaisedCents)
+	urgencyLabel, urgencyDotClass := browseUrgency(need.Urgency)
 
 	fundingPercent := fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents)
 
@@ -908,23 +908,16 @@ func browseCityStateParts(address *types.UserAddress) (string, string, string) {
 	return city, state, city + ", " + state
 }
 
-func browseUrgency(status types.NeedStatus, amountNeededCents, amountRaisedCents int) (string, string) {
-	if status == types.NeedStatusSubmitted || status == types.NeedStatusReadyForReview || status == types.NeedStatusUnderReview {
+func browseUrgency(urgency types.NeedUrgency) (string, string) {
+	switch urgency {
+	case types.NeedUrgencyUrgent:
 		return "URGENT", "bg-[color:var(--cj-error)]"
-	}
-
-	if amountNeededCents <= 0 {
-		return "LOW", "bg-[color:var(--cj-success)]"
-	}
-
-	percent := (amountRaisedCents * 100) / amountNeededCents
-	switch {
-	case percent < 35:
+	case types.NeedUrgencyHigh:
 		return "HIGH", "bg-[color:var(--cj-error)]"
-	case percent < 70:
-		return "MEDIUM", "bg-[color:var(--cj-warning)]"
-	default:
+	case types.NeedUrgencyLow:
 		return "LOW", "bg-[color:var(--cj-success)]"
+	default: // medium
+		return "MEDIUM", "bg-[color:var(--cj-warning)]"
 	}
 }
 

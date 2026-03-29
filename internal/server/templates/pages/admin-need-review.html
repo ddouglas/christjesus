@@ -277,6 +277,15 @@
       <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="modal-note">Note</label>
       <textarea id="modal-note" name="note" rows="3" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional moderation note"></textarea>
     </div>
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Urgency (set on approve)</label>
+      <div class="flex flex-wrap gap-3 text-sm">
+        <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="low" class="h-4 w-4 border-border" /> Low</label>
+        <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="medium" class="h-4 w-4 border-border" checked /> Medium</label>
+        <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="high" class="h-4 w-4 border-border" /> High</label>
+        <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="urgent" class="h-4 w-4 border-border" /> Urgent</label>
+      </div>
+    </div>
     <div class="flex flex-wrap gap-2">
       <button type="submit" name="action" value="approve"
         class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-success)] px-4 py-2 text-sm font-medium text-white">Approve</button>
