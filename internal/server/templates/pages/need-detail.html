@@ -149,6 +149,32 @@
             Donate to this Need
           </a>
 
+          {{if .Navbar.IsAuthenticated}}
+          {{if .IsSaved}}
+          <form method="POST" action="{{.UnsaveNeedAction}}">
+            {{.CSRFField}}
+            <button type="submit"
+              class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--cj-accent)] px-4 py-2 text-sm font-medium text-[color:var(--cj-accent)] transition-colors hover:bg-[color:var(--cj-accent)]/10">
+              <svg class="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/>
+              </svg>
+              Saved
+            </button>
+          </form>
+          {{else}}
+          <form method="POST" action="{{.SaveNeedAction}}">
+            {{.CSRFField}}
+            <button type="submit"
+              class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/>
+              </svg>
+              Save for Later
+            </button>
+          </form>
+          {{end}}
+          {{end}}
+
           <div class="space-y-2">
             <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Share</p>
             <div class="flex items-center gap-2">

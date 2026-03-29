@@ -84,6 +84,7 @@ func serve(cCtx *cli.Context) error {
 	donorPreferenceRepo := store.NewDonorPreferenceRepository(pool)
 	donorPreferenceAssignRepo := store.NewDonorPreferenceAssignmentRepository(pool)
 	donationIntentRepo := store.NewDonationIntentRepository(pool)
+	savedNeedRepo := store.NewSavedNeedRepository(pool)
 
 	jwkCache, err := jwk.NewCache(context.Background(), httprc.NewClient())
 	if err != nil {
@@ -118,6 +119,7 @@ func serve(cCtx *cli.Context) error {
 		DonorPreferenceRepo:         donorPreferenceRepo,
 		DonorPreferenceAssignRepo:   donorPreferenceAssignRepo,
 		DonationIntentRepo:          donationIntentRepo,
+		SavedNeedRepo:               savedNeedRepo,
 		JWKCache:                    jwkCache,
 		JWKSURL:                     jwksURL,
 	})

@@ -135,6 +135,9 @@ type NeedDetailPageData struct {
 	SecondaryCategories []*NeedCategory
 	Documents           []ReviewDocument
 	RelatedNeeds        []*BrowseNeedCard
+	IsSaved             bool
+	SaveNeedAction      string
+	UnsaveNeedAction    string
 }
 
 type NeedDonatePageData struct {
@@ -350,9 +353,23 @@ type ProfilePageData struct {
 	Needs                   []*Need
 	NeedSummaries           []ProfileNeedSummary
 	DonationSummaries       []ProfileDonationSummary
+	SavedNeedSummaries      []ProfileSavedNeedSummary
 	HasNeeds                bool
 	HasDonations            bool
+	HasSavedNeeds           bool
 	SubmitNeedHref          string
+}
+
+type ProfileSavedNeedSummary struct {
+	NeedID          string
+	OwnerName       string
+	CategoryName    string
+	AmountNeeded    string
+	FundingPercent  int
+	UrgencyLabel    string
+	UrgencyDotClass string
+	DetailHref      string
+	UnsaveAction    string
 }
 
 type ProfileDonorPreferencesPageData struct {
