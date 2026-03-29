@@ -546,6 +546,21 @@ func (r *NeedRepository) PublishNeedTx(ctx context.Context, tx pgx.Tx, needID st
 	return r.publishNeedWithExec(ctx, tx, needID)
 }
 
+func (r *NeedRepository) SetNeedUrgency(ctx context.Context, needID string, urgency types.NeedUrgency) error {
+	query, args, err := psql().
+		Update(needTableName).
+		Set("urgency", urgency).
+		Set("updated_at", time.Now()).
+		Where(sq.Eq{"id": needID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to generate set need urgency query for need %s: %w", needID, err)
+	}
+
+	_, err = r.pool.Exec(ctx, query, args...)
+	return utils.ErrorWrapOrNil(err, "failed to set need urgency")
+}
+
 func (r *NeedRepository) SetNeedUrgencyTx(ctx context.Context, tx pgx.Tx, needID string, urgency types.NeedUrgency) error {
 	query, args, err := psql().
 		Update(needTableName).

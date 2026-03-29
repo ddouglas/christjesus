@@ -293,6 +293,24 @@ func (s *Service) handlePostAdminNeedModerate(w http.ResponseWriter, r *http.Req
 	note := strings.TrimSpace(r.FormValue("note"))
 	urgencyInput := strings.ToLower(strings.TrimSpace(r.FormValue("urgency")))
 
+	if action == "set_urgency" {
+		switch urgencyInput {
+		case "low", "medium", "high", "urgent":
+		default:
+			s.redirectAdminNeedReviewWithError(w, r, needID, "invalid urgency value")
+			return
+		}
+		if err := s.needsRepo.SetNeedUrgency(r.Context(), needID, types.NeedUrgency(urgencyInput)); err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Error("failed to update need urgency")
+			s.redirectAdminNeedReviewWithError(w, r, needID, "failed to update urgency")
+			return
+		}
+		v := url.Values{}
+		v.Set("notice", "Urgency updated")
+		http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, v, Param("needID", needID)), http.StatusSeeOther)
+		return
+	}
+
 	var newStatus *types.NeedStatus
 	var actionType types.NeedModerationActionType
 	var moderationDocumentID *string
