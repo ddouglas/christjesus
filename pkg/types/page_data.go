@@ -351,6 +351,7 @@ type ProfilePageData struct {
 	DonationSummaries       []ProfileDonationSummary
 	HasNeeds                bool
 	HasDonations            bool
+	SubmitNeedHref          string
 }
 
 type ProfileDonorPreferencesPageData struct {
