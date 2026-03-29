@@ -43,162 +43,25 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	myNeeds := make([]*types.Need, 0)
 	needSummaries := make([]types.ProfileNeedSummary, 0)
 	donationSummaries := make([]types.ProfileDonationSummary, 0)
-	if userType == string(types.UserTypeRecipient) {
-		needs, err := s.needsRepo.NeedsByUser(ctx, session.UserID)
+
+	switch types.UserType(userType) {
+	case types.UserTypeRecipient:
+		needs, summaries, err := s.buildNeedSummaries(ctx, session.UserID)
 		if err != nil {
-			if !errors.Is(err, types.ErrNeedNotFound) {
-				s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to fetch needs for profile")
-				s.internalServerError(w)
-				return
-			}
-		} else {
-			myNeeds = needs
-
-			needIDs := make([]string, 0, len(needs))
-			for _, need := range needs {
-				needIDs = append(needIDs, need.ID)
-			}
-
-			allAssignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
-			if err != nil {
-				s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to batch fetch need category assignments for profile")
-				s.internalServerError(w)
-				return
-			}
-
-			primaryCategoryIDByNeed := make(map[string]string, len(needs))
-			uniqueCategoryIDs := make(map[string]bool)
-			for _, a := range allAssignments {
-				if !a.IsPrimary {
-					continue
-				}
-				if _, exists := primaryCategoryIDByNeed[a.NeedID]; exists {
-					continue
-				}
-				primaryCategoryIDByNeed[a.NeedID] = a.CategoryID
-				uniqueCategoryIDs[a.CategoryID] = true
-			}
-
-			categoryIDs := make([]string, 0, len(uniqueCategoryIDs))
-			for id := range uniqueCategoryIDs {
-				categoryIDs = append(categoryIDs, id)
-			}
-
-			categoryNameByID := make(map[string]string, len(categoryIDs))
-			if len(categoryIDs) > 0 {
-				categories, err := s.categoryRepo.CategoriesByIDs(ctx, categoryIDs)
-				if err != nil {
-					s.logger.WithError(err).Error("failed to batch fetch categories for profile")
-					s.internalServerError(w)
-					return
-				}
-				for _, cat := range categories {
-					if cat != nil {
-						categoryNameByID[cat.ID] = cat.Name
-					}
-				}
-			}
-
-			for _, need := range needs {
-				reviewPortalHref := ""
-				if need.Status != types.NeedStatusDraft {
-					reviewPortalHref = s.route(RouteProfileNeedReview, map[string]string{"needID": need.ID})
-				}
-
-				primaryCategoryName := "Uncategorized"
-				if catID, ok := primaryCategoryIDByNeed[need.ID]; ok {
-					if name, ok := categoryNameByID[catID]; ok {
-						primaryCategoryName = name
-					}
-				}
-
-				needSummaries = append(needSummaries, types.ProfileNeedSummary{
-					NeedID:              need.ID,
-					PrimaryCategoryName: primaryCategoryName,
-					RequestedAmount:     formatUSDFromCents(need.AmountNeededCents),
-					CurrentStep:         formatNeedStepLabel(need.CurrentStep),
-					Status:              need.Status,
-					CanDelete:           need.Status == types.NeedStatusDraft,
-					NeedsAttention:      need.Status == types.NeedStatusChangesRequested || need.Status == types.NeedStatusRejected,
-					ReviewPortalHref:    reviewPortalHref,
-				})
-			}
-		}
-	}
-
-	if userType == string(types.UserTypeDonor) {
-		intents, err := s.donationIntentRepo.DonationIntentsByDonorUserID(ctx, session.UserID)
-		if err != nil {
-			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to fetch donation intents for profile")
+			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to build need summaries for profile")
 			s.internalServerError(w)
 			return
 		}
-
-		distinctNeedIDs := make([]string, 0, len(intents))
-		seenNeedIDs := make(map[string]bool)
-		for _, intent := range intents {
-			if intent == nil {
-				continue
-			}
-			needID := strings.TrimSpace(intent.NeedID)
-			if needID == "" || seenNeedIDs[needID] {
-				continue
-			}
-			seenNeedIDs[needID] = true
-			distinctNeedIDs = append(distinctNeedIDs, needID)
-		}
-
-		needLabelByID := make(map[string]string, len(distinctNeedIDs))
-		needsByID := make(map[string]*types.Need)
-		needs, err := s.needsRepo.NeedsByIDs(ctx, distinctNeedIDs)
+		myNeeds = needs
+		needSummaries = summaries
+	case types.UserTypeDonor:
+		summaries, err := s.buildDonationSummaries(ctx, session.UserID)
 		if err != nil {
-			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to batch fetch needs for donor profile")
+			s.logger.WithError(err).WithField("user_id", session.UserID).Error("failed to build donation summaries for profile")
 			s.internalServerError(w)
 			return
 		}
-
-		for _, need := range needs {
-			if need == nil {
-				continue
-			}
-			needsByID[need.ID] = need
-		}
-
-		for _, needID := range distinctNeedIDs {
-			needLabel := "Need request"
-			if need, ok := needsByID[needID]; ok {
-				shortDescription := strings.TrimSpace(derefString(need.ShortDescription))
-				if shortDescription != "" {
-					needLabel = shortDescription
-				}
-			}
-			needLabelByID[needID] = needLabel
-		}
-
-		for _, intent := range intents {
-			if intent == nil {
-				continue
-			}
-
-			needID := strings.TrimSpace(intent.NeedID)
-			needLabel := needLabelByID[needID]
-			if strings.TrimSpace(needLabel) == "" {
-				needLabel = "Need request"
-			}
-
-			isFinalized := strings.TrimSpace(strings.ToLower(intent.PaymentStatus)) == types.DonationPaymentStatusFinalized
-
-			donationSummaries = append(donationSummaries, types.ProfileDonationSummary{
-				IntentID:    intent.ID,
-				NeedID:      needID,
-				NeedLabel:   needLabel,
-				Amount:      formatUSDFromCents(intent.AmountCents),
-				Status:      formatDonationStatus(intent.PaymentStatus),
-				IsFinalized: isFinalized,
-				IsAnonymous: intent.IsAnonymous,
-				CreatedAt:   intent.CreatedAt.Format("Jan 2, 2006"),
-			})
-		}
+		donationSummaries = summaries
 	}
 
 	data := &types.ProfilePageData{
@@ -229,6 +92,156 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		s.internalServerError(w)
 		return
 	}
+}
+
+func (s *Service) buildNeedSummaries(ctx context.Context, userID string) ([]*types.Need, []types.ProfileNeedSummary, error) {
+	needs, err := s.needsRepo.NeedsByUser(ctx, userID)
+	if err != nil {
+		if errors.Is(err, types.ErrNeedNotFound) {
+			return []*types.Need{}, []types.ProfileNeedSummary{}, nil
+		}
+		return nil, nil, fmt.Errorf("fetch needs: %w", err)
+	}
+
+	needIDs := make([]string, 0, len(needs))
+	for _, need := range needs {
+		needIDs = append(needIDs, need.ID)
+	}
+
+	allAssignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedIDs(ctx, needIDs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("fetch category assignments: %w", err)
+	}
+
+	primaryCategoryIDByNeed := make(map[string]string, len(needs))
+	uniqueCategoryIDs := make(map[string]bool)
+	for _, a := range allAssignments {
+		if !a.IsPrimary {
+			continue
+		}
+		if _, exists := primaryCategoryIDByNeed[a.NeedID]; exists {
+			continue
+		}
+		primaryCategoryIDByNeed[a.NeedID] = a.CategoryID
+		uniqueCategoryIDs[a.CategoryID] = true
+	}
+
+	categoryIDs := make([]string, 0, len(uniqueCategoryIDs))
+	for id := range uniqueCategoryIDs {
+		categoryIDs = append(categoryIDs, id)
+	}
+
+	categoryNameByID := make(map[string]string, len(categoryIDs))
+	if len(categoryIDs) > 0 {
+		categories, err := s.categoryRepo.CategoriesByIDs(ctx, categoryIDs)
+		if err != nil {
+			return nil, nil, fmt.Errorf("fetch categories: %w", err)
+		}
+		for _, cat := range categories {
+			if cat != nil {
+				categoryNameByID[cat.ID] = cat.Name
+			}
+		}
+	}
+
+	summaries := make([]types.ProfileNeedSummary, 0, len(needs))
+	for _, need := range needs {
+		reviewPortalHref := ""
+		if need.Status != types.NeedStatusDraft {
+			reviewPortalHref = s.route(RouteProfileNeedReview, map[string]string{"needID": need.ID})
+		}
+
+		primaryCategoryName := "Uncategorized"
+		if catID, ok := primaryCategoryIDByNeed[need.ID]; ok {
+			if name, ok := categoryNameByID[catID]; ok {
+				primaryCategoryName = name
+			}
+		}
+
+		summaries = append(summaries, types.ProfileNeedSummary{
+			NeedID:              need.ID,
+			PrimaryCategoryName: primaryCategoryName,
+			RequestedAmount:     formatUSDFromCents(need.AmountNeededCents),
+			CurrentStep:         formatNeedStepLabel(need.CurrentStep),
+			Status:              need.Status,
+			CanDelete:           need.Status == types.NeedStatusDraft,
+			NeedsAttention:      need.Status == types.NeedStatusChangesRequested || need.Status == types.NeedStatusRejected,
+			ReviewPortalHref:    reviewPortalHref,
+		})
+	}
+
+	return needs, summaries, nil
+}
+
+func (s *Service) buildDonationSummaries(ctx context.Context, userID string) ([]types.ProfileDonationSummary, error) {
+	intents, err := s.donationIntentRepo.DonationIntentsByDonorUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch donation intents: %w", err)
+	}
+
+	distinctNeedIDs := make([]string, 0, len(intents))
+	seenNeedIDs := make(map[string]bool)
+	for _, intent := range intents {
+		if intent == nil {
+			continue
+		}
+		needID := strings.TrimSpace(intent.NeedID)
+		if needID == "" || seenNeedIDs[needID] {
+			continue
+		}
+		seenNeedIDs[needID] = true
+		distinctNeedIDs = append(distinctNeedIDs, needID)
+	}
+
+	needsByID := make(map[string]*types.Need)
+	needs, err := s.needsRepo.NeedsByIDs(ctx, distinctNeedIDs)
+	if err != nil {
+		return nil, fmt.Errorf("fetch needs for donor profile: %w", err)
+	}
+	for _, need := range needs {
+		if need != nil {
+			needsByID[need.ID] = need
+		}
+	}
+
+	needLabelByID := make(map[string]string, len(distinctNeedIDs))
+	for _, needID := range distinctNeedIDs {
+		needLabel := "Need request"
+		if need, ok := needsByID[needID]; ok {
+			if shortDescription := strings.TrimSpace(derefString(need.ShortDescription)); shortDescription != "" {
+				needLabel = shortDescription
+			}
+		}
+		needLabelByID[needID] = needLabel
+	}
+
+	summaries := make([]types.ProfileDonationSummary, 0, len(intents))
+	for _, intent := range intents {
+		if intent == nil {
+			continue
+		}
+
+		needID := strings.TrimSpace(intent.NeedID)
+		needLabel := needLabelByID[needID]
+		if strings.TrimSpace(needLabel) == "" {
+			needLabel = "Need request"
+		}
+
+		isFinalized := strings.TrimSpace(strings.ToLower(intent.PaymentStatus)) == types.DonationPaymentStatusFinalized
+
+		summaries = append(summaries, types.ProfileDonationSummary{
+			IntentID:    intent.ID,
+			NeedID:      needID,
+			NeedLabel:   needLabel,
+			Amount:      formatUSDFromCents(intent.AmountCents),
+			Status:      formatDonationStatus(intent.PaymentStatus),
+			IsFinalized: isFinalized,
+			IsAnonymous: intent.IsAnonymous,
+			CreatedAt:   intent.CreatedAt.Format("Jan 2, 2006"),
+		})
+	}
+
+	return summaries, nil
 }
 
 func (s *Service) handlePostProfileNeedDelete(w http.ResponseWriter, r *http.Request) {
