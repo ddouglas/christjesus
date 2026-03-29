@@ -9,80 +9,95 @@ func TestSmartPresetAmounts(t *testing.T) {
 		name              string
 		amountNeededCents int
 		amountRaisedCents int
-		want              []int
+		wantPresets       []int
+		wantRemaining     int
 	}{
 		{
-			name:              "fully funded returns static presets",
+			name:              "fully funded returns static presets, no CTA",
 			amountNeededCents: 10000,
 			amountRaisedCents: 10000,
-			want:              []int{25, 50, 100, 250},
+			wantPresets:       []int{25, 50, 100, 250},
+			wantRemaining:     0,
 		},
 		{
-			name:              "overfunded returns static presets",
+			name:              "overfunded returns static presets, no CTA",
 			amountNeededCents: 10000,
 			amountRaisedCents: 12000,
-			want:              []int{25, 50, 100, 250},
+			wantPresets:       []int{25, 50, 100, 250},
+			wantRemaining:     0,
 		},
 		{
-			name:              "remaining above largest preset returns static presets",
+			name:              "remaining above largest preset returns static presets, no CTA",
 			amountNeededCents: 100000,
 			amountRaisedCents: 0,
-			want:              []int{25, 50, 100, 250},
+			wantPresets:       []int{25, 50, 100, 250},
+			wantRemaining:     0,
 		},
 		{
-			// remaining=$7 — replaces first slot
-			name:              "remaining below first preset replaces first slot",
+			// remaining=$7 — below all presets; grid empty, CTA only
+			name:              "remaining below first preset shows no grid presets",
 			amountNeededCents: 10000,
 			amountRaisedCents: 9300,
-			want:              []int{7, 50, 100, 250},
+			wantPresets:       nil,
+			wantRemaining:     7,
 		},
 		{
-			// remaining=$35 — between $25 and $50, replaces second slot
-			name:              "remaining between first and second preset replaces second slot",
+			// remaining=$35 — only $25 fits; $50/$100/$250 removed, CTA=$35
+			name:              "remaining between first and second preset filters overages",
 			amountNeededCents: 10000,
 			amountRaisedCents: 6500,
-			want:              []int{25, 35, 100, 250},
+			wantPresets:       []int{25},
+			wantRemaining:     35,
 		},
 		{
-			// remaining=$75 — between $50 and $100, replaces third slot
-			name:              "remaining between second and third preset replaces third slot",
+			// remaining=$75 — $25 and $50 fit; $100/$250 removed, CTA=$75
+			name:              "remaining between second and third preset filters overages",
 			amountNeededCents: 10000,
 			amountRaisedCents: 2500,
-			want:              []int{25, 50, 75, 250},
+			wantPresets:       []int{25, 50},
+			wantRemaining:     75,
 		},
 		{
-			// remaining=$150 — between $100 and $250, replaces fourth slot
-			name:              "remaining between third and fourth preset replaces fourth slot",
+			// remaining=$150 — $25/$50/$100 fit; $250 removed, CTA=$150
+			name:              "remaining between third and fourth preset filters overages",
 			amountNeededCents: 20000,
 			amountRaisedCents: 5000,
-			want:              []int{25, 50, 100, 150},
+			wantPresets:       []int{25, 50, 100},
+			wantRemaining:     150,
 		},
 		{
-			// remaining=$25 — exactly equals first preset, no substitution needed
-			name:              "remaining exactly equal to a preset returns static presets",
+			// remaining=$25 exactly — matches preset, no CTA needed
+			name:              "remaining exactly equal to a preset returns that preset, no CTA",
 			amountNeededCents: 10000,
 			amountRaisedCents: 7500,
-			want:              []int{25, 50, 100, 250},
+			wantPresets:       []int{25},
+			wantRemaining:     0,
 		},
 		{
-			// remaining=$50 — exactly equals second preset, no substitution needed
-			name:              "remaining exactly equal to second preset returns static presets",
+			// remaining=$50 exactly — matches preset, no CTA needed
+			name:              "remaining exactly equal to second preset, no CTA",
 			amountNeededCents: 10000,
 			amountRaisedCents: 5000,
-			want:              []int{25, 50, 100, 250},
+			wantPresets:       []int{25, 50},
+			wantRemaining:     0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := smartPresetAmounts(tt.amountNeededCents, tt.amountRaisedCents)
-			if len(got) != len(tt.want) {
-				t.Fatalf("len = %d, want %d", len(got), len(tt.want))
+			gotPresets, gotRemaining := smartPresetAmounts(tt.amountNeededCents, tt.amountRaisedCents)
+
+			if len(gotPresets) != len(tt.wantPresets) {
+				t.Fatalf("presets len = %d, want %d (got %v, want %v)", len(gotPresets), len(tt.wantPresets), gotPresets, tt.wantPresets)
 			}
-			for i := range tt.want {
-				if got[i] != tt.want[i] {
-					t.Errorf("presets[%d] = %d, want %d", i, got[i], tt.want[i])
+			for i := range tt.wantPresets {
+				if gotPresets[i] != tt.wantPresets[i] {
+					t.Errorf("presets[%d] = %d, want %d", i, gotPresets[i], tt.wantPresets[i])
 				}
+			}
+
+			if gotRemaining != tt.wantRemaining {
+				t.Errorf("remainingPreset = %d, want %d", gotRemaining, tt.wantRemaining)
 			}
 		})
 	}

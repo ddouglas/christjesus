@@ -18,30 +18,45 @@ import (
 
 var donatePresetAmounts = []int{25, 50, 100, 250}
 
-// smartPresetAmounts returns preset donation amounts, replacing the first preset
-// that exceeds the remaining balance with the exact remaining amount when the
-// need is close to fully funded.
-func smartPresetAmounts(amountNeededCents, amountRaisedCents int) []int {
+// smartPresetAmounts returns the filtered preset amounts and an optional
+// remaining-balance CTA amount for the donate form.
+//
+// Presets that would exceed the remaining balance are removed. When any
+// presets are removed (i.e. remaining < the largest preset), the exact
+// remaining dollar amount is returned as remainingPreset so the template
+// can render it as a full-width CTA below the grid. If remaining exactly
+// matches a standard preset no CTA is needed. If the need is fully funded
+// or remaining >= the largest preset, static presets are returned unchanged
+// with remainingPreset=0.
+func smartPresetAmounts(amountNeededCents, amountRaisedCents int) (presets []int, remainingPreset int) {
 	remainingCents := amountNeededCents - amountRaisedCents
 	if remainingCents <= 0 {
-		return donatePresetAmounts
+		return donatePresetAmounts, 0
 	}
 
 	remainingDollars := remainingCents / 100
-	for i, preset := range donatePresetAmounts {
-		if remainingDollars == preset {
-			// remaining already matches this preset — no substitution needed
-			break
-		}
-		if remainingDollars < preset {
-			result := make([]int, len(donatePresetAmounts))
-			copy(result, donatePresetAmounts)
-			result[i] = remainingDollars
-			return result
+	if remainingDollars == 0 {
+		return donatePresetAmounts, 0
+	}
+
+	var filtered []int
+	for _, preset := range donatePresetAmounts {
+		if preset <= remainingDollars {
+			filtered = append(filtered, preset)
 		}
 	}
 
-	return donatePresetAmounts
+	// All presets fit within the remaining balance — no CTA needed.
+	if len(filtered) == len(donatePresetAmounts) {
+		return donatePresetAmounts, 0
+	}
+
+	// Remaining exactly matches the highest kept preset — already represented.
+	if len(filtered) > 0 && filtered[len(filtered)-1] == remainingDollars {
+		return filtered, 0
+	}
+
+	return filtered, remainingDollars
 }
 
 func (s *Service) handleGetNeedDonate(w http.ResponseWriter, r *http.Request) {
@@ -388,7 +403,7 @@ func (s *Service) buildNeedDonatePageData(ctx context.Context, needID string, da
 	data.AmountNeededCents = need.AmountNeededCents
 	data.AmountRaisedCents = need.AmountRaisedCents
 	if len(data.PresetAmounts) == 0 {
-		data.PresetAmounts = smartPresetAmounts(need.AmountNeededCents, need.AmountRaisedCents)
+		data.PresetAmounts, data.RemainingPreset = smartPresetAmounts(need.AmountNeededCents, need.AmountRaisedCents)
 	}
 
 	return data, nil
