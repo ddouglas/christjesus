@@ -5,4 +5,13 @@ exports.onExecutePostLogin = async (event, api) => {
   api.idToken.setCustomClaim(`${namespace}/roles`, roles);
   api.accessToken.setCustomClaim(`${namespace}/roles`, roles);
 
+  const meta = event.user.user_metadata || {};
+  const displayName =
+    meta.display_name ||
+    meta.given_name ||
+    event.user.given_name ||
+    event.user.nickname ||
+    "";
+
+  api.idToken.setCustomClaim(`${namespace}/display_name`, displayName);
 };
