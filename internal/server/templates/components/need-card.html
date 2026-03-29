@@ -4,7 +4,7 @@
     <p class="text-3xl font-semibold leading-none text-foreground">{{.OwnerName}}</p>
     <div class="flex items-center gap-2 text-sm text-muted-foreground">
       <span>{{.CityState}}</span>
-      {{if .DistanceMiles}}<span>•</span><span>~{{printf "%.0f" .DistanceMiles}} mi</span>{{end}}
+      {{if .DistanceMiles}}<span>•</span><span>~{{printf "%.0f" (derefFloat .DistanceMiles)}} mi</span>{{end}}
       <span>•</span>
       <span class="h-2.5 w-2.5 rounded-full {{.UrgencyDotClass}}"></span>
       <span class="font-medium uppercase tracking-wide">{{.UrgencyLabel}}</span>
