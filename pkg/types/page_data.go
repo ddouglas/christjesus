@@ -150,7 +150,8 @@ type NeedDonatePageData struct {
 	PrivateMessage    string
 	IsAnonymous       bool
 	Error             string
-	PresetAmounts     []int
+	PresetAmounts   []int
+	RemainingPreset int // non-zero when remaining < largest preset; rendered as full-width CTA
 }
 
 type NeedDonateConfirmationPageData struct {

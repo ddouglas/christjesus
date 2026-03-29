@@ -30,6 +30,7 @@
 
       <form method="post" action="{{route "need.donate" (param "needID" .NeedID)}}" class="mt-7 space-y-6">
         {{.CSRFField}}
+        {{if .PresetAmounts}}
         <div class="grid grid-cols-2 gap-3">
           {{range .PresetAmounts}}
           <label class="block cursor-pointer">
@@ -39,6 +40,17 @@
           </label>
           {{end}}
         </div>
+        {{end}}
+
+        {{if .RemainingPreset}}
+        <label class="block cursor-pointer">
+          <input type="radio" name="preset_amount" value="{{.RemainingPreset}}" class="peer sr-only" {{if eq .SelectedPreset .RemainingPreset}}checked{{end}} />
+          <span
+            class="inline-flex h-14 w-full items-center justify-center rounded-md border-2 border-[color:var(--cj-primary)] bg-[color:var(--cj-primary)]/10 px-4 text-lg font-bold text-[color:var(--cj-primary)] transition-colors peer-checked:bg-[color:var(--cj-primary)] peer-checked:text-white">
+            Fund the remaining ${{.RemainingPreset}}
+          </span>
+        </label>
+        {{end}}
 
         <div>
           <label for="custom_amount" class="block text-sm font-semibold text-foreground">Custom amount</label>
