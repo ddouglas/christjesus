@@ -18,11 +18,37 @@ import (
 
 var donatePresetAmounts = []int{25, 50, 100, 250}
 
+// smartPresetAmounts returns preset donation amounts, replacing the first preset
+// that exceeds the remaining balance with the exact remaining amount when the
+// need is close to fully funded.
+func smartPresetAmounts(amountNeededCents, amountRaisedCents int) []int {
+	remainingCents := amountNeededCents - amountRaisedCents
+	if remainingCents <= 0 {
+		return donatePresetAmounts
+	}
+
+	remainingDollars := remainingCents / 100
+	for i, preset := range donatePresetAmounts {
+		if remainingDollars == preset {
+			// remaining already matches this preset — no substitution needed
+			break
+		}
+		if remainingDollars < preset {
+			result := make([]int, len(donatePresetAmounts))
+			copy(result, donatePresetAmounts)
+			result[i] = remainingDollars
+			return result
+		}
+	}
+
+	return donatePresetAmounts
+}
+
 func (s *Service) handleGetNeedDonate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	needID := r.PathValue("needID")
 
-	data, err := s.buildNeedDonatePageData(ctx, needID, &types.NeedDonatePageData{PresetAmounts: donatePresetAmounts})
+	data, err := s.buildNeedDonatePageData(ctx, needID, &types.NeedDonatePageData{})
 	if err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to build donate page data")
 		s.internalServerError(w)
@@ -52,7 +78,6 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 	isAnonymous := r.FormValue("is_anonymous") == "on"
 
 	data := &types.NeedDonatePageData{
-		PresetAmounts:  donatePresetAmounts,
 		SelectedPreset: selectedPreset,
 		CustomAmount:   customAmount,
 		PrivateMessage: privateMessage,
@@ -363,7 +388,7 @@ func (s *Service) buildNeedDonatePageData(ctx context.Context, needID string, da
 	data.AmountNeededCents = need.AmountNeededCents
 	data.AmountRaisedCents = need.AmountRaisedCents
 	if len(data.PresetAmounts) == 0 {
-		data.PresetAmounts = donatePresetAmounts
+		data.PresetAmounts = smartPresetAmounts(need.AmountNeededCents, need.AmountRaisedCents)
 	}
 
 	return data, nil
