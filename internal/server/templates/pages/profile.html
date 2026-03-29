@@ -33,7 +33,13 @@
 
     <section class="space-y-6">
       <div id="overview" class="rounded-xl border bg-background p-6">
-        <h2 class="text-xl font-semibold text-foreground">Profile Overview</h2>
+        <div class="flex items-start justify-between">
+          <h2 class="text-xl font-semibold text-foreground">Profile Overview</h2>
+          <button id="edit-profile-toggle" type="button" onclick="toggleProfileEdit()"
+            class="inline-flex h-9 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+            Edit
+          </button>
+        </div>
         <dl class="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <dt class="text-sm text-muted-foreground">Welcome</dt>
@@ -46,22 +52,81 @@
         </dl>
       </div>
 
-      <div id="edit-profile" class="rounded-xl border bg-background p-6">
+      <div id="edit-profile" class="rounded-xl border bg-background p-6 hidden">
         <h2 class="text-xl font-semibold text-foreground">Edit Profile</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Update how your name appears throughout the site.</p>
-        <form method="POST" action="{{.UpdateNameAction}}" class="mt-4 max-w-sm space-y-4">
-          {{.CSRFField}}
-          <div class="space-y-1">
-            <label for="display_name" class="block text-sm font-medium text-foreground">Display Name</label>
-            <input id="display_name" name="display_name" type="text" value="{{.DisplayName}}" maxlength="100" required
-              class="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--cj-primary)]" />
+        <p class="mt-1 text-sm text-muted-foreground">Manage your account details and security settings.</p>
+
+        <div class="mt-6 space-y-6">
+
+          <!-- Display Name -->
+          <div class="border-t pt-6">
+            <h3 class="text-sm font-semibold text-foreground">Display Name</h3>
+            <p class="mt-1 text-xs text-muted-foreground">This is how your name appears throughout the site.</p>
+            <form method="POST" action="{{.UpdateNameAction}}" class="mt-3 max-w-sm space-y-3">
+              {{.CSRFField}}
+              <input id="display_name" name="display_name" type="text" value="{{.DisplayName}}" maxlength="100" required
+                class="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--cj-primary)]" />
+              <button type="submit"
+                class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+                Save Display Name
+              </button>
+            </form>
           </div>
-          <button type="submit"
-            class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
-            Save
-          </button>
-        </form>
+
+          <!-- Email Address -->
+          <div class="border-t pt-6">
+            <h3 class="text-sm font-semibold text-foreground">Email Address</h3>
+            <p class="mt-1 text-xs text-muted-foreground">Changing your email will require re-verification.</p>
+            <form method="POST" action="{{.UpdateEmailAction}}" class="mt-3 max-w-sm space-y-3">
+              {{.CSRFField}}
+              <input id="email" name="email" type="email" value="{{.UserEmail}}" required
+                class="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--cj-primary)]" />
+              <button type="submit"
+                class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+                Save Email
+              </button>
+            </form>
+          </div>
+
+          <!-- Password Reset (database connection users only) -->
+          {{if .IsDatabaseUser}}
+          <div class="border-t pt-6">
+            <h3 class="text-sm font-semibold text-foreground">Password</h3>
+            <p class="mt-1 text-xs text-muted-foreground">We'll send a password reset link to your email address on file.</p>
+            <form method="POST" action="{{.SendPasswordResetAction}}" class="mt-3">
+              {{.CSRFField}}
+              <button type="submit"
+                class="inline-flex h-9 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+                Send Password Reset Email
+              </button>
+            </form>
+          </div>
+          {{end}}
+
+          <!-- Cancel -->
+          <div class="border-t pt-6">
+            <button type="button" onclick="toggleProfileEdit()" class="text-sm text-muted-foreground underline hover:text-foreground">
+              Cancel
+            </button>
+          </div>
+        </div>
       </div>
+
+      <script>
+        function toggleProfileEdit() {
+          var card = document.getElementById('edit-profile');
+          var toggle = document.getElementById('edit-profile-toggle');
+          var isEditing = !card.classList.contains('hidden');
+          if (isEditing) {
+            card.classList.add('hidden');
+            toggle.textContent = 'Edit';
+          } else {
+            card.classList.remove('hidden');
+            toggle.textContent = 'Cancel';
+          }
+        }
+        {{if .EditMode}}toggleProfileEdit();{{end}}
+      </script>
 
       {{if eq .UserType "recipient"}}
       <div id="my-needs" class="rounded-xl border bg-background p-6">

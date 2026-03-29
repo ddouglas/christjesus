@@ -10,6 +10,7 @@ const (
 )
 
 const (
-	AuthAdminClaim string = "https://christjesus.app/claims/roles"
-	AuthAdminValue string = "admin"
+	AuthAdminClaim       string = "https://christjesus.app/claims/roles"
+	AuthAdminValue       string = "admin"
+	AuthDisplayNameClaim string = "https://christjesus.app/claims/display_name"
 )

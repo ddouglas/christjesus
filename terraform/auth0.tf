@@ -66,7 +66,7 @@ resource "auth0_client_credentials" "mgmt" {
 resource "auth0_client_grant" "mgmt_users" {
   client_id = auth0_client.mgmt.id
   audience  = "https://${data.auth0_tenant.current.domain}/api/v2/"
-  scopes    = ["update:users"]
+  scopes    = ["update:users", "create:user_tickets"]
 }
 
 

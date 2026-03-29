@@ -46,6 +46,8 @@ const (
 	RouteProfileNeedEditReview     RouteName = "profile.need.edit.review"
 	RouteProfileDonationReceipt    RouteName = "profile.donation.receipt"
 	RouteProfileUpdateName             RouteName = "profile.update.name"
+	RouteProfileUpdateEmail            RouteName = "profile.update.email"
+	RouteProfileSendPasswordReset      RouteName = "profile.send.password.reset"
 	RouteProfileDonorPreferences       RouteName = "profile.donor.preferences"
 
 	RouteOnboarding              RouteName = "onboarding"
@@ -123,6 +125,8 @@ var routePatterns = map[RouteName]string{
 	RouteProfileNeedEditReview:         "/profile/needs/:needID/edit/review",
 	RouteProfileDonationReceipt:        "/profile/donations/:intentID/receipt",
 	RouteProfileUpdateName:             "/profile/update/name",
+	RouteProfileUpdateEmail:            "/profile/update/email",
+	RouteProfileSendPasswordReset:      "/profile/send-password-reset",
 	RouteProfileDonorPreferences:       "/profile/preferences",
 	RouteOnboarding:                    "/onboarding",
 	RouteOnboardingAboutYou:            "/onboarding/about-you",
