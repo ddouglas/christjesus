@@ -189,7 +189,7 @@ func (s *Service) handlePostOnboardingDonorPreferences(w http.ResponseWriter, r 
 		return
 	}
 
-	http.Redirect(w, r, s.route(RouteOnboardingDonorConfirmation, nil), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingDonorConfirmation), http.StatusSeeOther)
 }
 
 func (s *Service) handleGetOnboardingDonorConfirmation(w http.ResponseWriter, r *http.Request) {

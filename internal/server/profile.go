@@ -74,9 +74,9 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		Notice:                  strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:                   strings.TrimSpace(r.URL.Query().Get("error")),
 		EditMode:                r.URL.Query().Get("edit") == "1",
-		UpdateNameAction:        s.route(RouteProfileUpdateName, nil),
-		UpdateEmailAction:       s.route(RouteProfileUpdateEmail, nil),
-		SendPasswordResetAction: s.route(RouteProfileSendPasswordReset, nil),
+		UpdateNameAction:        s.route(RouteProfileUpdateName),
+		UpdateEmailAction:       s.route(RouteProfileUpdateEmail),
+		SendPasswordResetAction: s.route(RouteProfileSendPasswordReset),
 		IsDatabaseUser:          strings.HasPrefix(session.AuthSubject, "auth0|"),
 		SidebarItems:            buildProfileSidebar(userType),
 		Needs:                   myNeeds,
@@ -84,7 +84,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		DonationSummaries:       donationSummaries,
 		HasNeeds:                len(myNeeds) > 0,
 		HasDonations:            len(donationSummaries) > 0,
-		SubmitNeedHref:          s.route(RouteOnboarding, nil),
+		SubmitNeedHref:          s.route(RouteOnboarding),
 	}
 
 	err = s.renderTemplate(w, r, "page.profile", data)
@@ -149,7 +149,7 @@ func (s *Service) buildNeedSummaries(ctx context.Context, userID string) ([]*typ
 	for _, need := range needs {
 		reviewPortalHref := ""
 		if need.Status != types.NeedStatusDraft {
-			reviewPortalHref = s.route(RouteProfileNeedReview, map[string]string{"needID": need.ID})
+			reviewPortalHref = s.route(RouteProfileNeedReview, Param("needID", need.ID))
 		}
 
 		primaryCategoryName := "Uncategorized"
@@ -323,13 +323,13 @@ func (s *Service) handlePostProfileNeedDelete(w http.ResponseWriter, r *http.Req
 func (s *Service) redirectProfileWithNotice(w http.ResponseWriter, r *http.Request, notice string) {
 	v := url.Values{}
 	v.Set("notice", notice)
-	http.Redirect(w, r, s.routeWithQuery(RouteProfile, nil, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfile, v), http.StatusSeeOther)
 }
 
 func (s *Service) redirectProfileWithError(w http.ResponseWriter, r *http.Request, msg string) {
 	v := url.Values{}
 	v.Set("error", msg)
-	http.Redirect(w, r, s.routeWithQuery(RouteProfile, nil, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfile, v), http.StatusSeeOther)
 }
 
 // redirectProfileEditWithError redirects to the profile page with an error and
@@ -338,7 +338,7 @@ func (s *Service) redirectProfileEditWithError(w http.ResponseWriter, r *http.Re
 	v := url.Values{}
 	v.Set("error", msg)
 	v.Set("edit", "1")
-	http.Redirect(w, r, s.routeWithQuery(RouteProfile, nil, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfile, v), http.StatusSeeOther)
 }
 
 func formatUSDFromCents(cents int) string {
@@ -402,7 +402,7 @@ func (s *Service) handlePostProfileUpdateName(w http.ResponseWriter, r *http.Req
 
 	state, ok := s.authUserStateFromRequest(r)
 	if !ok {
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
@@ -444,7 +444,7 @@ func (s *Service) handlePostProfileUpdateEmail(w http.ResponseWriter, r *http.Re
 
 	state, ok := s.authUserStateFromRequest(r)
 	if !ok {
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
@@ -474,7 +474,7 @@ func (s *Service) handlePostProfileSendPasswordReset(w http.ResponseWriter, r *h
 
 	state, ok := s.authUserStateFromRequest(r)
 	if !ok {
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
@@ -582,7 +582,7 @@ func (s *Service) auth0SendPasswordResetTicket(ctx context.Context, authSubject 
 		return fmt.Errorf("get management token: %w", err)
 	}
 
-	resultURL := s.absoluteRoute(RouteProfile, nil, nil)
+	resultURL := s.absoluteRoute(RouteProfile, nil)
 
 	payload := map[string]any{
 		"user_id":    authSubject,

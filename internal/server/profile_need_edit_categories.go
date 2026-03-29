@@ -42,8 +42,8 @@ func (s *Service) handleGetProfileNeedEditCategories(w http.ResponseWriter, r *h
 		Categories:                   categories,
 		SelectedPrimaryCategoryID:    selectedPrimaryCategoryID,
 		SelectedSecondaryCategoryIDs: selectedSecondaryCategoryIDs,
-		FormAction:                   s.route(RouteProfileNeedEditCategories, map[string]string{"needID": needID}),
-		BackHref:                     s.route(RouteProfileNeedEditLocation, map[string]string{"needID": needID}),
+		FormAction:                   s.route(RouteProfileNeedEditCategories, Param("needID", needID)),
+		BackHref:                     s.route(RouteProfileNeedEditLocation, Param("needID", needID)),
 		Error:                        strings.TrimSpace(r.URL.Query().Get("error")),
 	}
 
@@ -155,11 +155,11 @@ func (s *Service) handlePostProfileNeedEditCategories(w http.ResponseWriter, r *
 	}
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepCategories)
-	http.Redirect(w, r, s.route(RouteProfileNeedEditStory, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteProfileNeedEditStory, Param("needID", need.ID)), http.StatusSeeOther)
 }
 
 func (s *Service) redirectProfileNeedEditCategoriesWithError(w http.ResponseWriter, r *http.Request, needID, msg string) {
 	q := url.Values{}
 	q.Set("error", msg)
-	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedEditCategories, map[string]string{"needID": needID}, q), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedEditCategories, q, Param("needID", needID)), http.StatusSeeOther)
 }

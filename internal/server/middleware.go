@@ -346,13 +346,13 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		session, ok := sessionFromRequest(r)
 		if !ok || session.UserID == "" {
 			s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
-			http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+			http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 			return
 		}
 
 		if !strings.HasPrefix(r.URL.Path, RoutePattern(RouteOnboarding)) {
 			if strings.TrimSpace(session.UserType) == "" {
-				http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
+				http.Redirect(w, r, s.route(RouteOnboarding), http.StatusSeeOther)
 				return
 			}
 		}
@@ -375,7 +375,7 @@ func (s *Service) RequireAdmin(next http.Handler) http.Handler {
 		session, ok := sessionFromRequest(r)
 		if !ok || session.UserID == "" {
 			s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
-			http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+			http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 			return
 		}
 

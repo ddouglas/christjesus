@@ -63,7 +63,7 @@ func (s *Service) handleGetAdminNeeds(w http.ResponseWriter, r *http.Request) {
 			Status:      need.Status,
 			CreatedAt:   need.CreatedAt.Format(time.DateOnly),
 			SubmittedAt: submittedAt,
-			ReviewHref:  s.route(RouteAdminNeedReview, map[string]string{"needID": needID}),
+			ReviewHref:  s.route(RouteAdminNeedReview, Param("needID", needID)),
 		})
 	}
 
@@ -71,14 +71,14 @@ func (s *Service) handleGetAdminNeeds(w http.ResponseWriter, r *http.Request) {
 	if page > 1 {
 		v := url.Values{}
 		v.Set("page", strconv.Itoa(page-1))
-		prevHref = s.routeWithQuery(RouteAdminNeeds, nil, v)
+		prevHref = s.routeWithQuery(RouteAdminNeeds, v)
 	}
 
 	nextHref := ""
 	if page < totalPages {
 		v := url.Values{}
 		v.Set("page", strconv.Itoa(page+1))
-		nextHref = s.routeWithQuery(RouteAdminNeeds, nil, v)
+		nextHref = s.routeWithQuery(RouteAdminNeeds, v)
 	}
 
 	data := &types.AdminNeedsPageData{

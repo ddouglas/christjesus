@@ -106,7 +106,7 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 
 	if donorUserID == "" {
 		s.setRedirectCookie(w, r.URL.Path, time.Minute*5)
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
@@ -147,8 +147,8 @@ func (s *Service) handlePostNeedDonate(w http.ResponseWriter, r *http.Request) {
 
 	successQuery := make(url.Values)
 	successQuery.Set("intent_id", intent.ID)
-	successURL := s.absoluteRoute(RouteNeedDonateConfirmation, map[string]string{"needID": needID}, successQuery)
-	cancelURL := s.absoluteRoute(RouteNeedDonate, map[string]string{"needID": needID}, nil)
+	successURL := s.absoluteRoute(RouteNeedDonateConfirmation, successQuery, Param("needID", needID))
+	cancelURL := s.absoluteRoute(RouteNeedDonate, nil, Param("needID", needID))
 
 	donorEmail := s.resolveDonorCheckoutEmail(ctx, r)
 
@@ -234,7 +234,7 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 	needID := r.PathValue("needID")
 	intentID := strings.TrimSpace(r.URL.Query().Get("intent_id"))
 	if intentID == "" {
-		http.Redirect(w, r, s.route(RouteNeedDonate, map[string]string{"needID": needID}), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteNeedDonate, Param("needID", needID)), http.StatusSeeOther)
 		return
 	}
 

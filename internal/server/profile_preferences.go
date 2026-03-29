@@ -48,7 +48,7 @@ func (s *Service) handleGetProfileDonorPreferences(w http.ResponseWriter, r *htt
 		SidebarItems:            buildProfileSidebar(string(types.UserTypeDonor)),
 		Categories:              categories,
 		SelectedCategoryIDs:     selectedCategoryIDs,
-		UpdatePreferencesAction: s.route(RouteProfileDonorPreferences, nil),
+		UpdatePreferencesAction: s.route(RouteProfileDonorPreferences),
 		Notice:                  strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:                   strings.TrimSpace(r.URL.Query().Get("error")),
 	}
@@ -170,5 +170,5 @@ func (s *Service) handlePostProfileDonorPreferences(w http.ResponseWriter, r *ht
 
 	v := url.Values{}
 	v.Set("notice", "Preferences saved.")
-	http.Redirect(w, r, s.routeWithQuery(RouteProfileDonorPreferences, nil, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfileDonorPreferences, v), http.StatusSeeOther)
 }

@@ -57,8 +57,8 @@ func (s *Service) handleGetOnboardingNeedStory(w http.ResponseWriter, r *http.Re
 		AmountNeededCents: need.AmountNeededCents,
 		PrimaryCategory:   primaryCategory,
 		Story:             story,
-		FormAction:        s.route(RouteOnboardingNeedStory, map[string]string{"needID": needID}),
-		BackHref:          s.route(RouteOnboardingNeedCategories, map[string]string{"needID": needID}),
+		FormAction:        s.route(RouteOnboardingNeedStory, Param("needID", needID)),
+		BackHref:          s.route(RouteOnboardingNeedCategories, Param("needID", needID)),
 	}
 
 	err = s.renderTemplate(w, r, "page.onboarding.need.story", data)
@@ -139,5 +139,5 @@ func (s *Service) handlePostOnboardingNeedStory(w http.ResponseWriter, r *http.R
 	// Record progress
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepStory)
 
-	http.Redirect(w, r, s.route(RouteOnboardingNeedDocuments, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedDocuments, Param("needID", need.ID)), http.StatusSeeOther)
 }

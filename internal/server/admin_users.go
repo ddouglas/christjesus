@@ -75,7 +75,7 @@ func (s *Service) handleGetAdminUsers(w http.ResponseWriter, r *http.Request) {
 			FamilyName: familyName,
 			UserType:   userType,
 			CreatedAt:  user.CreatedAt.Format(time.DateOnly),
-			DetailHref: s.route(RouteAdminUserDetail, map[string]string{"userID": user.ID}),
+			DetailHref: s.route(RouteAdminUserDetail, Param("userID", user.ID)),
 		})
 	}
 
@@ -88,7 +88,7 @@ func (s *Service) handleGetAdminUsers(w http.ResponseWriter, r *http.Request) {
 		if selectedType != "" {
 			v.Set("type", selectedType)
 		}
-		return s.routeWithQuery(RouteAdminUsers, nil, v)
+		return s.routeWithQuery(RouteAdminUsers, v)
 	}
 
 	prevHref := ""
@@ -111,8 +111,8 @@ func (s *Service) handleGetAdminUsers(w http.ResponseWriter, r *http.Request) {
 		NextHref:     nextHref,
 		Search:       search,
 		SelectedType: selectedType,
-		FilterAction: s.route(RouteAdminUsers, nil),
-		BackHref:     s.route(RouteAdmin, nil),
+		FilterAction: s.route(RouteAdminUsers),
+		BackHref:     s.route(RouteAdmin),
 	}
 
 	if err := s.renderTemplate(w, r, "page.admin.users", data); err != nil {
@@ -168,7 +168,7 @@ func (s *Service) handleGetAdminUserDetail(w http.ResponseWriter, r *http.Reques
 		UserType:     userType,
 		CreatedAt:    user.CreatedAt.Format(time.DateTime),
 		UpdatedAt:    user.UpdatedAt.Format(time.DateTime),
-		BackHref:     s.route(RouteAdminUsers, nil),
+		BackHref:     s.route(RouteAdminUsers),
 	}
 
 	if userType == string(types.UserTypeRecipient) {
@@ -224,7 +224,7 @@ func (s *Service) populateAdminRecipientData(ctx context.Context, data *types.Ad
 			AmountRaised:     formatUSDFromCents(need.AmountRaisedCents),
 			FundingPercent:   fundingPercent,
 			CreatedAt:        need.CreatedAt.Format(time.DateOnly),
-			ReviewHref:       s.route(RouteAdminNeedReview, map[string]string{"needID": need.ID}),
+			ReviewHref:       s.route(RouteAdminNeedReview, Param("needID", need.ID)),
 		})
 	}
 

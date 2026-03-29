@@ -10,7 +10,7 @@ import (
 func (s *Service) handleGetOnboardingAboutYou(w http.ResponseWriter, r *http.Request) {
 	state, ok := s.authUserStateFromRequest(r)
 	if ok && strings.TrimSpace(state.GivenName) != "" {
-		http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboarding), http.StatusSeeOther)
 		return
 	}
 
@@ -62,7 +62,7 @@ func (s *Service) handlePostOnboardingAboutYou(w http.ResponseWriter, r *http.Re
 
 	state, ok := s.authUserStateFromRequest(r)
 	if !ok {
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
@@ -92,7 +92,7 @@ func (s *Service) handlePostOnboardingAboutYou(w http.ResponseWriter, r *http.Re
 	// Consume the pending redirect cookie if present, otherwise go home.
 	redirectCookie, err := r.Cookie(internal.COOKIE_REDIRECT_NAME)
 	if err != nil {
-		http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboarding), http.StatusSeeOther)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (s *Service) handlePostOnboardingAboutYou(w http.ResponseWriter, r *http.Re
 	if err := s.cookie.Decode(internal.COOKIE_REDIRECT_NAME, redirectCookie.Value, &path); err != nil ||
 		!strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
 		s.clearRedirectCookie(w)
-		http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboarding), http.StatusSeeOther)
 		return
 	}
 

@@ -18,5 +18,5 @@ func (s *Service) handleGetProfileNeedEdit(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	http.Redirect(w, r, s.route(RouteProfileNeedEditLocation, map[string]string{"needID": needID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteProfileNeedEditLocation, Param("needID", needID)), http.StatusSeeOther)
 }

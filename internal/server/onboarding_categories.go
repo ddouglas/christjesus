@@ -47,8 +47,8 @@ func (s *Service) handleGetOnboardingNeedCategories(w http.ResponseWriter, r *ht
 		Categories:                   categories,
 		SelectedPrimaryCategoryID:    selectedPrimaryCategoryID,
 		SelectedSecondaryCategoryIDs: selectedSecondaryCategoryIDs,
-		FormAction:                   s.route(RouteOnboardingNeedCategories, map[string]string{"needID": needID}),
-		BackHref:                     s.route(RouteOnboardingNeedLocation, map[string]string{"needID": needID}),
+		FormAction:                   s.route(RouteOnboardingNeedCategories, Param("needID", needID)),
+		BackHref:                     s.route(RouteOnboardingNeedLocation, Param("needID", needID)),
 		Error:                        strings.TrimSpace(r.URL.Query().Get("error")),
 	}
 
@@ -175,7 +175,7 @@ func (s *Service) handlePostOnboardingNeedCategories(w http.ResponseWriter, r *h
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepCategories)
 
-	http.Redirect(w, r, s.route(RouteOnboardingNeedStory, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedStory, Param("needID", need.ID)), http.StatusSeeOther)
 }
 
 func (s *Service) selectedNeedCategories(ctx context.Context, needID string) (string, map[string]bool, error) {
@@ -207,5 +207,5 @@ func (s *Service) selectedNeedCategories(ctx context.Context, needID string) (st
 func (s *Service) redirectOnboardingNeedCategoriesWithError(w http.ResponseWriter, r *http.Request, needID, message string) {
 	v := url.Values{}
 	v.Set("error", message)
-	http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedCategories, map[string]string{"needID": needID}, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedCategories, v, Param("needID", needID)), http.StatusSeeOther)
 }

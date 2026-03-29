@@ -24,7 +24,7 @@ func (s *Service) handleGetLogin(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		if _, ok := s.authClaimsFromRequest(r); ok {
 			s.logger.Info("user is already logged in, redirecting to Browse Needs")
-			http.Redirect(w, r, s.route(RouteBrowse, nil), http.StatusSeeOther)
+			http.Redirect(w, r, s.route(RouteBrowse), http.StatusSeeOther)
 			return
 		}
 
@@ -44,33 +44,33 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 	state := strings.TrimSpace(r.URL.Query().Get("state"))
 	code := strings.TrimSpace(r.URL.Query().Get("code"))
 	if state == "" || code == "" {
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
 	stateCookie, err := r.Cookie(internal.COOKIE_AUTH_STATE)
 	if err != nil {
 		s.clearAuthFlowCookies(w)
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 	var stateFromCookie string
 	if err := s.cookie.Decode(internal.COOKIE_AUTH_STATE, stateCookie.Value, &stateFromCookie); err != nil || !subtleCompare(stateFromCookie, state) {
 		s.clearAuthFlowCookies(w)
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
 	nonceCookie, err := r.Cookie(internal.COOKIE_AUTH_NONCE)
 	if err != nil {
 		s.clearAuthFlowCookies(w)
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 	var nonceFromCookie string
 	if err := s.cookie.Decode(internal.COOKIE_AUTH_NONCE, nonceCookie.Value, &nonceFromCookie); err != nil || strings.TrimSpace(nonceFromCookie) == "" {
 		s.clearAuthFlowCookies(w)
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to exchange authorization code with auth0")
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 	defer resp.Body.Close()
@@ -108,27 +108,27 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 	var tokenResp auth0TokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		s.logger.WithError(err).WithField("status", resp.StatusCode).Error("failed to decode auth0 token response")
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
 	if resp.StatusCode >= 400 || strings.TrimSpace(tokenResp.IDToken) == "" {
 		s.logger.WithField("status", resp.StatusCode).Warn("auth0 token exchange returned unsuccessful response")
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
 	claims, err := s.authClaimsFromToken(r.Context(), tokenResp.IDToken)
 	if err != nil {
 		s.clearAuthFlowCookies(w)
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
 	if claims.Nonce == "" || !subtleCompare(nonceFromCookie, claims.Nonce) {
 		s.logger.WithField("auth_subject", claims.Subject).Warn("auth callback nonce mismatch")
 		s.clearAuthFlowCookies(w)
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
@@ -184,24 +184,24 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 	// The redirect cookie is left intact so it can be consumed after completion.
 	if strings.TrimSpace(claims.GivenName) == "" {
 		s.clearRedirectCookie(w)
-		http.Redirect(w, r, s.route(RouteOnboarding, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboarding), http.StatusSeeOther)
 		return
 	}
 
 	redirectCookie, err := r.Cookie(internal.COOKIE_REDIRECT_NAME)
 	if err != nil {
-		http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteHome), http.StatusSeeOther)
 		return
 	}
 
 	var path string
 	if err := s.cookie.Decode(internal.COOKIE_REDIRECT_NAME, redirectCookie.Value, &path); err != nil {
-		http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteHome), http.StatusSeeOther)
 		return
 	}
 
 	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
-		http.Redirect(w, r, s.route(RouteHome, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteHome), http.StatusSeeOther)
 		return
 	}
 

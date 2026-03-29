@@ -78,8 +78,8 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 			ActivityLabel:     fundingActivityLabel(fundingPercent),
 			UpdatedAt:         need.UpdatedAt.Format(time.DateOnly),
 			PublishedAt:       publishedAt,
-			ReviewHref:        s.route(RouteAdminNeedReview, map[string]string{"needID": needID}),
-			DetailHref:        s.route(RouteNeedDetail, map[string]string{"needID": needID}),
+			ReviewHref:        s.route(RouteAdminNeedReview, Param("needID", needID)),
+			DetailHref:        s.route(RouteNeedDetail, Param("needID", needID)),
 			CanViewDetail:     adminExplorerCanViewPublicDetail(need.Status),
 		})
 	}
@@ -93,7 +93,7 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 		if selectedSort != "" {
 			v.Set("sort", selectedSort)
 		}
-		return s.routeWithQuery(RouteAdminNeedExplorer, nil, v)
+		return s.routeWithQuery(RouteAdminNeedExplorer, v)
 	}
 
 	prevHref := ""
@@ -126,7 +126,7 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 			Status:   status,
 			Label:    option.Label,
 			Count:    count,
-			Href:     s.routeWithQuery(RouteAdminNeedExplorer, nil, v),
+			Href:     s.routeWithQuery(RouteAdminNeedExplorer, v),
 			IsActive: selectedStatus == option.Value,
 		})
 	}
@@ -143,11 +143,11 @@ func (s *Service) handleGetAdminNeedExplorer(w http.ResponseWriter, r *http.Requ
 		NextHref:          nextHref,
 		SelectedStatus:    selectedStatus,
 		SelectedSort:      selectedSort,
-		FilterAction:      s.route(RouteAdminNeedExplorer, nil),
+		FilterAction:      s.route(RouteAdminNeedExplorer),
 		StatusOptions:     adminExplorerStatusOptions(),
 		SortOptions:       adminExplorerSortOptions(),
-		BackHref:          s.route(RouteAdmin, nil),
-		QueueHref:         s.route(RouteAdminNeeds, nil),
+		BackHref:          s.route(RouteAdmin),
+		QueueHref:         s.route(RouteAdminNeeds),
 		CurrentStatusText: adminExplorerStatusLabelByValue(selectedStatus),
 	}
 

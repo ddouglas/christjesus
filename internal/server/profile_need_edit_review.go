@@ -54,12 +54,12 @@ func (s *Service) handleGetProfileNeedEditReview(w http.ResponseWriter, r *http.
 		PrimaryCategory:     core.PrimaryCategory,
 		SecondaryCategories: core.SecondaryCategories,
 		Documents:           core.Documents,
-		EditLocationHref:    s.route(RouteProfileNeedEditLocation, map[string]string{"needID": needID}),
-		EditCategoriesHref:  s.route(RouteProfileNeedEditCategories, map[string]string{"needID": needID}),
-		EditStoryHref:       s.route(RouteProfileNeedEditStory, map[string]string{"needID": needID}),
-		EditDocumentsHref:   s.route(RouteProfileNeedEditDocs, map[string]string{"needID": needID}),
-		SubmitAction:        s.route(RouteProfileNeedEditReview, map[string]string{"needID": needID}),
-		BackHref:            s.route(RouteProfileNeedEditDocs, map[string]string{"needID": needID}),
+		EditLocationHref:    s.route(RouteProfileNeedEditLocation, Param("needID", needID)),
+		EditCategoriesHref:  s.route(RouteProfileNeedEditCategories, Param("needID", needID)),
+		EditStoryHref:       s.route(RouteProfileNeedEditStory, Param("needID", needID)),
+		EditDocumentsHref:   s.route(RouteProfileNeedEditDocs, Param("needID", needID)),
+		SubmitAction:        s.route(RouteProfileNeedEditReview, Param("needID", needID)),
+		BackHref:            s.route(RouteProfileNeedEditDocs, Param("needID", needID)),
 		SubmitLabel:         "Submit Updated Need",
 		Notice:              strings.TrimSpace(r.URL.Query().Get("notice")),
 		Error:               strings.TrimSpace(r.URL.Query().Get("error")),
@@ -91,7 +91,7 @@ func (s *Service) handlePostProfileNeedEditReview(w http.ResponseWriter, r *http
 	if r.FormValue("agreeTerms") != "on" || r.FormValue("agreeVerification") != "on" {
 		q := url.Values{}
 		q.Set("error", "Please agree to the terms and verification statements before submitting.")
-		http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedEditReview, map[string]string{"needID": needID}, q), http.StatusSeeOther)
+		http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedEditReview, q, Param("needID", needID)), http.StatusSeeOther)
 		return
 	}
 
@@ -242,7 +242,7 @@ func (s *Service) loadNeedReviewSharedData(ctx context.Context, needID string) (
 func (s *Service) needDocumentDeleteActions(routeName RouteName, needID string, documentIDs []string) map[string]string {
 	actions := make(map[string]string, len(documentIDs))
 	for _, documentID := range documentIDs {
-		actions[documentID] = s.route(routeName, map[string]string{"needID": needID, "documentID": documentID})
+		actions[documentID] = s.route(routeName, Param("needID", needID), Param("documentID", documentID))
 	}
 	return actions
 }
