@@ -338,19 +338,44 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	filters := parseBrowseFilters(r.URL.Query())
 
-	// Pre-populate ZIP/radius from donor preferences if logged in and no query params set
-	if filters.ZipCode == "" {
+	prefsApplied := false
+	hasDonorPrefs := false
+
+	// Only apply preference defaults on full page loads, not HTMX filter submissions.
+	// HTMX requests represent explicit user filter interactions — trust them as-is.
+	if !isHXRequest(r) {
 		if session, ok := sessionFromContext(ctx); ok && session.UserID != "" {
 			pref, err := s.donorPreferenceRepo.ByUserID(ctx, session.UserID)
 			if err != nil {
 				s.logger.WithError(err).Warn("failed to fetch donor preferences for browse pre-population")
 			}
 			if pref != nil {
-				if pref.ZipCode != nil && *pref.ZipCode != "" {
-					filters.ZipCode = *pref.ZipCode
+				hasDonorPrefs = true
+				if filters.UsePrefs != "0" {
+					if filters.ZipCode == "" && pref.ZipCode != nil && *pref.ZipCode != "" {
+						filters.ZipCode = *pref.ZipCode
+						prefsApplied = true
+					}
+					if filters.Radius == "" && pref.Radius != nil && *pref.Radius != "" {
+						if normalized := normalizeBrowseRadius(*pref.Radius); normalized != "" {
+							filters.Radius = normalized
+							prefsApplied = true
+						}
+					}
 				}
-				if pref.Radius != nil && *pref.Radius != "" {
-					filters.Radius = normalizeBrowseRadius(*pref.Radius)
+			}
+
+			if filters.UsePrefs != "0" && len(filters.CategoryIDs) == 0 {
+				assignments, err := s.donorPreferenceAssignRepo.AssignmentsByUserID(ctx, session.UserID)
+				if err != nil {
+					s.logger.WithError(err).Warn("failed to fetch donor preference categories for browse pre-population")
+				} else if len(assignments) > 0 {
+					hasDonorPrefs = true
+					filters.CategoryIDs = make(map[string]bool, len(assignments))
+					for _, a := range assignments {
+						filters.CategoryIDs[a.CategoryID] = true
+					}
+					prefsApplied = true
 				}
 			}
 		}
@@ -390,6 +415,8 @@ func (s *Service) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		Filters:              filters,
 		LoadResultsOnRender:  true,
 		ShowResultsSkeletons: true,
+		PrefsApplied:         prefsApplied,
+		HasDonorPrefs:        hasDonorPrefs,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -422,6 +449,11 @@ func parseBrowseFilters(query url.Values) types.BrowseFilters {
 		}
 	}
 
+	usePrefs := ""
+	if strings.TrimSpace(query.Get("use_prefs")) == "0" {
+		usePrefs = "0"
+	}
+
 	return types.BrowseFilters{
 		Search:      strings.TrimSpace(query.Get("search")),
 		ZipCode:     normalizeBrowseZipCode(query.Get("zip")),
@@ -433,6 +465,7 @@ func parseBrowseFilters(query url.Values) types.BrowseFilters {
 		SortBy:      normalizeBrowseSortBy(query.Get("sort")),
 		Page:        parsePositiveInt(query.Get("page"), 1),
 		PageSize:    browseDefaultPageSize,
+		UsePrefs:    usePrefs,
 	}
 }
 
@@ -606,6 +639,9 @@ func (s *Service) buildBrowsePageHref(filters types.BrowseFilters, page int) str
 	}
 	if filters.SortBy != "urgency" {
 		v.Set("sort", filters.SortBy)
+	}
+	if filters.UsePrefs == "0" {
+		v.Set("use_prefs", "0")
 	}
 	return s.routeWithQuery(RouteBrowse, nil, v)
 }
