@@ -38,6 +38,18 @@ var weightedStatuses = []weightedNeedStatus{
 	{Status: types.NeedStatusFunded, Weight: 8},
 }
 
+type weightedNeedUrgency struct {
+	Urgency types.NeedUrgency
+	Weight  int
+}
+
+var weightedUrgencies = []weightedNeedUrgency{
+	{Urgency: types.NeedUrgencyLow, Weight: 20},
+	{Urgency: types.NeedUrgencyMedium, Weight: 45},
+	{Urgency: types.NeedUrgencyHigh, Weight: 25},
+	{Urgency: types.NeedUrgencyUrgent, Weight: 10},
+}
+
 func SeedFakeNeeds(
 	ctx context.Context,
 	pool *pgxpool.Pool,
@@ -100,6 +112,7 @@ func SeedFakeNeeds(
 			AmountRaisedCents: amountRaised,
 			ShortDescription:  utils.StringPtr(shortDescription),
 			Status:            status,
+			Urgency:           pickWeightedUrgency(rng),
 			CurrentStep:       currentStep,
 			IsFeatured:        status == types.NeedStatusActive && rng.Intn(100) < 15,
 		}
@@ -169,6 +182,24 @@ func SeedFakeNeeds(
 
 	fmt.Printf("Fake needs seeded: %d created\n", created)
 	return nil
+}
+
+func pickWeightedUrgency(rng *rand.Rand) types.NeedUrgency {
+	total := 0
+	for _, item := range weightedUrgencies {
+		total += item.Weight
+	}
+
+	roll := rng.Intn(total)
+	running := 0
+	for _, item := range weightedUrgencies {
+		running += item.Weight
+		if roll < running {
+			return item.Urgency
+		}
+	}
+
+	return types.NeedUrgencyMedium
 }
 
 func pickWeightedStatus(rng *rand.Rand) types.NeedStatus {

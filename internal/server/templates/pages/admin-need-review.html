@@ -35,6 +35,24 @@
           <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Raised Amount</p>
           <p class="mt-1 text-sm text-foreground">${{div .Need.AmountRaisedCents 100}}</p>
         </div>
+        {{if not .IsDeleted}}
+        <div class="rounded-lg border border-border bg-card p-3 sm:col-span-2 lg:col-span-4">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Urgency</p>
+          <form method="post" action="{{.ModerateAction}}" class="mt-2 flex flex-wrap items-center gap-4">
+            {{.CSRFField}}
+            <div class="flex flex-wrap gap-3 text-sm">
+              <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="low" class="h-4 w-4 border-border" {{if eq .Need.Urgency "low"}}checked{{end}} /> Low</label>
+              <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="medium" class="h-4 w-4 border-border" {{if eq .Need.Urgency "medium"}}checked{{end}} /> Medium</label>
+              <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="high" class="h-4 w-4 border-border" {{if eq .Need.Urgency "high"}}checked{{end}} /> High</label>
+              <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="urgent" class="h-4 w-4 border-border" {{if eq .Need.Urgency "urgent"}}checked{{end}} /> Urgent</label>
+            </div>
+            <button type="submit" name="action" value="set_urgency"
+              class="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">
+              Update
+            </button>
+          </form>
+        </div>
+        {{end}}
       </div>
     </div>
 
@@ -276,6 +294,15 @@
     <div>
       <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" for="modal-note">Note</label>
       <textarea id="modal-note" name="note" rows="3" class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" placeholder="Optional moderation note"></textarea>
+    </div>
+    <div>
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Urgency (set on approve)</label>
+      <div class="flex flex-wrap gap-3 text-sm">
+        <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="low" class="h-4 w-4 border-border" /> Low</label>
+        <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="medium" class="h-4 w-4 border-border" checked /> Medium</label>
+        <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="high" class="h-4 w-4 border-border" /> High</label>
+        <label class="flex items-center gap-1.5"><input type="radio" name="urgency" value="urgent" class="h-4 w-4 border-border" /> Urgent</label>
+      </div>
     </div>
     <div class="flex flex-wrap gap-2">
       <button type="submit" name="action" value="approve"
