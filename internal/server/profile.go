@@ -221,6 +221,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		DonationSummaries:       donationSummaries,
 		HasNeeds:                len(myNeeds) > 0,
 		HasDonations:            len(donationSummaries) > 0,
+		SubmitNeedHref:          s.route(RouteOnboarding, nil),
 	}
 
 	err = s.renderTemplate(w, r, "page.profile", data)
@@ -606,7 +607,6 @@ func buildProfileSidebar(userType string) []types.ProfileNavItem {
 	items := []types.ProfileNavItem{
 		{Label: "Profile Overview", Href: "#overview", Active: true, Section: "overview", ShowItem: true},
 		{Label: "My Needs", Href: "#my-needs", Active: false, Section: "my-needs", ShowItem: userType == string(types.UserTypeRecipient)},
-		{Label: "Need Status", Href: "#need-status", Active: false, Section: "need-status", ShowItem: userType == string(types.UserTypeRecipient)},
 		{Label: "Donation History", Href: "#donations", Active: false, Section: "donations", ShowItem: userType == string(types.UserTypeDonor)},
 		{Label: "My Preferences", Href: RoutePattern(RouteProfileDonorPreferences), Active: false, Section: "my-preferences", ShowItem: userType == string(types.UserTypeDonor)},
 	}
