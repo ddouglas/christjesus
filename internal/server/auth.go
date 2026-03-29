@@ -173,6 +173,7 @@ func (s *Service) handleGetAuthCallback(w http.ResponseWriter, r *http.Request) 
 		Email:       strings.TrimSpace(claims.Email),
 		GivenName:   strings.TrimSpace(claims.GivenName),
 		FamilyName:  strings.TrimSpace(claims.FamilyName),
+		DisplayName: strings.TrimSpace(claims.DisplayName),
 		UserType:    userType,
 		IsAdmin:     claims.IsAdmin,
 	}, expiresIn)
