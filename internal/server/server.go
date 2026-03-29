@@ -357,6 +357,12 @@ func templateFuncMap() template.FuncMap {
 			}
 			return *s
 		},
+		"derefFloat": func(f *float64) float64 {
+			if f == nil {
+				return 0
+			}
+			return *f
+		},
 		"derefOr": func(s *string, defaultVal string) string {
 			if s == nil {
 				return defaultVal

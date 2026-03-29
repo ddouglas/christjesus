@@ -99,22 +99,16 @@ func browseBaseQuery(columns ...string) sq.SelectBuilder {
 		Where(sq.Eq{"n.deleted_at": nil})
 }
 
-func applyBrowseFilters(qb sq.SelectBuilder, f BrowseNeedsFilter) sq.SelectBuilder {
+// applyBrowseWhereFilters adds only WHERE clauses (no extra columns).
+// Used by both the results query and the count query.
+func applyBrowseWhereFilters(qb sq.SelectBuilder, f BrowseNeedsFilter) sq.SelectBuilder {
 	donorGeogSubquery := "(SELECT geog FROM christjesus.zip_centroids WHERE zip_code = ?)"
-	if f.ZipCode != "" {
-		qb = qb.Column(
-			fmt.Sprintf("ST_Distance(zc.geog, %s) / 1609.344 AS distance_miles", donorGeogSubquery),
-			f.ZipCode,
+	if f.ZipCode != "" && f.RadiusMiles != nil {
+		radiusMeters := *f.RadiusMiles * 1609.344
+		qb = qb.Where(
+			fmt.Sprintf("(zc.geog IS NULL OR ST_DWithin(zc.geog, %s, ?))", donorGeogSubquery),
+			f.ZipCode, radiusMeters,
 		)
-		if f.RadiusMiles != nil {
-			radiusMeters := *f.RadiusMiles * 1609.344
-			qb = qb.Where(
-				fmt.Sprintf("(zc.geog IS NULL OR ST_DWithin(zc.geog, %s, ?))", donorGeogSubquery),
-				f.ZipCode, radiusMeters,
-			)
-		}
-	} else {
-		qb = qb.Column("NULL::float8 AS distance_miles")
 	}
 	if len(f.CategoryIDs) > 0 {
 		qb = qb.Where(sq.Eq{"nca.category_id": f.CategoryIDs})
@@ -134,6 +128,22 @@ func applyBrowseFilters(qb sq.SelectBuilder, f BrowseNeedsFilter) sq.SelectBuild
 	}
 	if f.Search != "" {
 		qb = qb.Where("LOWER(COALESCE(n.short_description, '')) LIKE ?", "%"+strings.ToLower(f.Search)+"%")
+	}
+	return qb
+}
+
+// applyBrowseFilters adds WHERE clauses plus the distance_miles column.
+// Used by the results query only.
+func applyBrowseFilters(qb sq.SelectBuilder, f BrowseNeedsFilter) sq.SelectBuilder {
+	qb = applyBrowseWhereFilters(qb, f)
+	donorGeogSubquery := "(SELECT geog FROM christjesus.zip_centroids WHERE zip_code = ?)"
+	if f.ZipCode != "" {
+		qb = qb.Column(
+			fmt.Sprintf("ST_Distance(zc.geog, %s) / 1609.344 AS distance_miles", donorGeogSubquery),
+			f.ZipCode,
+		)
+	} else {
+		qb = qb.Column("NULL::float8 AS distance_miles")
 	}
 	return qb
 }
@@ -188,7 +198,7 @@ func (r *NeedRepository) BrowseNeedsPage(ctx context.Context, f BrowseNeedsFilte
 
 func (r *NeedRepository) BrowseNeedsCount(ctx context.Context, f BrowseNeedsFilter) (int, error) {
 	qb := browseBaseQuery("COUNT(DISTINCT n.id)")
-	qb = applyBrowseFilters(qb, f)
+	qb = applyBrowseWhereFilters(qb, f)
 
 	query, args, err := qb.ToSql()
 	if err != nil {
