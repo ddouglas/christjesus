@@ -58,11 +58,11 @@ func (s *Service) handleCategories(w http.ResponseWriter, r *http.Request) {
 			Description: category.Description,
 			Icon:        category.Icon,
 			NeedCount:   countsByCategoryID[category.ID],
-			Href:        s.route(RouteCategoryNeeds, map[string]string{"slug": slug}) + cityQuery,
+			Href:        s.route(RouteCategoryNeeds, Param("slug", slug)) + cityQuery,
 		})
 	}
 
-	browseHref := s.route(RouteBrowse, nil)
+	browseHref := s.route(RouteBrowse)
 	if cityQuery != "" {
 		browseHref += cityQuery
 	}
@@ -115,8 +115,8 @@ func (s *Service) handleCategoryNeeds(w http.ResponseWriter, r *http.Request) {
 		cityQuery = "?city=" + url.QueryEscape(city)
 	}
 
-	backHref := s.route(RouteCategories, nil)
-	browseHref := s.route(RouteBrowse, nil)
+	backHref := s.route(RouteCategories)
+	browseHref := s.route(RouteBrowse)
 	if cityQuery != "" {
 		backHref += cityQuery
 		browseHref += cityQuery

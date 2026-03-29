@@ -53,10 +53,10 @@ func (s *Service) handleGetOnboardingNeedDocuments(w http.ResponseWriter, r *htt
 		Notice:              r.URL.Query().Get("notice"),
 		Error:               r.URL.Query().Get("error"),
 		DocumentTypeOptions: optionViews,
-		MetadataAction:      s.route(RouteOnboardingNeedDocumentsMeta, map[string]string{"needID": needID}),
-		UploadAction:        s.route(RouteOnboardingNeedDocumentsUpload, map[string]string{"needID": needID}),
-		ContinueAction:      s.route(RouteOnboardingNeedDocuments, map[string]string{"needID": needID}),
-		BackHref:            s.route(RouteOnboardingNeedStory, map[string]string{"needID": needID}),
+		MetadataAction:      s.route(RouteOnboardingNeedDocumentsMeta, Param("needID", needID)),
+		UploadAction:        s.route(RouteOnboardingNeedDocumentsUpload, Param("needID", needID)),
+		ContinueAction:      s.route(RouteOnboardingNeedDocuments, Param("needID", needID)),
+		BackHref:            s.route(RouteOnboardingNeedStory, Param("needID", needID)),
 		DeleteActions:       s.needDocumentDeleteActions(RouteOnboardingNeedDocumentDelete, needID, needDocumentIDs(documents)),
 	}
 
@@ -210,13 +210,13 @@ func (s *Service) handleFile(ctx context.Context, needID, userID string, fileHea
 func (s *Service) redirectDocsWithError(w http.ResponseWriter, r *http.Request, needID, msg string) {
 	q := url.Values{}
 	q.Set("error", msg)
-	http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedDocuments, map[string]string{"needID": needID}, q), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedDocuments, q, Param("needID", needID)), http.StatusSeeOther)
 }
 
 func (s *Service) redirectDocsWithNotice(w http.ResponseWriter, r *http.Request, needID, msg string) {
 	q := url.Values{}
 	q.Set("notice", msg)
-	http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedDocuments, map[string]string{"needID": needID}, q), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedDocuments, q, Param("needID", needID)), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostOnboardingNeedDocuments(w http.ResponseWriter, r *http.Request) {
@@ -263,7 +263,7 @@ func (s *Service) handlePostOnboardingNeedDocuments(w http.ResponseWriter, r *ht
 	}
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepDocuments)
-	http.Redirect(w, r, s.route(RouteOnboardingNeedReview, map[string]string{"needID": needID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedReview, Param("needID", needID)), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostOnboardingNeedDocumentMetadata(w http.ResponseWriter, r *http.Request) {

@@ -57,8 +57,8 @@ func (s *Service) handleGetProfileNeedEditLocation(w http.ResponseWriter, r *htt
 		SelectedAddressID: selectedAddressID,
 		ShowSetPrimary:    showSetSelectedPrimary,
 		NewAddress:        &types.UserAddressForm{},
-		FormAction:        s.route(RouteProfileNeedEditLocation, map[string]string{"needID": needID}),
-		BackHref:          s.route(RouteProfileNeedReview, map[string]string{"needID": needID}),
+		FormAction:        s.route(RouteProfileNeedEditLocation, Param("needID", needID)),
+		BackHref:          s.route(RouteProfileNeedReview, Param("needID", needID)),
 	}
 
 	if err := s.renderTemplate(w, r, "page.onboarding.need.location", data); err != nil {
@@ -184,8 +184,8 @@ func (s *Service) handlePostProfileNeedEditLocation(w http.ResponseWriter, r *ht
 				HasAddresses:      len(addresses) > 0,
 				SelectedAddressID: "new",
 				NewAddress:        location,
-				FormAction:        s.route(RouteProfileNeedEditLocation, map[string]string{"needID": needID}),
-				BackHref:          s.route(RouteProfileNeedReview, map[string]string{"needID": needID}),
+				FormAction:        s.route(RouteProfileNeedEditLocation, Param("needID", needID)),
+				BackHref:          s.route(RouteProfileNeedReview, Param("needID", needID)),
 				Error:             validationErr,
 			}
 			if err := s.renderTemplate(w, r, "page.onboarding.need.location", data); err != nil {
@@ -217,5 +217,5 @@ func (s *Service) handlePostProfileNeedEditLocation(w http.ResponseWriter, r *ht
 	}
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepLocation)
-	http.Redirect(w, r, s.route(RouteProfileNeedEditCategories, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteProfileNeedEditCategories, Param("needID", need.ID)), http.StatusSeeOther)
 }

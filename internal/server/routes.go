@@ -163,6 +163,24 @@ var routePatterns = map[RouteName]string{
 	// RouteOnboardingSponsorOrganization: "/onboarding/sponsor/organization/welcome",
 }
 
+// RouteOption is a functional option for building a route path and query string.
+type RouteOption func(*routeOptions)
+
+type routeOptions struct {
+	params map[string]string
+	query  url.Values
+}
+
+// Param returns a RouteOption that sets a path parameter.
+func Param(k, v string) RouteOption {
+	return func(o *routeOptions) { o.params[k] = v }
+}
+
+// Query returns a RouteOption that adds a query string parameter.
+func Query(k, v string) RouteOption {
+	return func(o *routeOptions) { o.query.Set(k, v) }
+}
+
 var routeTokenRE = regexp.MustCompile(`:([a-zA-Z0-9_]+)`)
 
 func RoutePattern(name RouteName) string {
@@ -172,7 +190,8 @@ func RoutePattern(name RouteName) string {
 	panic(fmt.Sprintf("unknown route pattern: %s", name))
 }
 
-func BuildRoute(name RouteName, params map[string]string) (string, error) {
+// buildRouteFromMap builds the URL path by substituting :param tokens from the given map.
+func buildRouteFromMap(name RouteName, params map[string]string) (string, error) {
 	pattern, ok := routePatterns[name]
 	if !ok {
 		return "", fmt.Errorf("unknown route name: %s", name)
@@ -202,19 +221,31 @@ func BuildRoute(name RouteName, params map[string]string) (string, error) {
 	return built, nil
 }
 
-func BuildRouteWithQuery(name RouteName, params map[string]string, query url.Values) (string, error) {
-	path, err := BuildRoute(name, params)
+// BuildRoute builds a URL path (with optional query string) for the named route.
+func BuildRoute(name RouteName, opts ...RouteOption) (string, error) {
+	o := &routeOptions{
+		params: make(map[string]string),
+		query:  make(url.Values),
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(o)
+		}
+	}
+
+	path, err := buildRouteFromMap(name, o.params)
 	if err != nil {
 		return "", err
 	}
-	if len(query) == 0 {
+
+	if len(o.query) == 0 {
 		return path, nil
 	}
-	return path + "?" + query.Encode(), nil
+	return path + "?" + o.query.Encode(), nil
 }
 
-func (s *Service) route(name RouteName, params map[string]string) string {
-	path, err := BuildRoute(name, params)
+func (s *Service) route(name RouteName, opts ...RouteOption) string {
+	path, err := BuildRoute(name, opts...)
 	if err == nil {
 		return path
 	}
@@ -223,22 +254,37 @@ func (s *Service) route(name RouteName, params map[string]string) string {
 	return RoutePattern(RouteHome)
 }
 
-func (s *Service) routeWithQuery(name RouteName, params map[string]string, query url.Values) string {
-	path, err := BuildRouteWithQuery(name, params, query)
-	if err == nil {
+func (s *Service) routeWithQuery(name RouteName, query url.Values, opts ...RouteOption) string {
+	o := &routeOptions{
+		params: make(map[string]string),
+		query:  make(url.Values),
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(o)
+		}
+	}
+	// Merge caller-provided query values on top of any Query() opts.
+	for k, vs := range query {
+		for _, v := range vs {
+			o.query.Set(k, v)
+		}
+	}
+
+	path, err := buildRouteFromMap(name, o.params)
+	if err != nil {
+		s.logger.WithError(err).WithField("route_name", name).Error("failed to build route with query")
+		path = RoutePattern(RouteHome)
+	}
+
+	if len(o.query) == 0 {
 		return path
 	}
-
-	s.logger.WithError(err).WithField("route_name", name).Error("failed to build route with query")
-	fallback, fbErr := BuildRouteWithQuery(RouteHome, nil, query)
-	if fbErr == nil {
-		return fallback
-	}
-	return RoutePattern(RouteHome)
+	return path + "?" + o.query.Encode()
 }
 
-func (s *Service) absoluteRoute(name RouteName, params map[string]string, query url.Values) string {
-	path := s.routeWithQuery(name, params, query)
+func (s *Service) absoluteRoute(name RouteName, query url.Values, opts ...RouteOption) string {
+	path := s.routeWithQuery(name, query, opts...)
 	baseURL := strings.TrimRight(strings.TrimSpace(s.config.AppBaseURL), "/")
 	if baseURL == "" {
 		return path

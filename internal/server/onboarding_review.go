@@ -38,12 +38,12 @@ func (s *Service) handleGetOnboardingNeedReview(w http.ResponseWriter, r *http.R
 		PrimaryCategory:     core.PrimaryCategory,
 		SecondaryCategories: core.SecondaryCategories,
 		Documents:           core.Documents,
-		EditLocationHref:    s.route(RouteOnboardingNeedLocation, map[string]string{"needID": needID}),
-		EditCategoriesHref:  s.route(RouteOnboardingNeedCategories, map[string]string{"needID": needID}),
-		EditStoryHref:       s.route(RouteOnboardingNeedStory, map[string]string{"needID": needID}),
-		EditDocumentsHref:   s.route(RouteOnboardingNeedDocuments, map[string]string{"needID": needID}),
-		SubmitAction:        s.route(RouteOnboardingNeedReview, map[string]string{"needID": needID}),
-		BackHref:            s.route(RouteOnboardingNeedDocuments, map[string]string{"needID": needID}),
+		EditLocationHref:    s.route(RouteOnboardingNeedLocation, Param("needID", needID)),
+		EditCategoriesHref:  s.route(RouteOnboardingNeedCategories, Param("needID", needID)),
+		EditStoryHref:       s.route(RouteOnboardingNeedStory, Param("needID", needID)),
+		EditDocumentsHref:   s.route(RouteOnboardingNeedDocuments, Param("needID", needID)),
+		SubmitAction:        s.route(RouteOnboardingNeedReview, Param("needID", needID)),
+		BackHref:            s.route(RouteOnboardingNeedDocuments, Param("needID", needID)),
 		SubmitLabel:         "Submit Profile",
 		Notice:              r.URL.Query().Get("notice"),
 		Error:               r.URL.Query().Get("error"),
@@ -86,7 +86,7 @@ func (s *Service) handlePostOnboardingNeedReview(w http.ResponseWriter, r *http.
 	if r.FormValue("agreeTerms") != "on" || r.FormValue("agreeVerification") != "on" {
 		q := url.Values{}
 		q.Set("error", "Please agree to the terms and verification statements before submitting.")
-		http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedReview, map[string]string{"needID": needID}, q), http.StatusSeeOther)
+		http.Redirect(w, r, s.routeWithQuery(RouteOnboardingNeedReview, q, Param("needID", needID)), http.StatusSeeOther)
 		return
 	}
 
@@ -114,5 +114,5 @@ func (s *Service) handlePostOnboardingNeedReview(w http.ResponseWriter, r *http.
 	}
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepReview)
-	http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, map[string]string{"needID": needID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedConfirmation, Param("needID", needID)), http.StatusSeeOther)
 }

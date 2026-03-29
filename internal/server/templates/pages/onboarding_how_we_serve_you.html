@@ -58,7 +58,7 @@
 
       <!-- CTA Button -->
       <div class="p-6 pt-0">
-        <form method="POST" action="{{route "onboarding.how.we.serve.you" nil}}">
+        <form method="POST" action="{{route "onboarding.how.we.serve.you"}}">
           {{.CSRFField}}
           <button type="submit" name="path" value="recipient"
             class="w-full px-4 py-3 bg-[color:var(--cj-primary)] text-white rounded-md font-medium hover:bg-[color:var(--cj-primary)]/90 transition-colors">
@@ -112,7 +112,7 @@
 
       <!-- CTA Button -->
       <div class="p-6 pt-0">
-        <form method="POST" action="{{route "onboarding.how.we.serve.you" nil}}">
+        <form method="POST" action="{{route "onboarding.how.we.serve.you"}}">
           {{.CSRFField}}
           <button type="submit" name="path" value="donor"
             class="w-full px-4 py-3 bg-[color:var(--cj-secondary)] text-white rounded-md font-medium hover:bg-[color:var(--cj-secondary)]/90 transition-colors">
@@ -128,7 +128,7 @@
   <div class="mt-12 text-center">
     <p class="text-sm text-muted-foreground">
       Not sure which path is right for you?
-      <a href="{{route "about" nil}}" class="text-[color:var(--cj-primary)] hover:underline font-medium">Learn more about how ChristJesus.app works</a>
+      <a href="{{route "about"}}" class="text-[color:var(--cj-primary)] hover:underline font-medium">Learn more about how ChristJesus.app works</a>
     </p>
   </div>
 </div>

@@ -1,15 +1,15 @@
 {{define "component.nav"}}
 <header class="border-b border-[color:var(--border)] bg-[color:var(--cream)]/80 backdrop-blur">
   <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 md:px-6">
-    <a href="{{route "home" nil}}" class="flex items-center gap-2">
+    <a href="{{route "home"}}" class="flex items-center gap-2">
       <span class="font-display text-2xl font-semibold text-[#0D1B2A]">Christ<span class="text-[color:var(--cj-secondary)]">Jesus</span>.app</span>
     </a>
     <nav class="hidden items-center gap-6 text-sm text-[color:var(--ink-soft)] md:flex">
-      <a href="{{route "browse" nil}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Browse Needs</a>
-      <a href="{{route "categories" nil}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Categories</a>
-      <a href="{{route "map" nil}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Map</a>
-      <a href="{{route "guidelines" nil}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Guidelines</a>
-      {{if .Navbar.IsAdmin}}<a href="{{route "admin.dashboard" nil}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Admin</a>{{end}}
+      <a href="{{route "browse"}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Browse Needs</a>
+      <a href="{{route "categories"}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Categories</a>
+      <a href="{{route "map"}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Map</a>
+      <a href="{{route "guidelines"}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Guidelines</a>
+      {{if .Navbar.IsAdmin}}<a href="{{route "admin.dashboard"}}" class="transition-colors hover:text-[color:var(--cj-secondary)]">Admin</a>{{end}}
     </nav>
     <div class="flex items-center gap-3">
       {{if .Navbar.IsAuthenticated}}
@@ -20,9 +20,9 @@
             <img src="{{.Navbar.AvatarURL}}" alt="Profile" class="h-full w-full object-cover" />
           </summary>
           <div class="absolute right-0 z-20 mt-2 w-44 rounded-md border border-[color:var(--border)] bg-[color:var(--cream)] p-1 shadow-lg">
-            <a href="{{route "profile" nil}}" class="block rounded px-3 py-2 text-sm text-foreground transition-colors hover:bg-[color:var(--gold-pale)]">Profile</a>
+            <a href="{{route "profile"}}" class="block rounded px-3 py-2 text-sm text-foreground transition-colors hover:bg-[color:var(--gold-pale)]">Profile</a>
             <div class="my-1 border-t border-[color:var(--border)]"></div>
-            <form method="POST" action="{{route "logout" nil}}">
+            <form method="POST" action="{{route "logout"}}">
               {{.CSRFField}}
               <button type="submit" class="block w-full rounded px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-[color:var(--gold-pale)]">Log Out</button>
             </form>
@@ -30,7 +30,7 @@
         </details>
       </div>
       {{else}}
-        <a href="{{route "login" nil}}" class="hidden text-sm text-[color:var(--ink-soft)] transition-colors hover:text-[color:var(--cj-secondary)] md:inline-flex">Sign In</a>
+        <a href="{{route "login"}}" class="hidden text-sm text-[color:var(--ink-soft)] transition-colors hover:text-[color:var(--cj-secondary)] md:inline-flex">Sign In</a>
         {{end}}
     </div>
   </div>

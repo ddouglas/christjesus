@@ -53,8 +53,8 @@ func (s *Service) handleGetProfileNeedEditStory(w http.ResponseWriter, r *http.R
 		AmountNeededCents: need.AmountNeededCents,
 		PrimaryCategory:   primaryCategory,
 		Story:             story,
-		FormAction:        s.route(RouteProfileNeedEditStory, map[string]string{"needID": needID}),
-		BackHref:          s.route(RouteProfileNeedEditCategories, map[string]string{"needID": needID}),
+		FormAction:        s.route(RouteProfileNeedEditStory, Param("needID", needID)),
+		BackHref:          s.route(RouteProfileNeedEditCategories, Param("needID", needID)),
 	}
 
 	if err := s.renderTemplate(w, r, "page.onboarding.need.story", data); err != nil {
@@ -115,5 +115,5 @@ func (s *Service) handlePostProfileNeedEditStory(w http.ResponseWriter, r *http.
 	}
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepStory)
-	http.Redirect(w, r, s.route(RouteProfileNeedEditDocs, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteProfileNeedEditDocs, Param("needID", need.ID)), http.StatusSeeOther)
 }

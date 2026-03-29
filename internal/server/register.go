@@ -13,15 +13,15 @@ func (s *Service) handlePostRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleGetRegisterConfirm(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostRegisterConfirm(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostRegisterConfirmResend(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 }
 
 // func (s *Service) setRegisterConfirmCookie(w http.ResponseWriter, email string, age time.Duration) {

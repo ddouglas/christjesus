@@ -89,7 +89,7 @@ func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *h
 
 		v := url.Values{}
 		v.Set("notice", "Need deleted")
-		http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
+		http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, v, Param("needID", needID)), http.StatusSeeOther)
 		return
 	}
 
@@ -119,5 +119,5 @@ func (s *Service) handlePostAdminNeedDeleteOrRestore(w http.ResponseWriter, r *h
 
 	v := url.Values{}
 	v.Set("notice", "Need restored")
-	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteAdminNeedReview, v, Param("needID", needID)), http.StatusSeeOther)
 }

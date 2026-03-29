@@ -643,7 +643,7 @@ func (s *Service) buildBrowsePageHref(filters types.BrowseFilters, page int) str
 	if filters.UsePrefs == "0" {
 		v.Set("use_prefs", "0")
 	}
-	return s.routeWithQuery(RouteBrowse, nil, v)
+	return s.routeWithQuery(RouteBrowse, v)
 }
 
 func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {

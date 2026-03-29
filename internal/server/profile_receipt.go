@@ -173,7 +173,7 @@ func buildDonationReceiptPDF(summary types.ProfileDonationSummary, donorName, do
 	pdf.CellFormat(0, 8, "Need", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 11)
 	pdf.MultiCell(0, 7, safeNeedLabel, "", "L", false)
-	needPath, err := BuildRoute(RouteNeedDetail, map[string]string{"needID": summary.NeedID})
+	needPath, err := BuildRoute(RouteNeedDetail, Param("needID", summary.NeedID))
 	if err != nil {
 		needPath = "/need/" + summary.NeedID
 	}

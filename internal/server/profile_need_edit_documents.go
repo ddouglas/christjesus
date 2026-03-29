@@ -42,10 +42,10 @@ func (s *Service) handleGetProfileNeedEditDocuments(w http.ResponseWriter, r *ht
 		Notice:              r.URL.Query().Get("notice"),
 		Error:               r.URL.Query().Get("error"),
 		DocumentTypeOptions: optionViews,
-		MetadataAction:      s.route(RouteProfileNeedEditMeta, map[string]string{"needID": needID}),
-		UploadAction:        s.route(RouteProfileNeedEditUpload, map[string]string{"needID": needID}),
-		ContinueAction:      s.route(RouteProfileNeedEditDocs, map[string]string{"needID": needID}),
-		BackHref:            s.route(RouteProfileNeedEditStory, map[string]string{"needID": needID}),
+		MetadataAction:      s.route(RouteProfileNeedEditMeta, Param("needID", needID)),
+		UploadAction:        s.route(RouteProfileNeedEditUpload, Param("needID", needID)),
+		ContinueAction:      s.route(RouteProfileNeedEditDocs, Param("needID", needID)),
+		BackHref:            s.route(RouteProfileNeedEditStory, Param("needID", needID)),
 		DeleteActions:       s.needDocumentDeleteActions(RouteProfileNeedEditDelete, needID, needDocumentIDs(documents)),
 	}
 
@@ -160,7 +160,7 @@ func (s *Service) handlePostProfileNeedEditDocuments(w http.ResponseWriter, r *h
 	}
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepDocuments)
-	http.Redirect(w, r, s.route(RouteProfileNeedEditReview, map[string]string{"needID": needID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteProfileNeedEditReview, Param("needID", needID)), http.StatusSeeOther)
 }
 
 func (s *Service) handlePostProfileNeedEditDocumentMetadata(w http.ResponseWriter, r *http.Request) {
@@ -265,11 +265,11 @@ func (s *Service) handlePostProfileNeedEditDocumentDelete(w http.ResponseWriter,
 func (s *Service) redirectProfileNeedEditDocsWithError(w http.ResponseWriter, r *http.Request, needID, msg string) {
 	q := url.Values{}
 	q.Set("error", msg)
-	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedEditDocs, map[string]string{"needID": needID}, q), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedEditDocs, q, Param("needID", needID)), http.StatusSeeOther)
 }
 
 func (s *Service) redirectProfileNeedEditDocsWithNotice(w http.ResponseWriter, r *http.Request, needID, msg string) {
 	q := url.Values{}
 	q.Set("notice", msg)
-	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedEditDocs, map[string]string{"needID": needID}, q), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedEditDocs, q, Param("needID", needID)), http.StatusSeeOther)
 }

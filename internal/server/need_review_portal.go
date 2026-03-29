@@ -82,7 +82,7 @@ func (s *Service) handleGetProfileNeedReview(w http.ResponseWriter, r *http.Requ
 			Status:     status,
 			Reason:     reason,
 			Note:       note,
-			ViewHref:   s.route(RouteProfileNeedDocumentView, map[string]string{"needID": needID, "documentID": doc.ID}),
+			ViewHref:   s.route(RouteProfileNeedDocumentView, Param("needID", needID), Param("documentID", doc.ID)),
 		})
 	}
 
@@ -103,11 +103,11 @@ func (s *Service) handleGetProfileNeedReview(w http.ResponseWriter, r *http.Requ
 		RejectionNote:       rejectionNote,
 		Documents:           docFeedback,
 		Messages:            buildNeedReviewMessageViews(messages, userID),
-		PostMessageAction:   s.route(RouteProfileNeedReviewPost, map[string]string{"needID": needID}),
-		SetReadyAction:      s.route(RouteProfileNeedReviewSetReady, map[string]string{"needID": needID}),
-		PullBackAction:      s.route(RouteProfileNeedReviewPullBack, map[string]string{"needID": needID}),
-		BackHref:            s.route(RouteProfile, nil),
-		EditNeedHref:        s.route(RouteProfileNeedEdit, map[string]string{"needID": needID}),
+		PostMessageAction:   s.route(RouteProfileNeedReviewPost, Param("needID", needID)),
+		SetReadyAction:      s.route(RouteProfileNeedReviewSetReady, Param("needID", needID)),
+		PullBackAction:      s.route(RouteProfileNeedReviewPullBack, Param("needID", needID)),
+		BackHref:            s.route(RouteProfile),
+		EditNeedHref:        s.route(RouteProfileNeedEdit, Param("needID", needID)),
 		CanEditNeed:         need.Status == types.NeedStatusSubmitted || need.Status == types.NeedStatusChangesRequested,
 		CanSetReady:         need.Status == types.NeedStatusSubmitted || need.Status == types.NeedStatusChangesRequested,
 		CanPullBack:         need.Status == types.NeedStatusReadyForReview,
@@ -407,13 +407,13 @@ func (s *Service) handleGetProfileNeedDocument(w http.ResponseWriter, r *http.Re
 func (s *Service) redirectProfileNeedReviewWithNotice(w http.ResponseWriter, r *http.Request, needID, notice string) {
 	v := url.Values{}
 	v.Set("notice", notice)
-	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedReview, v, Param("needID", needID)), http.StatusSeeOther)
 }
 
 func (s *Service) redirectProfileNeedReviewWithError(w http.ResponseWriter, r *http.Request, needID, message string) {
 	v := url.Values{}
 	v.Set("error", message)
-	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedReview, map[string]string{"needID": needID}, v), http.StatusSeeOther)
+	http.Redirect(w, r, s.routeWithQuery(RouteProfileNeedReview, v, Param("needID", needID)), http.StatusSeeOther)
 }
 
 type rejectedDocumentFeedback struct {

@@ -9,7 +9,6 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -379,46 +378,15 @@ func templateFuncMap() template.FuncMap {
 			}
 			return values[key]
 		},
-		"route": func(name string, params map[string]string) (string, error) {
+		"param": Param,
+		"query": Query,
+		"route": func(name string, opts ...RouteOption) (string, error) {
 			trimmedName := strings.TrimSpace(name)
-			path, err := BuildRoute(RouteName(trimmedName), params)
+			path, err := BuildRoute(RouteName(trimmedName), opts...)
 			if err != nil {
 				return "", fmt.Errorf("template route(%q) failed: %w", trimmedName, err)
 			}
 			return path, nil
-		},
-		"routeq": func(name string, params map[string]string, query map[string]string) (string, error) {
-			trimmedName := strings.TrimSpace(name)
-			values := url.Values{}
-			for key, value := range query {
-				trimmedKey := strings.TrimSpace(key)
-				if trimmedKey == "" {
-					continue
-				}
-				values.Set(trimmedKey, value)
-			}
-
-			path, err := BuildRouteWithQuery(RouteName(trimmedName), params, values)
-			if err != nil {
-				return "", fmt.Errorf("template routeq(%q) failed: %w", trimmedName, err)
-			}
-			return path, nil
-		},
-		"dict": func(values ...string) (map[string]string, error) {
-			result := make(map[string]string)
-			if len(values)%2 != 0 {
-				return nil, fmt.Errorf("dict expects even number of arguments, got %d", len(values))
-			}
-
-			for i := 0; i < len(values); i += 2 {
-				key := strings.TrimSpace(values[i])
-				if key == "" {
-					continue
-				}
-				result[key] = values[i+1]
-			}
-
-			return result, nil
 		},
 	}
 }

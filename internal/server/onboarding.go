@@ -11,17 +11,17 @@ import (
 func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
 	session, ok := sessionFromRequest(r)
 	if !ok {
-		http.Redirect(w, r, s.route(RouteLogin, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteLogin), http.StatusSeeOther)
 		return
 	}
 
 	if strings.TrimSpace(session.GivenName) == "" {
-		http.Redirect(w, r, s.route(RouteOnboardingAboutYou, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboardingAboutYou), http.StatusSeeOther)
 		return
 	}
 
 	if strings.TrimSpace(session.UserType) == "" {
-		http.Redirect(w, r, s.route(RouteOnboardingHowWeServeYou, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboardingHowWeServeYou), http.StatusSeeOther)
 		return
 	}
 
@@ -30,9 +30,9 @@ func (s *Service) handleGetOnboarding(w http.ResponseWriter, r *http.Request) {
 	case string(types.UserTypeRecipient):
 		s.redirectNeedOnboarding(ctx, w, r, session.UserID)
 	case string(types.UserTypeDonor):
-		http.Redirect(w, r, s.route(RouteOnboardingDonorPreferences, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboardingDonorPreferences), http.StatusSeeOther)
 	default:
-		http.Redirect(w, r, s.route(RouteOnboardingHowWeServeYou, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboardingHowWeServeYou), http.StatusSeeOther)
 	}
 }
 
@@ -59,7 +59,7 @@ func (s *Service) handleGetOnboardingHowWeServeYou(w http.ResponseWriter, r *htt
 	// 		s.redirectNeedOnboarding(ctx, w, r, userID)
 	// 		return
 	// 	case string(types.UserTypeDonor):
-	// 		http.Redirect(w, r, s.route(RouteOnboardingDonorPreferences, nil), http.StatusSeeOther)
+	// 		http.Redirect(w, r, s.route(RouteOnboardingDonorPreferences), http.StatusSeeOther)
 	// 		return
 	// 	}
 	// }
@@ -117,7 +117,7 @@ func (s *Service) handlePostOnboardingHowWeServeYou(w http.ResponseWriter, r *ht
 			return
 		}
 		s.updateAuthUserTypeCookie(w, r, userType)
-		http.Redirect(w, r, s.route(RouteOnboardingDonorWelcome, nil), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteOnboardingDonorWelcome), http.StatusSeeOther)
 		return
 	}
 
@@ -153,7 +153,7 @@ func (s *Service) handleCreateNeed(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	http.Redirect(w, r, s.route(RouteOnboardingNeedWelcome, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedWelcome, Param("needID", need.ID)), http.StatusSeeOther)
 }
 
 func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWriter, r *http.Request, userID string) {
@@ -176,7 +176,7 @@ func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWri
 
 	// Once a need leaves draft/onboarding workflow, send users to the need review portal.
 	if need.Status != types.NeedStatusDraft {
-		http.Redirect(w, r, s.route(RouteProfileNeedReview, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteProfileNeedReview, Param("needID", need.ID)), http.StatusSeeOther)
 		return
 	}
 
@@ -193,7 +193,7 @@ func (s *Service) redirectNeedOnboarding(ctx context.Context, w http.ResponseWri
 	if !ok {
 		nextRoute = RouteOnboardingNeedWelcome
 	}
-	http.Redirect(w, r, s.route(nextRoute, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(nextRoute, Param("needID", need.ID)), http.StatusSeeOther)
 }
 
 func (s *Service) setUserType(ctx context.Context, userType string) error {
@@ -225,7 +225,7 @@ func (s *Service) redirectIfNeedSubmitted(w http.ResponseWriter, r *http.Request
 	}
 
 	if need.Status != types.NeedStatusDraft {
-		http.Redirect(w, r, s.route(RouteProfileNeedReview, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+		http.Redirect(w, r, s.route(RouteProfileNeedReview, Param("needID", need.ID)), http.StatusSeeOther)
 		return true
 	}
 
@@ -277,7 +277,7 @@ func (s *Service) handlePostOnboardingNeedWelcome(w http.ResponseWriter, r *http
 	}
 
 	s.recordNeedProgress(ctx, need.ID, types.NeedStepWelcome)
-	http.Redirect(w, r, s.route(RouteOnboardingNeedLocation, map[string]string{"needID": need.ID}), http.StatusSeeOther)
+	http.Redirect(w, r, s.route(RouteOnboardingNeedLocation, Param("needID", need.ID)), http.StatusSeeOther)
 
 }
 

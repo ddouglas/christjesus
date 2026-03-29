@@ -19,7 +19,7 @@
   </div>
   {{end}}
 
-  <form method="POST" action="{{route "login" nil}}" class="mt-8 space-y-6">
+  <form method="POST" action="{{route "login"}}" class="mt-8 space-y-6">
     {{.CSRFField}}
     <button type="submit"
       class="inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
@@ -29,7 +29,7 @@
 
   <p class="mt-6 text-center text-sm text-muted-foreground">
     Don't have an account?
-    <a href="{{route "register" nil}}" class="font-medium text-[color:var(--cj-accent)] hover:underline">Sign up</a>
+    <a href="{{route "register"}}" class="font-medium text-[color:var(--cj-accent)] hover:underline">Sign up</a>
   </p>
 </div>
 
