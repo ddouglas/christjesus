@@ -1,0 +1,111 @@
+{{define "page.profile.donor.preferences"}}
+{{template "header" .}}
+
+<div class="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">
+  <div class="mb-8">
+    <h1 class="text-3xl font-semibold text-foreground">Profile</h1>
+    <p class="text-muted-foreground">Manage your donor preferences.</p>
+  </div>
+
+  <div class="grid gap-6 md:grid-cols-[260px_1fr]">
+    <aside class="rounded-xl border bg-background p-4">
+      <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Account</p>
+      <nav class="space-y-1">
+        {{range .SidebarItems}}
+        <a href="{{.Href}}" class="block rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted">
+          {{.Label}}
+        </a>
+        {{end}}
+      </nav>
+    </aside>
+
+    <section class="space-y-6">
+      {{if .Notice}}
+      <div class="rounded-md border border-[color:var(--cj-accent)]/30 bg-[color:var(--cj-accent)]/10 px-4 py-3 text-sm text-foreground">
+        {{.Notice}}
+      </div>
+      {{end}}
+
+      {{if .Error}}
+      <div class="rounded-md border border-[color:var(--cj-error)] border-l-4 bg-muted px-4 py-3 text-sm font-semibold text-[color:var(--cj-error)]" role="alert">
+        {{.Error}}
+      </div>
+      {{end}}
+
+      <div class="rounded-xl border bg-background p-6">
+        <h2 class="text-xl font-semibold text-foreground">My Preferences</h2>
+        <p class="mt-1 text-sm text-muted-foreground">These preferences pre-fill filters on the browse page so you see relevant needs right away.</p>
+
+        <form id="donor-preferences-form" action="{{.UpdatePreferencesAction}}" method="post" class="mt-6 space-y-6">
+          {{.CSRFField}}
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-1">
+              <label for="pref-zip" class="block text-sm font-medium text-foreground">ZIP Code</label>
+              <input id="pref-zip" type="text" name="zipCode" placeholder="e.g. 90210" value="{{.ZipCode}}" maxlength="5" inputmode="numeric"
+                class="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--cj-primary)]" />
+            </div>
+            <div class="space-y-1">
+              <label for="pref-radius" class="block text-sm font-medium text-foreground">Radius</label>
+              <select id="pref-radius" name="radius"
+                class="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--cj-primary)]">
+                <option value="" {{if eq .Radius ""}}selected{{end}}>Select a radius</option>
+                <option value="5-miles" {{if eq .Radius "5-miles"}}selected{{end}}>5 miles</option>
+                <option value="15-miles" {{if eq .Radius "15-miles"}}selected{{end}}>15 miles</option>
+                <option value="25-miles" {{if eq .Radius "25-miles"}}selected{{end}}>25 miles</option>
+                <option value="anywhere" {{if eq .Radius "anywhere"}}selected{{end}}>Anywhere</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <p class="text-sm font-medium text-foreground">Categories you care about</p>
+            <div class="flex flex-wrap gap-2">
+              {{range .Categories}}
+              <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-muted">
+                <input type="checkbox" name="categories" value="{{.ID}}" class="h-3.5 w-3.5 rounded border-border" {{if index $.SelectedCategoryIDs .ID}}checked{{end}} />
+                {{.Name}}
+              </label>
+              {{end}}
+            </div>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-1">
+              <label for="pref-donation-range" class="block text-sm font-medium text-foreground">Donation Range</label>
+              <select id="pref-donation-range" name="donationRange"
+                class="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--cj-primary)]">
+                <option value="" {{if eq .DonationRange ""}}selected{{end}}>Select a range</option>
+                <option value="under-50" {{if eq .DonationRange "under-50"}}selected{{end}}>Under $50</option>
+                <option value="50-100" {{if eq .DonationRange "50-100"}}selected{{end}}>$50 – $100</option>
+                <option value="100-500" {{if eq .DonationRange "100-500"}}selected{{end}}>$100 – $500</option>
+                <option value="500-plus" {{if eq .DonationRange "500-plus"}}selected{{end}}>$500+</option>
+              </select>
+            </div>
+            <div class="space-y-1">
+              <label for="pref-notification" class="block text-sm font-medium text-foreground">Email Notifications</label>
+              <select id="pref-notification" name="notificationFrequency"
+                class="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--cj-primary)]">
+                <option value="" {{if eq .NotificationFrequency ""}}selected{{end}}>Select frequency</option>
+                <option value="daily" {{if eq .NotificationFrequency "daily"}}selected{{end}}>Daily</option>
+                <option value="weekly" {{if eq .NotificationFrequency "weekly"}}selected{{end}}>Weekly</option>
+                <option value="monthly" {{if eq .NotificationFrequency "monthly"}}selected{{end}}>Monthly</option>
+                <option value="never" {{if eq .NotificationFrequency "never"}}selected{{end}}>Never</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end">
+            <button type="submit"
+              class="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
+              Save Preferences
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+{{template "footer" .}}
+{{end}}

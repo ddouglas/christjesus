@@ -346,6 +346,20 @@ type ProfilePageData struct {
 	HasDonations      bool
 }
 
+type ProfileDonorPreferencesPageData struct {
+	BasePageData
+	SidebarItems           []ProfileNavItem
+	Notice                 string
+	Error                  string
+	Categories             []*NeedCategory
+	ZipCode                string
+	Radius                 string
+	DonationRange          string
+	NotificationFrequency  string
+	SelectedCategoryIDs    map[string]bool
+	UpdatePreferencesAction string
+}
+
 type ProfileNeedSummary struct {
 	NeedID              string
 	PrimaryCategoryName string
