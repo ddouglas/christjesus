@@ -17,6 +17,7 @@ func main() {
 			reconcileDonationsCommand,
 			nanoidCommand,
 			importZipsCommand,
+			e2eResetCommand,
 		},
 	}
 

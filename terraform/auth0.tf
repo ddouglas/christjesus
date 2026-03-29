@@ -4,14 +4,18 @@ resource "auth0_tenant" "christjesus" {
 
 data "auth0_tenant" "current" {}
 
-resource "auth0_connection" "users" {
-  name     = "${var.auth0_db_connection_name}-${var.workspace}"
-  strategy = "auth0"
+
+data "auth0_connection" "users" {
+  name = "Username-Password-Authentication"
 }
 
 resource "auth0_role" "admin" {
   name        = var.auth0_admin_role_name
   description = "Admin users for ChristJesus app"
+}
+
+data "auth0_client" "terraform" {
+  name = "Terraform"
 }
 
 resource "auth0_client" "web" {
@@ -34,9 +38,10 @@ resource "auth0_client" "web" {
 }
 
 resource "auth0_connection_clients" "users_web" {
-  connection_id = auth0_connection.users.id
+  connection_id = data.auth0_connection.users.id
   enabled_clients = [
     auth0_client.web.id,
+    data.auth0_client.terraform.id,
   ]
 }
 
@@ -86,4 +91,88 @@ resource "auth0_trigger_actions" "login_flow" {
     id           = auth0_action.inject_user_roles.id
     display_name = auth0_action.inject_user_roles.name
   }
+}
+
+# ---------------------------------------------------------------------------
+# Test / service-account users (dev/test only)
+# ---------------------------------------------------------------------------
+
+resource "random_string" "test_user_password" {
+  length  = 32
+  special = false
+}
+
+resource "auth0_user" "test_recipient" {
+  connection_name = data.auth0_connection.users.name
+  email           = "testrecipient@christjesus.app"
+  password        = random_string.test_user_password.result
+  given_name      = "Test"
+  family_name     = "Recipient"
+
+  user_metadata = jsonencode({
+    display_name = "Test Recipient"
+  })
+
+  depends_on = [
+    auth0_connection_clients.users_web
+  ]
+}
+
+resource "auth0_user" "test_donor" {
+  connection_name = data.auth0_connection.users.name
+  email           = "testdonor@christjesus.app"
+  password        = random_string.test_user_password.result
+  given_name      = "Test"
+  family_name     = "Donor"
+
+  user_metadata = jsonencode({
+    display_name = "Test Donor"
+  })
+
+  depends_on = [
+    auth0_connection_clients.users_web
+  ]
+}
+
+resource "auth0_user" "test_admin" {
+  connection_name = data.auth0_connection.users.name
+  email           = "testadmin@christjesus.app"
+  password        = random_string.test_user_password.result
+  given_name      = "Test"
+  family_name     = "Admin"
+
+  user_metadata = jsonencode({
+    display_name = "Test Admin"
+  })
+
+  depends_on = [
+    auth0_connection_clients.users_web
+  ]
+}
+
+resource "auth0_user_roles" "test_admin" {
+  user_id = auth0_user.test_admin.id
+  roles   = [auth0_role.admin.id]
+}
+
+resource "local_file" "e2e_test_accounts" {
+  filename = "${path.module}/../e2e/test-accounts.json"
+  content = jsonencode({
+    baseURL  = var.auth0_app_origins[0]
+    password = random_string.test_user_password.result
+    accounts = {
+      recipient = {
+        email  = auth0_user.test_recipient.email
+        userId = auth0_user.test_recipient.user_id
+      }
+      donor = {
+        email  = auth0_user.test_donor.email
+        userId = auth0_user.test_donor.user_id
+      }
+      admin = {
+        email  = auth0_user.test_admin.email
+        userId = auth0_user.test_admin.user_id
+      }
+    }
+  })
 }

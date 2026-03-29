@@ -35,4 +35,17 @@ cognito-delete-user USERNAME:
 	aws-vault exec cja -- aws cognito-idp admin-delete-user --user-pool-id "${COGNITO_USER_POOL_ID}" --username "{{USERNAME}}"
 
 dev:
-	air 
+	air
+
+e2e-reset:
+	go run ./cmd/christjesus e2e-reset
+
+e2e:
+	just e2e-reset
+	cd e2e && npx playwright test
+
+e2e-headed:
+	cd e2e && npx playwright test --headed
+
+e2e-ui:
+	cd e2e && npx playwright test --ui

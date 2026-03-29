@@ -226,6 +226,7 @@ func (s *Service) authClaimsFromToken(ctx context.Context, tokenString string) (
 		jwt.WithValidate(true),
 		jwt.WithIssuer(strings.TrimSpace(s.config.AuthIssuerURL)),
 		jwt.WithAudience(strings.TrimSpace(s.config.AuthClientID)),
+		jwt.WithAcceptableSkew(2*time.Minute),
 	)
 	if err != nil {
 		s.logger.WithError(err).WithField("auth_issuer", strings.TrimSpace(s.config.AuthIssuerURL)).Warn("failed to parse JWT")
