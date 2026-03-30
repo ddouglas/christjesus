@@ -51,7 +51,23 @@
     </div>
   </section>
 
-  <!-- Section 2: Featured Needs Grid -->
+  <!-- Section 2: Recommended or Featured Needs Grid -->
+  {{if .RecommendedNeeds}}
+  <section class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-2xl font-semibold text-foreground">Recommended for you</h2>
+        <p class="text-sm text-muted-foreground mt-1">Based on your giving preferences</p>
+      </div>
+      <a href="{{route "browse"}}" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
+    </div>
+    <div class="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {{range .RecommendedNeeds}}
+      {{template "component.need.card" .}}
+      {{end}}
+    </div>
+  </section>
+  {{else}}
   <section class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <h2 class="text-2xl font-semibold text-foreground">Featured Needs</h2>
@@ -70,6 +86,7 @@
         {{end}}
     </div>
   </section>
+  {{end}}
 
   <!-- Section 3: Need Categories -->
   <section class="bg-slate-50 py-12">
