@@ -88,6 +88,7 @@ const (
 	RouteNeedSave               RouteName = "need.save"
 	RouteNeedUnsave             RouteName = "need.unsave"
 	RouteStripeWebhook          RouteName = "stripe.webhook"
+	RouteResendWebhook          RouteName = "resend.webhook"
 )
 
 var routePatterns = map[RouteName]string{
@@ -162,6 +163,7 @@ var routePatterns = map[RouteName]string{
 	RouteNeedSave:                      "/need/:needID/save",
 	RouteNeedUnsave:                    "/need/:needID/unsave",
 	RouteStripeWebhook:                 "/webhooks/stripe",
+	RouteResendWebhook:                 "/webhooks/resend",
 
 	// RouteOnboardingSponsorIndividual:   "/onboarding/sponsor/individual/welcome",
 	// RouteOnboardingSponsorOrganization: "/onboarding/sponsor/organization/welcome",
