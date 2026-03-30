@@ -113,16 +113,26 @@ func (s *Service) processCheckoutSessionWebhookEvent(ctx context.Context, event 
 			return nil
 		}
 
-		_, err := s.donationIntentRepo.FinalizeIntentByID(ctx, intentID, checkoutSessionID, paymentIntentID)
+		finalized, err := s.donationIntentRepo.FinalizeIntentByID(ctx, intentID, checkoutSessionID, paymentIntentID)
 		if err != nil {
 			return fmt.Errorf("finalize donation intent from checkout.session.completed: %w", err)
+		}
+		if finalized {
+			if err := s.sendDonationReceiptEmail(ctx, intentID); err != nil {
+				s.logger.WithError(err).WithField("donation_intent_id", intentID).Error("failed to send donation receipt email")
+			}
 		}
 		return nil
 
 	case "checkout.session.async_payment_succeeded":
-		_, err := s.donationIntentRepo.FinalizeIntentByID(ctx, intentID, checkoutSessionID, paymentIntentID)
+		finalized, err := s.donationIntentRepo.FinalizeIntentByID(ctx, intentID, checkoutSessionID, paymentIntentID)
 		if err != nil {
 			return fmt.Errorf("finalize donation intent from async success: %w", err)
+		}
+		if finalized {
+			if err := s.sendDonationReceiptEmail(ctx, intentID); err != nil {
+				s.logger.WithError(err).WithField("donation_intent_id", intentID).Error("failed to send donation receipt email")
+			}
 		}
 		return nil
 
@@ -174,9 +184,14 @@ func (s *Service) processPaymentIntentWebhookEvent(ctx context.Context, event st
 
 	switch string(event.Type) {
 	case "payment_intent.succeeded":
-		_, err := s.donationIntentRepo.FinalizeIntentByID(ctx, intentID, nil, paymentIntentIDRef)
+		finalized, err := s.donationIntentRepo.FinalizeIntentByID(ctx, intentID, nil, paymentIntentIDRef)
 		if err != nil {
 			return fmt.Errorf("finalize donation intent from payment_intent.succeeded: %w", err)
+		}
+		if finalized {
+			if err := s.sendDonationReceiptEmail(ctx, intentID); err != nil {
+				s.logger.WithError(err).WithField("donation_intent_id", intentID).Error("failed to send donation receipt email")
+			}
 		}
 		return nil
 	case "payment_intent.payment_failed":

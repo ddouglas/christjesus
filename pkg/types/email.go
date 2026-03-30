@@ -63,3 +63,8 @@ const (
 	EmailSuppressionReasonComplaint  = "complaint"
 	EmailSuppressionReasonManual     = "manual"
 )
+
+// Email type values
+const (
+	EmailTypeDonationReceipt = "donation_receipt"
+)

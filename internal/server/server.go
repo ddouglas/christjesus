@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"christjesus/internal/email"
 	"christjesus/internal/store"
 	"christjesus/internal/usps"
 	"christjesus/pkg/types"
@@ -53,6 +54,7 @@ type Service struct {
 	donationIntentRepo          *store.DonationIntentRepository
 	savedNeedRepo               *store.SavedNeedRepository
 	emailRepo                   *store.EmailRepository
+	emailSender                 email.Sender
 
 	cookie           *securecookie.SecureCookie
 	jwksCache        *jwk.Cache
@@ -90,6 +92,7 @@ type Options struct {
 	DonationIntentRepo          *store.DonationIntentRepository
 	SavedNeedRepo               *store.SavedNeedRepository
 	EmailRepo                   *store.EmailRepository
+	EmailSender                 email.Sender
 
 	JWKCache *jwk.Cache
 	JWKSURL  string
@@ -123,6 +126,7 @@ func New(opts Options) (*Service, error) {
 		donationIntentRepo:          opts.DonationIntentRepo,
 		savedNeedRepo:               opts.SavedNeedRepo,
 		emailRepo:                   opts.EmailRepo,
+		emailSender:                 opts.EmailSender,
 
 		cookie:           securecookie.New(hashKey, blockKey),
 		jwksCache:        opts.JWKCache,
