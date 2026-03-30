@@ -116,11 +116,12 @@ func (r *EmailRepository) EmailEventByProviderEventID(ctx context.Context, provi
 	}
 
 	var event types.EmailEvent
-	if err := pgxscan.Get(ctx, r.pool, &event, query, args...); err != nil {
-		if pgxscan.NotFound(err) {
-			return nil, nil
-		}
+	err = pgxscan.Get(ctx, r.pool, &event, query, args...)
+	if err != nil && !pgxscan.NotFound(err) {
 		return nil, fmt.Errorf("fetch email event: %w", err)
+	}
+	if pgxscan.NotFound(err) {
+		return nil, nil
 	}
 	return &event, nil
 }
@@ -138,11 +139,12 @@ func (r *EmailRepository) EmailMessageByProviderMessageID(ctx context.Context, p
 	}
 
 	var msg types.EmailMessage
-	if err := pgxscan.Get(ctx, r.pool, &msg, query, args...); err != nil {
-		if pgxscan.NotFound(err) {
-			return nil, nil
-		}
+	err = pgxscan.Get(ctx, r.pool, &msg, query, args...)
+	if err != nil && !pgxscan.NotFound(err) {
 		return nil, fmt.Errorf("fetch email message: %w", err)
+	}
+	if pgxscan.NotFound(err) {
+		return nil, nil
 	}
 	return &msg, nil
 }
@@ -181,11 +183,12 @@ func (r *EmailRepository) IsEmailSuppressed(ctx context.Context, emailAddress st
 	}
 
 	var placeholder int
-	if err := pgxscan.Get(ctx, r.pool, &placeholder, query, args...); err != nil {
-		if pgxscan.NotFound(err) {
-			return false, nil
-		}
+	err = pgxscan.Get(ctx, r.pool, &placeholder, query, args...)
+	if err != nil && !pgxscan.NotFound(err) {
 		return false, fmt.Errorf("check email suppression: %w", err)
+	}
+	if pgxscan.NotFound(err) {
+		return false, nil
 	}
 	return true, nil
 }
