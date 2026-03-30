@@ -318,6 +318,7 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 	if primaryCategoryID != "" {
 		rows, err := s.needsRepo.BrowseNeedsPage(ctx, store.BrowseNeedsFilter{
 			CategoryIDs: []string{primaryCategoryID},
+			FundingMax:  100,
 			PageSize:    4,
 		})
 		if err != nil {
