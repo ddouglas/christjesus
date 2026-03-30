@@ -87,12 +87,9 @@ func serve(cCtx *cli.Context) error {
 	donationIntentRepo := store.NewDonationIntentRepository(pool)
 	savedNeedRepo := store.NewSavedNeedRepository(pool)
 	emailRepo := store.NewEmailRepository(pool)
-	var emailSender email.Sender
-	if config.ResendAPIKey != "" {
-		emailSender, err = email.NewResendSender(config.ResendAPIKey)
-		if err != nil {
-			return fmt.Errorf("failed to initialize email sender: %w", err)
-		}
+	emailSender, err := email.NewResendSender(config.ResendAPIKey)
+	if err != nil {
+		return fmt.Errorf("failed to initialize email sender: %w", err)
 	}
 
 	jwkCache, err := jwk.NewCache(context.Background(), httprc.NewClient())

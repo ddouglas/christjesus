@@ -118,7 +118,7 @@ func (s *Service) processCheckoutSessionWebhookEvent(ctx context.Context, event 
 			return fmt.Errorf("finalize donation intent from checkout.session.completed: %w", err)
 		}
 		if finalized {
-			if err := s.maybeSendDonationReceiptEmail(ctx, intentID); err != nil {
+			if err := s.sendDonationReceiptEmail(ctx, intentID); err != nil {
 				s.logger.WithError(err).WithField("donation_intent_id", intentID).Error("failed to send donation receipt email")
 			}
 		}
@@ -130,7 +130,7 @@ func (s *Service) processCheckoutSessionWebhookEvent(ctx context.Context, event 
 			return fmt.Errorf("finalize donation intent from async success: %w", err)
 		}
 		if finalized {
-			if err := s.maybeSendDonationReceiptEmail(ctx, intentID); err != nil {
+			if err := s.sendDonationReceiptEmail(ctx, intentID); err != nil {
 				s.logger.WithError(err).WithField("donation_intent_id", intentID).Error("failed to send donation receipt email")
 			}
 		}
@@ -189,7 +189,7 @@ func (s *Service) processPaymentIntentWebhookEvent(ctx context.Context, event st
 			return fmt.Errorf("finalize donation intent from payment_intent.succeeded: %w", err)
 		}
 		if finalized {
-			if err := s.maybeSendDonationReceiptEmail(ctx, intentID); err != nil {
+			if err := s.sendDonationReceiptEmail(ctx, intentID); err != nil {
 				s.logger.WithError(err).WithField("donation_intent_id", intentID).Error("failed to send donation receipt email")
 			}
 		}
