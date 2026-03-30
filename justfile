@@ -30,9 +30,15 @@ seed:
 import-zips:
 	go run ./cmd/christjesus import-zips
 
-cognito-delete-user USERNAME:
-	@if [ -z "${COGNITO_USER_POOL_ID}" ]; then echo "COGNITO_USER_POOL_ID is required"; exit 1; fi
-	aws-vault exec cja -- aws cognito-idp admin-delete-user --user-pool-id "${COGNITO_USER_POOL_ID}" --username "{{USERNAME}}"
+ngrok-resend:
+  ngrok http 4318 &
+  NGROK_PID=$!
+  wait $NGROK_PID
+
+resend-local:
+  #!/usr/bin/env bash
+  URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+  resend webhooks listen --url $URL --events all --forward-to localhost:8080/webhooks/resend
 
 dev:
 	air
