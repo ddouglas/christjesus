@@ -39,15 +39,21 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var recommendedNeeds []*types.BrowseNeedCard
+	if session, ok := sessionFromRequest(r); ok && session.UserID != "" {
+		recommendedNeeds = s.buildRecommendedNeeds(ctx, r, session.UserID)
+	}
+
 	data := &types.HomePageData{
-		BasePageData: types.BasePageData{Title: ""},
-		Notice:       r.URL.Query().Get("notice"),
-		Error:        r.URL.Query().Get("error"),
-		FeaturedNeed: featuredNeed,
-		Needs:        featuredNeeds,
-		Categories:   s.buildHomeCategories(ctx),
-		Stats:        s.buildHomeStats(ctx),
-		Steps:        getSteps(),
+		BasePageData:     types.BasePageData{Title: ""},
+		Notice:           r.URL.Query().Get("notice"),
+		Error:            r.URL.Query().Get("error"),
+		FeaturedNeed:     featuredNeed,
+		Needs:            featuredNeeds,
+		RecommendedNeeds: recommendedNeeds,
+		Categories:       s.buildHomeCategories(ctx),
+		Stats:            s.buildHomeStats(ctx),
+		Steps:            getSteps(),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -56,6 +62,77 @@ func (s *Service) handleHome(w http.ResponseWriter, r *http.Request) {
 		s.internalServerError(w)
 		return
 	}
+}
+
+func (s *Service) buildRecommendedNeeds(ctx context.Context, r *http.Request, userID string) []*types.BrowseNeedCard {
+	pref, err := s.donorPreferenceRepo.ByUserID(ctx, userID)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to fetch donor preferences for home recommendations")
+		return nil
+	}
+
+	assignments, err := s.donorPreferenceAssignRepo.AssignmentsByUserID(ctx, userID)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to fetch donor preference category assignments for home recommendations")
+		return nil
+	}
+
+	// No preferences set at all — don't show section
+	if pref == nil && len(assignments) == 0 {
+		return nil
+	}
+
+	categoryIDs := make([]string, 0, len(assignments))
+	for _, a := range assignments {
+		categoryIDs = append(categoryIDs, a.CategoryID)
+	}
+
+	sf := store.BrowseNeedsFilter{
+		CategoryIDs: categoryIDs,
+		FundingMax:  100,
+		SortBy:      "urgency",
+		PageSize:    4,
+		Page:        1,
+	}
+
+	if pref != nil {
+		if pref.ZipCode != nil && *pref.ZipCode != "" {
+			sf.ZipCode = *pref.ZipCode
+			if pref.Radius != nil && *pref.Radius != "" {
+				normalized := normalizeBrowseRadius(*pref.Radius)
+				if normalized != "" && normalized != "anywhere" {
+					if radiusMiles, err := strconv.ParseFloat(normalized, 64); err == nil {
+						sf.RadiusMiles = &radiusMiles
+					}
+				}
+			}
+		}
+	}
+
+	rows, err := s.needsRepo.BrowseNeedsPage(ctx, sf)
+	if err != nil {
+		s.logger.WithError(err).Warn("failed to fetch recommended needs for home page")
+		return nil
+	}
+
+	if len(rows) == 0 {
+		return nil
+	}
+
+	needs := make([]*types.Need, 0, len(rows))
+	distanceByNeedID := make(map[string]*float64, len(rows))
+	for _, row := range rows {
+		n := row.Need
+		needs = append(needs, &n)
+		distanceByNeedID[row.Need.ID] = row.DistanceMiles
+	}
+
+	cards := s.buildNeedCards(ctx, needs, "home recommendations")
+	for _, card := range cards {
+		card.DistanceMiles = distanceByNeedID[card.ID]
+	}
+
+	return cards
 }
 
 func (s *Service) buildHomeCategories(ctx context.Context) []types.CategoryData {

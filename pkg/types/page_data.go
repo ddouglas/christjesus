@@ -38,13 +38,14 @@ func (d *BasePageData) SetCSRFField(field template.HTML) {
 
 type HomePageData struct {
 	BasePageData
-	Notice       string
-	Error        string
-	FeaturedNeed *BrowseNeedCard
-	Needs        []*BrowseNeedCard
-	Categories   []CategoryData
-	Stats        StatsData
-	Steps        []StepData
+	Notice           string
+	Error            string
+	FeaturedNeed     *BrowseNeedCard
+	Needs            []*BrowseNeedCard
+	RecommendedNeeds []*BrowseNeedCard
+	Categories       []CategoryData
+	Stats            StatsData
+	Steps            []StepData
 }
 
 type BrowsePageData struct {
