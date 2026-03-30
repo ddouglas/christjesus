@@ -13,6 +13,11 @@ type Config struct {
 	StripePublishableKey string `envconfig:"STRIPE_PUBLISHABLE_KEY"`
 	StripeWebhookSecret  string `envconfig:"STRIPE_WEBHOOK_SECRET"`
 
+	// Transactional email (Resend)
+	ResendAPIKey        string `envconfig:"RESEND_API_KEY"`
+	ResendWebhookSecret string `envconfig:"RESEND_WEBHOOK_SECRET"`
+	EmailFromAddress    string `envconfig:"EMAIL_FROM_ADDRESS" default:"noreply@cja.onetwentyseven.dev"`
+
 	// Auth settings (derived from Auth0Domain/Auth0ClientID in loadConfig)
 	AuthIssuerURL string `envconfig:"-"`
 	AuthClientID  string `envconfig:"-"`

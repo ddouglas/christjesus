@@ -52,6 +52,7 @@ type Service struct {
 	donorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
 	donationIntentRepo          *store.DonationIntentRepository
 	savedNeedRepo               *store.SavedNeedRepository
+	emailRepo                   *store.EmailRepository
 
 	cookie           *securecookie.SecureCookie
 	jwksCache        *jwk.Cache
@@ -88,6 +89,7 @@ type Options struct {
 	DonorPreferenceAssignRepo   *store.DonorPreferenceAssignmentRepository
 	DonationIntentRepo          *store.DonationIntentRepository
 	SavedNeedRepo               *store.SavedNeedRepository
+	EmailRepo                   *store.EmailRepository
 
 	JWKCache *jwk.Cache
 	JWKSURL  string
@@ -120,6 +122,7 @@ func New(opts Options) (*Service, error) {
 		donorPreferenceAssignRepo:   opts.DonorPreferenceAssignRepo,
 		donationIntentRepo:          opts.DonationIntentRepo,
 		savedNeedRepo:               opts.SavedNeedRepo,
+		emailRepo:                   opts.EmailRepo,
 
 		cookie:           securecookie.New(hashKey, blockKey),
 		jwksCache:        opts.JWKCache,
@@ -169,9 +172,10 @@ func (s *Service) buildRouter(r *flow.Mux, csrfKey []byte) {
 	r.Use(s.LoggingMiddleware)
 	r.Use(s.AttachAuthContext)
 
-	// Stripe webhook uses its own signature verification; registered
-	// outside the CSRF group so the middleware never sees it.
+	// Webhooks use their own signature verification; registered outside
+	// the CSRF group so the middleware never sees them.
 	r.HandleFunc(RoutePattern(RouteStripeWebhook), s.handlePostStripeWebhook, http.MethodPost)
+	r.HandleFunc(RoutePattern(RouteResendWebhook), NewResendWebhookHandler(s.config.ResendWebhookSecret, s.emailRepo).ServeHTTP, http.MethodPost)
 
 	// All non-webhook routes get CSRF protection.
 	r.Group(func(r *flow.Mux) {
