@@ -173,6 +173,7 @@ type NeedDonateConfirmationPageData struct {
 	ShowRetryCTA       bool
 	ShowReceiptDetails bool
 	DonationDate       string
+	SimilarNeeds       []*BrowseNeedCard
 }
 
 type LoginPageData struct {

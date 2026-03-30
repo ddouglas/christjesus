@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"christjesus/internal/store"
 	"christjesus/internal/utils"
 	"christjesus/pkg/types"
 
@@ -289,7 +290,7 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 		return
 	}
 
-	need, ownerName, primaryCategory, err := s.loadNeedDonateSummary(ctx, needID)
+	need, ownerName, primaryCategory, primaryCategoryID, err := s.loadNeedDonateSummary(ctx, needID)
 	if err != nil {
 		s.logger.WithError(err).WithField("need_id", needID).Error("failed to build donate confirmation page data")
 		s.internalServerError(w)
@@ -312,6 +313,30 @@ func (s *Service) handleGetNeedDonateConfirmation(w http.ResponseWriter, r *http
 		ShowRetryCTA:       intent.PaymentStatus == types.DonationPaymentStatusFailed || intent.PaymentStatus == types.DonationPaymentStatusCanceled,
 		ShowReceiptDetails: intent.PaymentStatus == types.DonationPaymentStatusFinalized,
 		DonationDate:       donationConfirmationDate(intent),
+	}
+
+	if primaryCategoryID != "" {
+		rows, err := s.needsRepo.BrowseNeedsPage(ctx, store.BrowseNeedsFilter{
+			CategoryIDs: []string{primaryCategoryID},
+			FundingMax:  100,
+			PageSize:    4,
+		})
+		if err != nil {
+			s.logger.WithError(err).WithField("need_id", needID).Warn("failed to fetch similar needs for donation confirmation")
+		} else {
+			candidateNeeds := make([]*types.Need, 0, len(rows))
+			for _, row := range rows {
+				if row.ID == needID {
+					continue
+				}
+				n := row.Need
+				candidateNeeds = append(candidateNeeds, &n)
+				if len(candidateNeeds) == 3 {
+					break
+				}
+			}
+			data.SimilarNeeds = s.buildNeedCards(ctx, candidateNeeds, "donation-confirmation-similar")
+		}
 	}
 
 	if err := s.renderTemplate(w, r, "page.need-donate-confirmation", data); err != nil {
@@ -386,7 +411,7 @@ func donationConfirmationDate(intent *types.DonationIntent) string {
 }
 
 func (s *Service) buildNeedDonatePageData(ctx context.Context, needID string, data *types.NeedDonatePageData) (*types.NeedDonatePageData, error) {
-	need, ownerName, primaryCategory, err := s.loadNeedDonateSummary(ctx, needID)
+	need, ownerName, primaryCategory, _, err := s.loadNeedDonateSummary(ctx, needID)
 	if err != nil {
 		return nil, err
 	}
@@ -409,13 +434,13 @@ func (s *Service) buildNeedDonatePageData(ctx context.Context, needID string, da
 	return data, nil
 }
 
-func (s *Service) loadNeedDonateSummary(ctx context.Context, needID string) (*types.Need, string, string, error) {
+func (s *Service) loadNeedDonateSummary(ctx context.Context, needID string) (*types.Need, string, string, string, error) {
 	need, err := s.needsRepo.Need(ctx, needID)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", "", err
 	}
 	if need.DeletedAt != nil {
-		return nil, "", "", types.ErrNeedNotFound
+		return nil, "", "", "", types.ErrNeedNotFound
 	}
 
 	ownerName := "Anonymous"
@@ -427,18 +452,20 @@ func (s *Service) loadNeedDonateSummary(ctx context.Context, needID string) (*ty
 	}
 
 	primaryCategoryName := "General Need"
+	primaryCategoryID := ""
 	assignments, err := s.needCategoryAssignmentsRepo.GetAssignmentsByNeedID(ctx, needID)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", "", err
 	}
 
 	for _, assignment := range assignments {
 		if !assignment.IsPrimary {
 			continue
 		}
+		primaryCategoryID = assignment.CategoryID
 		category, err := s.categoryRepo.CategoryByID(ctx, assignment.CategoryID)
 		if err != nil {
-			return nil, "", "", err
+			return nil, "", "", "", err
 		}
 		if category != nil && strings.TrimSpace(category.Name) != "" {
 			primaryCategoryName = category.Name
@@ -446,7 +473,7 @@ func (s *Service) loadNeedDonateSummary(ctx context.Context, needID string) (*ty
 		break
 	}
 
-	return need, ownerName, primaryCategoryName, nil
+	return need, ownerName, primaryCategoryName, primaryCategoryID, nil
 }
 
 func parseDonationAmountCents(raw string) (int, error) {
