@@ -10,6 +10,13 @@ import (
 	"christjesus/internal/email"
 )
 
+func TestNewResendSender_EmptyAPIKey(t *testing.T) {
+	_, err := email.NewResendSender("")
+	if err == nil {
+		t.Fatal("expected error for empty API key, got nil")
+	}
+}
+
 func TestResendSender_Send(t *testing.T) {
 	t.Run("successful send returns message ID", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +36,10 @@ func TestResendSender_Send(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		sender := email.NewResendSender("test-api-key", email.WithBaseURL(srv.URL))
+		sender, err := email.NewResendSender("test-api-key", email.WithBaseURL(srv.URL))
+		if err != nil {
+			t.Fatalf("unexpected constructor error: %v", err)
+		}
 
 		msg := email.Message{
 			To:       "recipient@example.com",
@@ -58,7 +68,10 @@ func TestResendSender_Send(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		sender := email.NewResendSender("test-api-key", email.WithBaseURL(srv.URL))
+		sender, err := email.NewResendSender("test-api-key", email.WithBaseURL(srv.URL))
+		if err != nil {
+			t.Fatalf("unexpected constructor error: %v", err)
+		}
 
 		msg := email.Message{
 			To:      "bad-address",
@@ -66,32 +79,9 @@ func TestResendSender_Send(t *testing.T) {
 			Subject: "Test",
 		}
 
-		_, err := sender.Send(context.Background(), msg)
+		_, err = sender.Send(context.Background(), msg)
 		if err == nil {
 			t.Fatal("expected error, got nil")
-		}
-	})
-
-	t.Run("empty API key returns error without making HTTP call", func(t *testing.T) {
-		called := false
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			called = true
-			w.WriteHeader(http.StatusOK)
-		}))
-		defer srv.Close()
-
-		sender := email.NewResendSender("", email.WithBaseURL(srv.URL))
-
-		_, err := sender.Send(context.Background(), email.Message{
-			To:      "recipient@example.com",
-			From:    "noreply@example.com",
-			Subject: "Test",
-		})
-		if err == nil {
-			t.Fatal("expected error for empty API key, got nil")
-		}
-		if called {
-			t.Error("HTTP server should not have been called with empty API key")
 		}
 	})
 }

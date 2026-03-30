@@ -16,7 +16,7 @@ type Config struct {
 	// Transactional email (Resend)
 	ResendAPIKey        string `envconfig:"RESEND_API_KEY"`
 	ResendWebhookSecret string `envconfig:"RESEND_WEBHOOK_SECRET"`
-	EmailFromAddress    string `envconfig:"EMAIL_FROM_ADDRESS" default:"noreply@cja.onetwentyseven.dev"`
+	EmailFromAddress    string `envconfig:"EMAIL_FROM_ADDRESS"`
 
 	// Auth settings (derived from Auth0Domain/Auth0ClientID in loadConfig)
 	AuthIssuerURL string `envconfig:"-"`

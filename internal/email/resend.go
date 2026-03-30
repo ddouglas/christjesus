@@ -33,8 +33,11 @@ type ResendSender struct {
 	client  *http.Client
 }
 
-// NewResendSender returns a new ResendSender.
-func NewResendSender(apiKey string, opts ...SenderOption) *ResendSender {
+// NewResendSender returns a new ResendSender. Returns an error if apiKey is empty.
+func NewResendSender(apiKey string, opts ...SenderOption) (*ResendSender, error) {
+	if strings.TrimSpace(apiKey) == "" {
+		return nil, fmt.Errorf("resend: API key is required")
+	}
 	o := &resendSenderOptions{
 		baseURL:    resendDefaultBaseURL,
 		httpClient: &http.Client{},
@@ -46,7 +49,7 @@ func NewResendSender(apiKey string, opts ...SenderOption) *ResendSender {
 		apiKey:  apiKey,
 		baseURL: o.baseURL,
 		client:  o.httpClient,
-	}
+	}, nil
 }
 
 type resendSendRequest struct {
@@ -69,10 +72,6 @@ type resendErrorResponse struct {
 
 // Send sends a single transactional email via the Resend API.
 func (s *ResendSender) Send(ctx context.Context, msg Message) (SendResult, error) {
-	if strings.TrimSpace(s.apiKey) == "" {
-		return SendResult{}, fmt.Errorf("resend: API key is not configured")
-	}
-
 	payload := resendSendRequest{
 		From:    msg.From,
 		To:      msg.To,

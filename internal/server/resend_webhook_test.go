@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,10 +13,17 @@ import (
 	"time"
 
 	svix "github.com/svix/svix-webhooks/go"
+	"github.com/sirupsen/logrus"
 
 	"christjesus/internal/server"
 	"christjesus/pkg/types"
 )
+
+func testLogger() *logrus.Logger {
+	l := logrus.New()
+	l.SetOutput(io.Discard)
+	return l
+}
 
 // testWebhookSecret is a valid whsec_ prefixed base64 key for tests.
 // Generated with: openssl rand -base64 32
@@ -110,7 +118,7 @@ func newWebhookRequest(t *testing.T, secret, msgID string, payload any) *http.Re
 
 func TestHandlePostResendWebhook_MissingSecret(t *testing.T) {
 	repo := &fakeEmailRepo{}
-	handler := server.NewResendWebhookHandler("", repo)
+	handler := server.NewResendWebhookHandler("", repo, testLogger())
 
 	req := httptest.NewRequest(http.MethodPost, "/webhooks/resend", strings.NewReader(`{}`))
 	w := httptest.NewRecorder()
@@ -123,7 +131,7 @@ func TestHandlePostResendWebhook_MissingSecret(t *testing.T) {
 
 func TestHandlePostResendWebhook_InvalidSignature(t *testing.T) {
 	repo := &fakeEmailRepo{}
-	handler := server.NewResendWebhookHandler(testWebhookSecret, repo)
+	handler := server.NewResendWebhookHandler(testWebhookSecret, repo, testLogger())
 
 	req := httptest.NewRequest(http.MethodPost, "/webhooks/resend", strings.NewReader(`{"type":"email.delivered"}`))
 	req.Header.Set("svix-id", "msg_bad")
@@ -141,7 +149,7 @@ func TestHandlePostResendWebhook_DuplicateEvent(t *testing.T) {
 	repo := &fakeEmailRepo{
 		existingEventIDs: map[string]bool{"msg_existing": true},
 	}
-	handler := server.NewResendWebhookHandler(testWebhookSecret, repo)
+	handler := server.NewResendWebhookHandler(testWebhookSecret, repo, testLogger())
 
 	payload := map[string]any{"type": "email.delivered", "data": map[string]any{"email_id": "msg_existing"}}
 	req := newWebhookRequest(t, testWebhookSecret, "msg_existing", payload)
@@ -164,7 +172,7 @@ func TestHandlePostResendWebhook_Delivered(t *testing.T) {
 			msgID: {ID: "local_msg_1", Status: types.EmailStatusSent},
 		},
 	}
-	handler := server.NewResendWebhookHandler(testWebhookSecret, repo)
+	handler := server.NewResendWebhookHandler(testWebhookSecret, repo, testLogger())
 
 	payload := map[string]any{
 		"type": "email.delivered",
@@ -195,7 +203,7 @@ func TestHandlePostResendWebhook_Bounced(t *testing.T) {
 			msgID: {ID: "local_msg_2", Status: types.EmailStatusSent, Recipient: "bad@example.com"},
 		},
 	}
-	handler := server.NewResendWebhookHandler(testWebhookSecret, repo)
+	handler := server.NewResendWebhookHandler(testWebhookSecret, repo, testLogger())
 
 	payload := map[string]any{
 		"type": "email.bounced",
@@ -229,7 +237,7 @@ func TestHandlePostResendWebhook_Complained(t *testing.T) {
 			msgID: {ID: "local_msg_3", Status: types.EmailStatusSent, Recipient: "angry@example.com"},
 		},
 	}
-	handler := server.NewResendWebhookHandler(testWebhookSecret, repo)
+	handler := server.NewResendWebhookHandler(testWebhookSecret, repo, testLogger())
 
 	payload := map[string]any{
 		"type": "email.complained",

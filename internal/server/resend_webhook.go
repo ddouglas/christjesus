@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	svix "github.com/svix/svix-webhooks/go"
+	"github.com/sirupsen/logrus"
 
 	"christjesus/internal/utils"
 	"christjesus/pkg/types"
@@ -23,15 +24,30 @@ type resendEmailRepo interface {
 	UpsertEmailSuppression(ctx context.Context, suppression *types.EmailSuppression) error
 }
 
+// resendEventHandler processes a specific Resend event type given the resolved message.
+type resendEventHandler func(ctx context.Context, event *types.EmailEvent, msg *types.EmailMessage) error
+
 // ResendWebhookHandler handles inbound Resend webhook events.
 type ResendWebhookHandler struct {
-	secret string
-	repo   resendEmailRepo
+	secret   string
+	repo     resendEmailRepo
+	logger   *logrus.Logger
+	handlers map[string]resendEventHandler
 }
 
 // NewResendWebhookHandler returns a new ResendWebhookHandler.
-func NewResendWebhookHandler(secret string, repo resendEmailRepo) *ResendWebhookHandler {
-	return &ResendWebhookHandler{secret: secret, repo: repo}
+func NewResendWebhookHandler(secret string, repo resendEmailRepo, logger *logrus.Logger) *ResendWebhookHandler {
+	h := &ResendWebhookHandler{
+		secret: secret,
+		repo:   repo,
+		logger: logger,
+	}
+	h.handlers = map[string]resendEventHandler{
+		"email.delivered":  h.handleDelivered,
+		"email.bounced":    h.handleBounced,
+		"email.complained": h.handleComplained,
+	}
+	return h
 }
 
 // resendWebhookPayload is the common envelope for all Resend webhook events.
@@ -96,6 +112,10 @@ func (h *ResendWebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.processEvent(ctx, event, payload); err != nil {
+		h.logger.WithError(err).WithFields(logrus.Fields{
+			"event_type":        payload.Type,
+			"provider_event_id": providerEventID,
+		}).Error("failed to process resend webhook event")
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -106,7 +126,16 @@ func (h *ResendWebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 func (h *ResendWebhookHandler) processEvent(ctx context.Context, event *types.EmailEvent, payload resendWebhookPayload) error {
 	var data resendEmailEventData
 	if err := json.Unmarshal(payload.Data, &data); err != nil || data.EmailID == "" {
-		// Unknown structure — log and move on, don't fail the webhook.
+		h.logger.WithFields(logrus.Fields{
+			"event_type":        payload.Type,
+			"provider_event_id": event.ProviderEventID,
+		}).Warn("resend webhook event has unknown or missing email_id — skipping processing")
+		return nil
+	}
+
+	handler, ok := h.handlers[payload.Type]
+	if !ok {
+		// Unrecognised event type — recorded in email_events but no further action needed.
 		return nil
 	}
 
@@ -114,39 +143,41 @@ func (h *ResendWebhookHandler) processEvent(ctx context.Context, event *types.Em
 	if err != nil {
 		return err
 	}
-
-	switch payload.Type {
-	case "email.delivered":
-		if msg != nil {
-			return h.repo.UpdateEmailMessageStatus(ctx, msg.ID, types.EmailStatusDelivered, nil)
-		}
-
-	case "email.bounced":
-		if msg != nil {
-			if err := h.repo.UpdateEmailMessageStatus(ctx, msg.ID, types.EmailStatusBounced, nil); err != nil {
-				return err
-			}
-			return h.repo.UpsertEmailSuppression(ctx, &types.EmailSuppression{
-				ID:            utils.NanoID(),
-				EmailAddress:  msg.Recipient,
-				Reason:        types.EmailSuppressionReasonHardBounce,
-				SourceEventID: &event.ID,
-			})
-		}
-
-	case "email.complained":
-		if msg != nil {
-			if err := h.repo.UpdateEmailMessageStatus(ctx, msg.ID, types.EmailStatusComplained, nil); err != nil {
-				return err
-			}
-			return h.repo.UpsertEmailSuppression(ctx, &types.EmailSuppression{
-				ID:            utils.NanoID(),
-				EmailAddress:  msg.Recipient,
-				Reason:        types.EmailSuppressionReasonComplaint,
-				SourceEventID: &event.ID,
-			})
-		}
+	if msg == nil {
+		h.logger.WithFields(logrus.Fields{
+			"event_type":          payload.Type,
+			"provider_message_id": data.EmailID,
+		}).Warn("resend webhook event references unknown provider message ID — skipping processing")
+		return nil
 	}
 
-	return nil
+	return handler(ctx, event, msg)
+}
+
+func (h *ResendWebhookHandler) handleDelivered(ctx context.Context, _ *types.EmailEvent, msg *types.EmailMessage) error {
+	return h.repo.UpdateEmailMessageStatus(ctx, msg.ID, types.EmailStatusDelivered, nil)
+}
+
+func (h *ResendWebhookHandler) handleBounced(ctx context.Context, event *types.EmailEvent, msg *types.EmailMessage) error {
+	if err := h.repo.UpdateEmailMessageStatus(ctx, msg.ID, types.EmailStatusBounced, nil); err != nil {
+		return err
+	}
+	return h.repo.UpsertEmailSuppression(ctx, &types.EmailSuppression{
+		ID:            utils.NanoID(),
+		EmailAddress:  msg.Recipient,
+		Reason:        types.EmailSuppressionReasonHardBounce,
+		SourceEventID: &event.ID,
+	})
+}
+
+func (h *ResendWebhookHandler) handleComplained(ctx context.Context, event *types.EmailEvent, msg *types.EmailMessage) error {
+	if err := h.repo.UpdateEmailMessageStatus(ctx, msg.ID, types.EmailStatusComplained, nil); err != nil {
+		return err
+	}
+	return h.repo.UpsertEmailSuppression(ctx, &types.EmailSuppression{
+		ID:            utils.NanoID(),
+		EmailAddress:  msg.Recipient,
+		Reason:        types.EmailSuppressionReasonComplaint,
+		SourceEventID: &event.ID,
+	})
 }
