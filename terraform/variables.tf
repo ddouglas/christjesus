@@ -1,7 +1,6 @@
 locals {
-  cloudflare_account_id = data.sops_file.terraform.data["cloudflare_account_id"]
+  app_base_fqdn = "bodyofchrist.app"
 }
-
 
 variable "workspace" {
   type = string
@@ -43,6 +42,18 @@ variable "auth0_app_logout_urls" {
   default     = ["http://localhost:8080/"]
 }
 
+variable "auth0_domain" {
+  type = string
+}
+
+variable "auth0_client_id" {
+  type = string
+}
+
 variable "cloudflare_account_id" {
+  type = string
+}
+
+variable "render_owner_id" {
   type = string
 }

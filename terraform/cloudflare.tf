@@ -2,7 +2,7 @@
 
 resource "cloudflare_zone" "bodyofchrist" {
   account = {
-    id = local.cloudflare_account_id
+    id = var.cloudflare_account_id
   }
   name = "bodyofchrist.app"
   type = "full"
@@ -65,4 +65,12 @@ resource "cloudflare_dns_record" "zoho_txt" {
   type     = "TXT"
   content  = each.value.content
   ttl      = 600
+}
+
+resource "cloudflare_dns_record" "boc_dev_render" {
+  zone_id = cloudflare_zone.bodyofchrist.id
+  name    = "development.${local.app_base_fqdn}"
+  type    = "CNAME"
+  content = "${render_web_service.app.name}.onrender.com"
+  ttl     = 600
 }

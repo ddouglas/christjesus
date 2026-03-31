@@ -55,3 +55,38 @@ e2e-headed:
 
 e2e-ui:
 	cd e2e && npx playwright test --ui
+
+tf-init:
+	cd terraform && terraform init
+
+tf-plan workspace="development":
+	#!/usr/bin/env bash
+	set -euo pipefail
+	TMPFILE=$(mktemp /tmp/terraform.tfvars.XXXXXX.json)
+	trap "rm -f $TMPFILE" EXIT
+	sops --decrypt configs/{{workspace}}/terraform.tfvars.enc.json > "$TMPFILE"
+	cd terraform && terraform plan -var-file="$TMPFILE"
+
+tf-apply workspace="development":
+	#!/usr/bin/env bash
+	set -euo pipefail
+	TMPFILE=$(mktemp /tmp/terraform.tfvars.XXXXXX.json)
+	trap "rm -f $TMPFILE" EXIT
+	sops --decrypt configs/{{workspace}}/terraform.tfvars.enc.json > "$TMPFILE"
+	cd terraform && terraform apply -var-file="$TMPFILE"
+
+tf-console workspace="development":
+	#!/usr/bin/env bash
+	set -euo pipefail
+	TMPFILE=$(mktemp /tmp/terraform.tfvars.XXXXXX.json)
+	trap "rm -f $TMPFILE" EXIT
+	sops --decrypt configs/{{workspace}}/terraform.tfvars.enc.json > "$TMPFILE"
+	cd terraform && terraform console -var-file="$TMPFILE"
+
+tf-state-list workspace="development":
+	#!/usr/bin/env bash
+	set -euo pipefail
+	TMPFILE=$(mktemp /tmp/terraform.tfvars.XXXXXX.json)
+	trap "rm -f $TMPFILE" EXIT
+	sops --decrypt configs/{{workspace}}/terraform.tfvars.enc.json > "$TMPFILE"
+	cd terraform && terraform state list
