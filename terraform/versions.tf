@@ -10,6 +10,10 @@ terraform {
       source  = "auth0/auth0"
       version = "~> 1.0"
     }
+    render = {
+      source  = "render-oss/render"
+      version = "1.8.0"
+    }
     tigris = {
       source  = "tigrisdata/tigris"
       version = "~> 1.0"
@@ -28,3 +32,4 @@ provider "tigris" {
   secret_key = var.tigris_secret_key
 }
 
+provider "render" {}
