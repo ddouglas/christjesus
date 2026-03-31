@@ -1,2 +1,4 @@
 **/*.yaml
 !**/*.enc.yaml
+**/*.json
+!**/*.enc.json

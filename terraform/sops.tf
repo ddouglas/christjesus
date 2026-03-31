@@ -1,5 +1,5 @@
 data "sops_file" "terraform" {
-  source_file = "${path.module}/configs/${var.workspace}/terraform.enc.yaml"
+  source_file = "${path.module}/../configs/${var.workspace}/terraform.enc.yaml"
   input_type  = "yaml"
 }
 

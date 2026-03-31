@@ -36,8 +36,8 @@ terraform {
 provider "sops" {}
 
 provider "auth0" {
-  domain        = data.sops_file.terraform.data["auth0_domain"]
-  client_id     = data.sops_file.terraform.data["auth0_client_id"]
+  domain        = var.auth0_domain
+  client_id     = var.auth0_client_id
   client_secret = data.sops_file.terraform.data["auth0_client_secret"]
 }
 
@@ -47,8 +47,9 @@ provider "tigris" {
 }
 
 provider "render" {
-  api_key  = data.sops_file.terraform.data["render_api_key"]
-  owner_id = data.sops_file.terraform.data["render_owner_id"]
+  api_key                    = data.sops_file.terraform.data["render_api_key"]
+  owner_id                   = var.render_owner_id
+  wait_for_deploy_completion = true
 }
 
 provider "cloudflare" {

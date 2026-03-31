@@ -17,9 +17,10 @@ resource "render_registry_credential" "github" {
 }
 
 resource "render_web_service" "app" {
-  name   = "christjesus"
+  name   = "bodyofchrist-development"
   plan   = "starter"
   region = "virginia"
+
 
   runtime_source = {
     image = {
@@ -34,6 +35,6 @@ resource "render_web_service" "app" {
   }
 
   custom_domains = [
-    { name = var.workspace == "production" ? "bodyofchrist.app" : "${var.workspace}.bodyofchrist.app" }
+    { name = "development.bodyofchrist.app" }
   ]
 }
