@@ -1,15 +1,10 @@
+locals {
+  cloudflare_account_id = data.sops_file.terraform.data["cloudflare_account_id"]
+}
+
+
 variable "workspace" {
   type = string
-}
-
-variable "tigris_access_key" {
-  type      = string
-  sensitive = true
-}
-
-variable "tigris_secret_key" {
-  type      = string
-  sensitive = true
 }
 
 variable "auth0_admin_role_name" {
