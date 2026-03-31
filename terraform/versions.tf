@@ -18,6 +18,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
+    }
   }
 }
 
@@ -28,3 +32,7 @@ provider "tigris" {
   secret_key = var.tigris_secret_key
 }
 
+
+provider "cloudflare" {
+  # Configuration options
+}
