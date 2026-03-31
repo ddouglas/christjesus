@@ -33,6 +33,4 @@ provider "tigris" {
 }
 
 
-provider "cloudflare" {
-  # Configuration options
-}
+provider "cloudflare" {}
