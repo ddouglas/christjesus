@@ -8,3 +8,32 @@ resource "render_project" "web" {
     }
   }
 }
+
+resource "render_registry_credential" "github" {
+  auth_token = data.sops_file.terraform.data["github_personal_access_token"]
+  name       = "github"
+  registry   = "GITHUB"
+  username   = "ddouglas"
+}
+
+resource "render_web_service" "app" {
+  name   = "christjesus"
+  plan   = "starter"
+  region = "virginia"
+
+  runtime_source = {
+    image = {
+      image_url               = "ghcr.io/ddouglas/christjesus"
+      registray_credential_id = render_registry_credential.github.id
+      tag                     = "latest"
+    }
+  }
+
+  env_vars = {
+    for k, v in data.sops_file.app.data : k => { value = v }
+  }
+
+  custom_domains = [
+    { name = var.workspace == "production" ? "bodyofchrist.app" : "${var.workspace}.bodyofchrist.app" }
+  ]
+}
