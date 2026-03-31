@@ -42,3 +42,7 @@ variable "auth0_app_logout_urls" {
   description = "Allowed logout URLs for the Auth0 web application"
   default     = ["http://localhost:8080/"]
 }
+
+variable "cloudflare_account_id" {
+  type = string
+}
