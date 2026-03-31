@@ -2,7 +2,7 @@
 
 resource "cloudflare_zone" "bodyofchrist" {
   account = {
-    id = var.cloudflare_account_id
+    id = local.cloudflare_account_id
   }
   name = "bodyofchrist.app"
   type = "full"
