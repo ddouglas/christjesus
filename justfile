@@ -30,18 +30,44 @@ seed:
 import-zips:
 	go run ./cmd/christjesus import-zips
 
-ngrok-resend:
-  ngrok http 4318 &
-  NGROK_PID=$!
-  wait $NGROK_PID
-
-resend-local:
+webhooks:
   #!/usr/bin/env bash
-  URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
-  resend webhooks listen --url $URL --events all --forward-to localhost:8080/webhooks/resend
+  # Start ngrok tunnel to expose local webhook endpoints
+  ngrok http 4318 > /dev/null 2>&1 &
+  NGROK_PID=$!
+
+  echo "Waiting for ngrok..."
+  NGROK_URL=""
+  for i in $(seq 1 15); do
+    sleep 1
+    NGROK_URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null | jq -r '[.tunnels[] | select(.proto=="https")] | .[0].public_url' 2>/dev/null || true)
+    if [ -n "$NGROK_URL" ] && [ "$NGROK_URL" != "null" ]; then
+      break
+    fi
+  done
+
+  if [ -z "$NGROK_URL" ] || [ "$NGROK_URL" = "null" ]; then
+    echo "Error: could not get ngrok URL after 15 seconds"
+    kill $NGROK_PID 2>/dev/null || true
+    exit 1
+  fi
+
+  echo "ngrok tunnel: $NGROK_URL"
+
+  resend webhooks listen --url "$NGROK_URL" --events all --forward-to localhost:8080/webhooks/resend &
+  RESEND_PID=$!
+
+  stripe listen --forward-to localhost:8080/webhooks/stripe &
+  STRIPE_PID=$!
+
+  trap "echo 'Shutting down webhooks...'; kill $NGROK_PID $RESEND_PID $STRIPE_PID 2>/dev/null || true" EXIT INT TERM
+
+  wait
 
 dev:
-	air
+	#!/usr/bin/env bash
+	export SOPS_AGE_KEY_FILE=~/.age/key.txt
+	exec sops exec-env configs/local/app.enc.yaml 'air'
 
 e2e-reset:
 	go run ./cmd/christjesus e2e-reset

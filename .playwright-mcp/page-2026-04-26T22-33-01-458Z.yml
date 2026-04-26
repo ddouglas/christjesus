@@ -1,0 +1,216 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - link "Body of Christ" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - navigation [ref=e6]:
+        - link "Browse Needs" [ref=e7] [cursor=pointer]:
+          - /url: /browse
+        - link "Categories" [ref=e8] [cursor=pointer]:
+          - /url: /categories
+        - link "Map" [ref=e9] [cursor=pointer]:
+          - /url: /map
+        - link "Guidelines" [ref=e10] [cursor=pointer]:
+          - /url: /guidelines
+      - generic [ref=e11]:
+        - link "Sign In" [ref=e12] [cursor=pointer]:
+          - /url: /login
+        - link "Give Now" [ref=e13] [cursor=pointer]:
+          - /url: /onboarding
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - paragraph [ref=e19]: Charlotte, NC · Faith-Based Giving
+          - heading "See the need. Meet the need." [level=1] [ref=e20]:
+            - text: See the need.
+            - text: Meet the need.
+          - paragraph [ref=e21]: Connecting the Charlotte church with verified neighbors experiencing hardship — transparently, faithfully, together.
+          - generic [ref=e22]:
+            - link "Browse Needs" [ref=e23] [cursor=pointer]:
+              - /url: /browse
+            - link "Share Your Story" [ref=e24] [cursor=pointer]:
+              - /url: /share
+          - generic [ref=e25]:
+            - generic [ref=e26]:
+              - generic [ref=e27]: $2284
+              - generic [ref=e28]: Total Raised
+            - generic [ref=e29]:
+              - generic [ref=e30]: "0"
+              - generic [ref=e31]: Needs Funded
+            - generic [ref=e32]:
+              - generic [ref=e33]: "4"
+              - generic [ref=e34]: Lives Changed
+        - generic [ref=e35]:
+          - paragraph [ref=e36]: Featured Need
+          - article [ref=e37]:
+            - generic [ref=e38]:
+              - paragraph [ref=e39]: Ava Williams
+              - generic [ref=e40]:
+                - generic [ref=e41]: Charlotte, NC
+                - generic [ref=e42]: ·
+                - generic [ref=e44]: LOW
+            - generic [ref=e46]: Medical & Healthcare
+            - paragraph [ref=e47]: "[seed] Seeking help with medical costs and transportation to treatment."
+            - generic [ref=e48]:
+              - generic [ref=e49]:
+                - generic [ref=e50]: $33 raised
+                - generic [ref=e51]: $1688 goal
+              - generic [ref=e54]: 1% funded
+            - link "View Details" [ref=e55] [cursor=pointer]:
+              - /url: /need/fDoSqAlX7Tc5Q1Ddy0Wh7hi3mVG9G0Nu
+      - generic [ref=e56]:
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - heading "Featured Needs" [level=2] [ref=e59]
+            - paragraph [ref=e60]: Verified neighbors in your community ready for support
+          - link "View all →" [ref=e61] [cursor=pointer]:
+            - /url: /browse
+        - generic [ref=e62]:
+          - article [ref=e63]:
+            - generic [ref=e64]:
+              - paragraph [ref=e65]: Ava Williams
+              - generic [ref=e66]:
+                - generic [ref=e67]: Charlotte, NC
+                - generic [ref=e68]: ·
+                - generic [ref=e70]: MEDIUM
+            - generic [ref=e72]: Food & Nutrition
+            - paragraph [ref=e73]: "[seed] Need support to stabilize housing while starting a new job."
+            - generic [ref=e74]:
+              - generic [ref=e75]:
+                - generic [ref=e76]: $100 raised
+                - generic [ref=e77]: $497 goal
+              - generic [ref=e80]: 20% funded
+            - link "View Details" [ref=e81] [cursor=pointer]:
+              - /url: /need/9I1d6e3cSjjjuQSslS5lS9GOR0EEaGt1
+          - article [ref=e82]:
+            - generic [ref=e83]:
+              - paragraph [ref=e84]: Olivia Miller
+              - generic [ref=e85]:
+                - generic [ref=e86]: Charlotte, NC
+                - generic [ref=e87]: ·
+                - generic [ref=e89]: MEDIUM
+            - generic [ref=e91]: Family & Childcare
+            - paragraph [ref=e92]: "[seed] Need help covering emergency bills after a family crisis."
+            - generic [ref=e93]:
+              - generic [ref=e94]:
+                - generic [ref=e95]: $90 raised
+                - generic [ref=e96]: $2247 goal
+              - generic [ref=e99]: 4% funded
+            - link "View Details" [ref=e100] [cursor=pointer]:
+              - /url: /need/Ekgkm9ZBSovSQgZbCYWw4CGWvV6EjrX8
+          - article [ref=e101]:
+            - generic [ref=e102]:
+              - paragraph [ref=e103]: Elijah Garcia
+              - generic [ref=e104]:
+                - generic [ref=e105]: Charlotte, NC
+                - generic [ref=e106]: ·
+                - generic [ref=e108]: LOW
+            - generic [ref=e110]: Utilities & Bills
+            - paragraph [ref=e111]: "[seed] Catching up on utilities after a temporary income interruption."
+            - generic [ref=e112]:
+              - generic [ref=e113]:
+                - generic [ref=e114]: $78 raised
+                - generic [ref=e115]: $316 goal
+              - generic [ref=e118]: 24% funded
+            - link "View Details" [ref=e119] [cursor=pointer]:
+              - /url: /need/PKClT3t8PFZ2fyYQUCUDO3XATEdFUcn3
+          - article [ref=e120]:
+            - generic [ref=e121]:
+              - paragraph [ref=e122]: Ava Williams
+              - generic [ref=e123]:
+                - generic [ref=e124]: Charlotte, NC
+                - generic [ref=e125]: ·
+                - generic [ref=e127]: LOW
+            - generic [ref=e129]: Legal & Documentation
+            - paragraph [ref=e130]: "[seed] Catching up on utilities after a temporary income interruption."
+            - generic [ref=e131]:
+              - generic [ref=e132]:
+                - generic [ref=e133]: $155 raised
+                - generic [ref=e134]: $155 goal
+              - generic [ref=e137]: 100% funded
+            - link "View Details" [ref=e138] [cursor=pointer]:
+              - /url: /need/9lcofShzkfDNavbXWvMWUOiS1Rkz8sHV
+      - generic [ref=e140]:
+        - generic [ref=e141]:
+          - generic [ref=e142]:
+            - heading "Need Categories" [level=2] [ref=e143]
+            - paragraph [ref=e144]: Give where your heart leads
+          - link "View all →" [ref=e145] [cursor=pointer]:
+            - /url: /categories
+        - generic [ref=e146]:
+          - link "Utilities & Bills 6 active needs" [ref=e147] [cursor=pointer]:
+            - /url: /category/utilities-bills
+            - img [ref=e149]
+            - paragraph [ref=e151]: Utilities & Bills
+            - paragraph [ref=e152]: 6 active needs
+          - link "Medical & Healthcare 5 active needs" [ref=e153] [cursor=pointer]:
+            - /url: /category/medical-healthcare
+            - img [ref=e155]
+            - paragraph [ref=e157]: Medical & Healthcare
+            - paragraph [ref=e158]: 5 active needs
+          - link "Housing & Shelter 4 active needs" [ref=e159] [cursor=pointer]:
+            - /url: /category/housing-shelter
+            - img [ref=e161]
+            - paragraph [ref=e163]: Housing & Shelter
+            - paragraph [ref=e164]: 4 active needs
+          - link "Transportation 4 active needs" [ref=e165] [cursor=pointer]:
+            - /url: /category/transportation
+            - img [ref=e167]
+            - paragraph [ref=e169]: Transportation
+            - paragraph [ref=e170]: 4 active needs
+      - generic [ref=e171]:
+        - generic [ref=e172]:
+          - heading "How it works" [level=2] [ref=e173]
+          - paragraph [ref=e174]: Simple, transparent, faithful
+        - generic [ref=e175]:
+          - generic [ref=e176]:
+            - generic [ref=e177]: "1"
+            - paragraph [ref=e178]: Share your verified need
+            - paragraph [ref=e179]: Complete a simple form and connect with our verification team to share your story.
+          - generic [ref=e180]:
+            - generic [ref=e181]: "2"
+            - paragraph [ref=e182]: Connect with sponsors & organizations
+            - paragraph [ref=e183]: We match your need with caring individuals and local organizations ready to help.
+          - generic [ref=e184]:
+            - generic [ref=e185]: "3"
+            - paragraph [ref=e186]: Receive support & transform
+            - paragraph [ref=e187]: Get the assistance you need and join our community of hope and transformation.
+      - generic [ref=e189]:
+        - generic [ref=e190]:
+          - heading "How the community is showing up" [level=2] [ref=e191]
+          - paragraph [ref=e192]: Real impact across Charlotte
+        - generic [ref=e193]:
+          - generic [ref=e194]:
+            - paragraph [ref=e195]: Total Raised
+            - paragraph [ref=e196]: $2284
+            - paragraph [ref=e197]: Across all verified needs
+          - generic [ref=e198]:
+            - paragraph [ref=e199]: Needs Funded
+            - paragraph [ref=e200]: "0"
+            - paragraph [ref=e201]: Needs fully met by the body
+          - generic [ref=e202]:
+            - paragraph [ref=e203]: Lives Changed
+            - paragraph [ref=e204]: "4"
+            - paragraph [ref=e205]: People impacted in Charlotte
+      - generic [ref=e207]:
+        - heading "Ready to share hope in Charlotte?" [level=2] [ref=e208]
+        - paragraph [ref=e209]: Browse verified needs in your community or submit your own — the body of Christ is here to help.
+        - generic [ref=e210]:
+          - link "Browse Needs" [ref=e211] [cursor=pointer]:
+            - /url: /browse
+          - link "Start Onboarding" [ref=e212] [cursor=pointer]:
+            - /url: /onboarding
+  - contentinfo [ref=e213]:
+    - generic [ref=e214]:
+      - paragraph [ref=e215]: Body of Christ
+      - generic [ref=e216]:
+        - link "Home" [ref=e217] [cursor=pointer]:
+          - /url: /
+        - link "Browse Needs" [ref=e218] [cursor=pointer]:
+          - /url: /browse
+        - link "Categories" [ref=e219] [cursor=pointer]:
+          - /url: /categories
+        - link "Guidelines" [ref=e220] [cursor=pointer]:
+          - /url: /guidelines
+      - paragraph [ref=e221]: © 2026 Body of Christ · Charlotte, NC

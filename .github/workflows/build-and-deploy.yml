@@ -47,3 +47,13 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Execute Render Deploy Hook
+        if: github.event_name != 'pull_request'
+        env:
+          deploy_url: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | head -c 7)
+          IMG="ghcr.io/${{ github.repository }}:sha-${SHORT_SHA}"
+          ENCODED=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$IMG")
+          curl "${deploy_url}&imgURL=${ENCODED}"
