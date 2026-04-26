@@ -346,19 +346,20 @@ func (s *Service) buildSavedNeedSummaries(ctx context.Context, userID string) ([
 			}
 		}
 
-		urgencyLabel, urgencyDotClass := browseUrgency(need.Urgency)
+		urgencyLabel, urgencyDotClass, urgencyTextClass := browseUrgency(need.Urgency)
 		fundingPct := fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents)
 
 		summaries = append(summaries, types.ProfileSavedNeedSummary{
-			NeedID:          sn.NeedID,
-			OwnerName:       ownerNameByID[need.UserID],
-			CategoryName:    categoryName,
-			AmountNeeded:    formatUSDFromCents(need.AmountNeededCents),
-			FundingPercent:  fundingPct,
-			UrgencyLabel:    urgencyLabel,
-			UrgencyDotClass: urgencyDotClass,
-			DetailHref:      s.route(RouteNeedDetail, Param("needID", sn.NeedID)),
-			UnsaveAction:    s.route(RouteNeedUnsave, Param("needID", sn.NeedID)),
+			NeedID:           sn.NeedID,
+			OwnerName:        ownerNameByID[need.UserID],
+			CategoryName:     categoryName,
+			AmountNeeded:     formatUSDFromCents(need.AmountNeededCents),
+			FundingPercent:   fundingPct,
+			UrgencyLabel:     urgencyLabel,
+			UrgencyDotClass:  urgencyDotClass,
+			UrgencyTextClass: urgencyTextClass,
+			DetailHref:       s.route(RouteNeedDetail, Param("needID", sn.NeedID)),
+			UnsaveAction:     s.route(RouteNeedUnsave, Param("needID", sn.NeedID)),
 		})
 	}
 

@@ -269,7 +269,7 @@ func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logCo
 			primaryCategoryID = strings.ToLower(strings.ReplaceAll(primaryCategory, " ", "-"))
 		}
 
-		urgencyLabel, urgencyDotClass := browseUrgency(need.Urgency)
+		urgencyLabel, urgencyDotClass, urgencyTextClass := browseUrgency(need.Urgency)
 
 		cards = append(cards, &types.BrowseNeedCard{
 			ID:                need.ID,
@@ -279,6 +279,7 @@ func (s *Service) buildNeedCards(ctx context.Context, needs []*types.Need, logCo
 			CityState:         cityState,
 			UrgencyLabel:      urgencyLabel,
 			UrgencyDotClass:   urgencyDotClass,
+			UrgencyTextClass:  urgencyTextClass,
 			PrimaryCategoryID: primaryCategoryID,
 			PrimaryCategory:   primaryCategory,
 			ShortDescription:  need.ShortDescription,
@@ -829,7 +830,7 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 
 	_, _, cityState := browseCityStateParts(selectedAddress)
 
-	urgencyLabel, urgencyDotClass := browseUrgency(need.Urgency)
+	urgencyLabel, urgencyDotClass, urgencyTextClass := browseUrgency(need.Urgency)
 
 	fundingPercent := fundingPercentFromCents(need.AmountRaisedCents, need.AmountNeededCents)
 
@@ -896,6 +897,7 @@ func (s *Service) handleNeedDetail(w http.ResponseWriter, r *http.Request) {
 		CityState:           cityState,
 		UrgencyLabel:        urgencyLabel,
 		UrgencyDotClass:     urgencyDotClass,
+		UrgencyTextClass:    urgencyTextClass,
 		FundingPercent:      fundingPercent,
 		Story:               story,
 		PrimaryCategory:     primaryCategory,
@@ -997,16 +999,16 @@ func browseCityStateParts(address *types.UserAddress) (string, string, string) {
 	return city, state, city + ", " + state
 }
 
-func browseUrgency(urgency types.NeedUrgency) (string, string) {
+func browseUrgency(urgency types.NeedUrgency) (string, string, string) {
 	switch urgency {
 	case types.NeedUrgencyUrgent:
-		return "URGENT", "bg-[color:var(--cj-error)]"
+		return "URGENT", "bg-[color:var(--cj-error)]", "text-[color:var(--cj-error)]"
 	case types.NeedUrgencyHigh:
-		return "HIGH", "bg-[color:var(--cj-error)]"
+		return "HIGH", "bg-[color:var(--cj-error)]", "text-[color:var(--cj-error)]"
 	case types.NeedUrgencyLow:
-		return "LOW", "bg-[color:var(--cj-success)]"
+		return "LOW", "bg-[color:var(--cj-success)]", "text-[color:var(--cj-success)]"
 	default: // medium
-		return "MEDIUM", "bg-[color:var(--cj-warning)]"
+		return "MEDIUM", "bg-[color:var(--cj-warning)]", "text-[color:var(--cj-warning)]"
 	}
 }
 

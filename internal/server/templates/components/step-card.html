@@ -1,9 +1,7 @@
 {{define "component.step-card"}}
-<div class="bg-card text-card-foreground rounded-xl border border-border shadow-sm">
-  <div class="space-y-3 p-6">
-    <p class="text-sm font-semibold text-[color:var(--cj-secondary)]">Step {{.Number}}</p>
-    <p class="text-lg font-semibold text-foreground">{{.Title}}</p>
-    <p class="text-sm text-muted-foreground">{{.Description}}</p>
-  </div>
+<div style="background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;padding:28px 24px;">
+  <div style="width:36px;height:36px;background:#1D4ED8;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;margin-bottom:16px;" class="font-display">{{.Number}}</div>
+  <p class="font-display" style="font-size:18px;font-weight:600;color:#0F172A;margin-bottom:8px;">{{.Title}}</p>
+  <p style="font-size:13px;color:#475569;line-height:1.65;">{{.Description}}</p>
 </div>
 {{end}}

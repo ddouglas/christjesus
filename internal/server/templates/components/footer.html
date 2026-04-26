@@ -1,16 +1,14 @@
 {{define "component.footer"}}
-<footer class="mt-10 border-t border-[rgba(201,168,76,0.2)] bg-[#0D1B2A]">
-  <div class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
-    <div class="flex flex-col items-center text-center">
-      <p class="font-display text-xl font-semibold text-white">Christ<span class="text-[color:var(--cj-secondary)]">Jesus</span>.app</p>
-      <p class="mt-1 text-xs font-light uppercase tracking-widest text-[rgba(255,255,255,0.35)]">Bearing one another's burdens</p>
-      <div class="mt-6 flex flex-wrap justify-center gap-6 text-xs text-[rgba(255,255,255,0.4)]">
-        <a href="{{route "home"}}" class="tracking-wide transition-colors hover:text-[color:var(--cj-secondary)]">Home</a>
-        <a href="{{route "browse"}}" class="tracking-wide transition-colors hover:text-[color:var(--cj-secondary)]">Browse Needs</a>
-        <a href="{{route "guidelines"}}" class="tracking-wide transition-colors hover:text-[color:var(--cj-secondary)]">Guidelines</a>
-      </div>
-      <div class="mt-6 text-[11px] text-[rgba(255,255,255,0.2)]">&copy; 2026 ChristJesus.app &middot; Charlotte, NC &middot; All rights reserved.</div>
+<footer class="bg-[#0F2952]" style="padding:40px 28px;">
+  <div class="mx-auto w-full max-w-6xl flex flex-col gap-6 items-center md:flex-row md:items-center md:justify-between">
+    <p class="font-display text-lg font-semibold text-white/85">Body of Christ</p>
+    <div class="flex flex-wrap justify-center gap-5">
+      <a href="{{route "home"}}" class="text-xs text-white/40 transition-colors hover:text-white/75">Home</a>
+      <a href="{{route "browse"}}" class="text-xs text-white/40 transition-colors hover:text-white/75">Browse Needs</a>
+      <a href="{{route "categories"}}" class="text-xs text-white/40 transition-colors hover:text-white/75">Categories</a>
+      <a href="{{route "guidelines"}}" class="text-xs text-white/40 transition-colors hover:text-white/75">Guidelines</a>
     </div>
+    <p class="text-xs text-white/30">&copy; 2026 Body of Christ &middot; Charlotte, NC</p>
   </div>
 </footer>
 {{end}}

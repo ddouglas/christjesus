@@ -2,100 +2,97 @@
 {{template "header" .}}
 <div class="flex flex-col">
 
-  <!-- Section 1: Hero with Featured Need -->
-  <section class="bg-gradient-to-br from-white via-slate-50 to-amber-50">
-    <div class="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-12 md:grid-cols-2 md:px-6 md:py-16">
-      <!-- Left: Hero Content -->
-      <div class="space-y-6">
-        <p class="text-sm font-medium uppercase tracking-wide text-[color:var(--cj-accent)]">
-          Charlotte, NC
-        </p>
-
-        <h1 class="text-3xl font-semibold leading-tight text-[color:var(--cj-primary)] sm:text-4xl md:text-5xl">
-          See needs. Meet needs. Change lives.
-        </h1>
-
-        <p class="text-base text-muted-foreground sm:text-lg">
-          ChristJesus.app connects the Charlotte body of Christ with verified neighbors experiencing hardship.
-        </p>
-
-        <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
-          <a href="{{route "browse"}}"
-            class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[color:var(--cj-primary)]/90">Browse
-            Needs</a>
-          <a href="{{route "share"}}"
-            class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-accent hover:text-accent-foreground">Share
-            Your Story</a>
-          <a href="{{route "onboarding"}}"
-            class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground">Start
-            Onboarding</a>
+  <!-- Hero -->
+  <section style="background:linear-gradient(135deg,#1D4ED8 0%,#1E40AF 55%,#0F2952 100%);padding:72px 28px 80px;">
+    <div class="mx-auto grid w-full max-w-6xl items-center gap-12" style="grid-template-columns:1fr 360px;">
+      <div>
+        <p style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.55);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:16px;">Charlotte, NC · Faith-Based Giving</p>
+        <h1 class="font-display" style="font-size:52px;font-weight:700;color:#fff;line-height:1.08;letter-spacing:-0.02em;margin-bottom:20px;">See the need.<br/>Meet the need.</h1>
+        <p style="font-size:16px;color:rgba(255,255,255,0.72);line-height:1.65;max-width:420px;margin-bottom:32px;">Connecting the Charlotte church with verified neighbors experiencing hardship — transparently, faithfully, together.</p>
+        <div class="flex flex-wrap gap-3" style="margin-bottom:48px;">
+          <a href="{{route "browse"}}" style="font-size:14px;font-weight:600;padding:11px 24px;background:#fff;color:#1D4ED8;border-radius:8px;text-decoration:none;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.92'" onmouseout="this.style.opacity='1'">Browse Needs</a>
+          <a href="{{route "share"}}" style="font-size:14px;font-weight:500;padding:11px 24px;background:transparent;color:rgba(255,255,255,0.9);border-radius:8px;border:1.5px solid rgba(255,255,255,0.4);text-decoration:none;transition:border-color 0.15s,background 0.15s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.8)';this.style.background='rgba(255,255,255,0.07)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.4)';this.style.background='transparent'">Share Your Story</a>
+        </div>
+        <div style="display:flex;gap:0;background:rgba(255,255,255,0.1);border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.18);width:fit-content;">
+          <div style="padding:14px 28px;border-right:1px solid rgba(255,255,255,0.15);">
+            <div class="font-display" style="font-size:28px;font-weight:700;color:#fff;line-height:1;">${{div .Stats.TotalRaised 100}}</div>
+            <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Total Raised</div>
+          </div>
+          <div style="padding:14px 28px;border-right:1px solid rgba(255,255,255,0.15);">
+            <div class="font-display" style="font-size:28px;font-weight:700;color:#fff;line-height:1;">{{.Stats.NeedsFunded}}</div>
+            <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Needs Funded</div>
+          </div>
+          <div style="padding:14px 28px;">
+            <div class="font-display" style="font-size:28px;font-weight:700;color:#fff;line-height:1;">{{.Stats.LivesChanged}}</div>
+            <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Lives Changed</div>
+          </div>
         </div>
       </div>
 
-      <!-- Right: Featured Need Card -->
-      <div class="order-last border-0 bg-white/80 shadow-lg rounded-xl md:order-none">
-        <div class="space-y-2 p-6 pb-0">
-          <p class="text-sm font-semibold text-muted-foreground">Featured Need</p>
-          <p class="text-2xl font-semibold text-foreground">Latest need in the queue, ready for support.</p>
-        </div>
-        <div class="p-6">
-          {{if .FeaturedNeed}}
-          {{template "component.need.card" .FeaturedNeed}}
-          {{else}}
-            <div class="rounded-xl border border-border bg-card px-6 py-8 text-center text-card-foreground shadow-sm">
-              <p class="text-sm text-muted-foreground">Featured need coming soon.</p>
-            </div>
-            {{end}}
-        </div>
+      <!-- Featured Need Card -->
+      <div style="background:#fff;border-radius:14px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.28);">
+        <p style="font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:14px;">Featured Need</p>
+        {{if .FeaturedNeed}}
+        {{template "component.need.card" .FeaturedNeed}}
+        {{else}}
+          <div class="rounded-xl border border-[#E2E8F0] px-6 py-8 text-center">
+            <p class="text-sm text-[#475569]">Featured need coming soon.</p>
+          </div>
+        {{end}}
       </div>
     </div>
   </section>
 
-  <!-- Section 2: Recommended or Featured Needs Grid -->
+  <!-- Featured Needs -->
   {{if .RecommendedNeeds}}
-  <section class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <section class="mx-auto w-full max-w-6xl px-4 py-16 md:px-6">
+    <div class="flex items-end justify-between mb-8">
       <div>
-        <h2 class="text-2xl font-semibold text-foreground">Recommended for you</h2>
-        <p class="text-sm text-muted-foreground mt-1">Based on your giving preferences</p>
+        <h2 class="font-display text-3xl font-bold text-[#0F172A]" style="letter-spacing:-0.02em;">Recommended for you</h2>
+        <p class="text-sm text-[#475569] mt-1">Based on your giving preferences</p>
       </div>
-      <a href="{{route "browse"}}" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
+      <a href="{{route "browse"}}" class="text-sm font-medium text-[#1D4ED8] hover:underline">View all →</a>
     </div>
-    <div class="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
       {{range .RecommendedNeeds}}
       {{template "component.need.card" .}}
       {{end}}
     </div>
   </section>
   {{else}}
-  <section class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <h2 class="text-2xl font-semibold text-foreground">Featured Needs</h2>
-      <a href="{{route "browse"}}" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
+  <section class="mx-auto w-full max-w-6xl px-4 py-16 md:px-6">
+    <div class="flex items-end justify-between mb-8">
+      <div>
+        <h2 class="font-display text-3xl font-bold text-[#0F172A]" style="letter-spacing:-0.02em;">Featured Needs</h2>
+        <p class="text-sm text-[#475569] mt-1">Verified neighbors in your community ready for support</p>
+      </div>
+      <a href="{{route "browse"}}" class="text-sm font-medium text-[#1D4ED8] hover:underline">View all →</a>
     </div>
-
-    <div class="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
       {{if .Needs}}
       {{range .Needs}}
       {{template "component.need.card" .}}
       {{end}}
       {{else}}
-        <div class="rounded-xl border border-border bg-card px-6 py-8 text-center text-card-foreground shadow-sm md:col-span-2 lg:col-span-4">
-          <p class="text-sm text-muted-foreground">More featured needs will appear here as new needs are submitted.</p>
+        <div class="rounded-xl border border-[#E2E8F0] px-6 py-8 text-center md:col-span-2 lg:col-span-4">
+          <p class="text-sm text-[#475569]">More featured needs will appear here as new needs are submitted.</p>
         </div>
-        {{end}}
+      {{end}}
     </div>
   </section>
   {{end}}
 
-  <!-- Section 3: Need Categories -->
-  <section class="bg-slate-50 py-12">
+  <!-- Categories -->
+  <section class="py-16" style="background:#EFF6FF;">
     <div class="mx-auto w-full max-w-6xl px-4 md:px-6">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 class="text-2xl font-semibold text-foreground">Need Categories</h2>
-        <a href="{{route "categories"}}" class="text-sm text-muted-foreground hover:text-foreground">View all</a>
+      <div class="flex items-end justify-between mb-8">
+        <div>
+          <h2 class="font-display text-3xl font-bold text-[#0F172A]" style="letter-spacing:-0.02em;">Need Categories</h2>
+          <p class="text-sm text-[#475569] mt-1">Give where your heart leads</p>
+        </div>
+        <a href="{{route "categories"}}" class="text-sm font-medium text-[#1D4ED8] hover:underline">View all →</a>
       </div>
-      <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {{range .Categories}}
         {{template "component.category-card" .}}
         {{end}}
@@ -103,51 +100,54 @@
     </div>
   </section>
 
-  <!-- Section 4: How It Works -->
-  <section class="mx-auto w-full max-w-6xl px-4 py-12 md:px-6">
-    <h2 class="text-2xl font-semibold text-foreground">How it works</h2>
-    <div class="mt-6 grid gap-6 md:grid-cols-3">
+  <!-- How It Works -->
+  <section class="mx-auto w-full max-w-6xl px-4 py-16 md:px-6">
+    <div class="mb-8">
+      <h2 class="font-display text-3xl font-bold text-[#0F172A]" style="letter-spacing:-0.02em;">How it works</h2>
+      <p class="text-sm text-[#475569] mt-1">Simple, transparent, faithful</p>
+    </div>
+    <div class="grid gap-6 md:grid-cols-3">
       {{range .Steps}}
       {{template "component.step-card" .}}
       {{end}}
     </div>
   </section>
 
-  <!-- Section 5: Stats Dashboard -->
-  <section class="bg-white py-12">
+  <!-- Stats -->
+  <section class="py-16" style="background:#0F2952;">
     <div class="mx-auto w-full max-w-6xl px-4 md:px-6">
-      <div class="mb-6 space-y-2 md:mb-8">
-        <h2 class="text-2xl font-semibold text-foreground">How the community is showing up</h2>
+      <div style="margin-bottom:32px;">
+        <h2 class="font-display text-3xl font-bold text-white" style="letter-spacing:-0.02em;">How the community is showing up</h2>
+        <p style="font-size:13px;color:rgba(255,255,255,0.45);margin-top:6px;">Real impact across Charlotte</p>
       </div>
-      <div class="grid gap-4 rounded-2xl border border-border bg-slate-50 p-5 sm:gap-5 sm:p-6 md:grid-cols-3 md:gap-6 md:p-8">
-        <div class="rounded-xl border border-border/60 bg-white/70 px-4 py-5 shadow-sm sm:px-5 sm:py-6">
-          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Total Raised</p>
-          <p class="mt-2 text-3xl font-semibold leading-none text-foreground sm:text-4xl">${{div .Stats.TotalRaised 100}}</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:rgba(255,255,255,0.1);border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.12);">
+        <div style="background:rgba(255,255,255,0.05);padding:36px 32px;">
+          <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:rgba(255,255,255,0.45);margin-bottom:10px;">Total Raised</p>
+          <p class="font-display" style="font-size:44px;font-weight:700;color:#fff;letter-spacing:-0.03em;line-height:1;">${{div .Stats.TotalRaised 100}}</p>
+          <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px;">Across all verified needs</p>
         </div>
-        <div class="rounded-xl border border-border/60 bg-white/70 px-4 py-5 shadow-sm sm:px-5 sm:py-6">
-          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Needs Funded</p>
-          <p class="mt-2 text-3xl font-semibold leading-none text-foreground sm:text-4xl">{{.Stats.NeedsFunded}}</p>
+        <div style="background:rgba(255,255,255,0.05);padding:36px 32px;">
+          <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:rgba(255,255,255,0.45);margin-bottom:10px;">Needs Funded</p>
+          <p class="font-display" style="font-size:44px;font-weight:700;color:#fff;letter-spacing:-0.03em;line-height:1;">{{.Stats.NeedsFunded}}</p>
+          <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px;">Needs fully met by the body</p>
         </div>
-        <div class="rounded-xl border border-border/60 bg-white/70 px-4 py-5 shadow-sm sm:px-5 sm:py-6">
-          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Lives Changed</p>
-          <p class="mt-2 text-3xl font-semibold leading-none text-foreground sm:text-4xl">{{.Stats.LivesChanged}}</p>
+        <div style="background:rgba(255,255,255,0.05);padding:36px 32px;">
+          <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:rgba(255,255,255,0.45);margin-bottom:10px;">Lives Changed</p>
+          <p class="font-display" style="font-size:44px;font-weight:700;color:#fff;letter-spacing:-0.03em;line-height:1;">{{.Stats.LivesChanged}}</p>
+          <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px;">People impacted in Charlotte</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Section 6: Final CTA -->
-  <section class="bg-[color:var(--cj-primary)] py-12 text-white">
-    <div class="mx-auto flex w-full max-w-6xl flex-col items-start justify-between gap-6 px-4 md:flex-row md:items-center md:px-6">
-      <div>
-        <h2 class="text-2xl font-semibold">Ready to share hope in Charlotte?</h2>
-        <p class="mt-2 text-white/80">Browse verified needs or start onboarding to share a need.</p>
-      </div>
-      <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-        <a href="{{route "browse"}}" class="inline-flex h-9 items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-[color:var(--cj-primary)] hover:bg-white/90">Browse
-          Needs</a>
-        <a href="{{route "onboarding"}}" class="inline-flex h-9 items-center justify-center rounded-md border border-white px-4 py-2 text-sm font-medium text-white hover:bg-white/10">Start
-          Onboarding</a>
+  <!-- Final CTA -->
+  <section style="background:#EFF6FF;padding:64px 28px;text-align:center;">
+    <div style="max-width:560px;margin:0 auto;">
+      <h2 class="font-display" style="font-size:34px;font-weight:700;color:#0F2952;letter-spacing:-0.02em;margin-bottom:12px;">Ready to share hope in Charlotte?</h2>
+      <p style="font-size:15px;color:#475569;line-height:1.6;margin-bottom:28px;">Browse verified needs in your community or submit your own — the body of Christ is here to help.</p>
+      <div class="flex flex-wrap justify-center gap-3">
+        <a href="{{route "browse"}}" style="font-size:14px;font-weight:600;padding:12px 28px;background:#1D4ED8;color:#fff;border-radius:8px;text-decoration:none;transition:background 0.15s;" onmouseover="this.style.background='#0F2952'" onmouseout="this.style.background='#1D4ED8'">Browse Needs</a>
+        <a href="{{route "onboarding"}}" style="font-size:14px;font-weight:500;padding:12px 28px;background:transparent;color:#1D4ED8;border-radius:8px;border:1.5px solid #DBEAFE;text-decoration:none;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#1D4ED8'" onmouseout="this.style.borderColor='#DBEAFE'">Start Onboarding</a>
       </div>
     </div>
   </section>
