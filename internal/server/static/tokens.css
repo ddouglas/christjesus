@@ -1,60 +1,58 @@
 :root {
   --radius: 0.625rem;
 
-  /* Core palette — refreshed from design mockup */
-  --gold: #C9A84C;
-  --gold-light: #E8C97A;
-  --gold-pale: #F5EDDA;
-  --midnight: #0D1B2A;
-  --midnight-mid: #1C2E42;
-  --ink: #1A1610;
-  --ink-soft: #3D3528;
-  --cream: #FAF7F0;
-  --rule: rgba(201, 168, 76, 0.25);
+  /* Core palette — Body of Christ rebrand */
+  --blue-deep:   #0F2952;
+  --blue-mid:    #1D4ED8;
+  --blue-bright: #3B82F6;
+  --blue-pale:   #DBEAFE;
+  --blue-ghost:  #EFF6FF;
+  --ink:         #0F172A;
+  --ink-soft:    #475569;
+  --border:      #E2E8F0;
 
   /* Semantic mappings */
-  --background: #FAF7F0;
-  --foreground: #2E2719;
+  --background: #ffffff;
+  --foreground: var(--ink);
   --card: #ffffff;
   --card-foreground: var(--ink);
   --popover: #ffffff;
   --popover-foreground: var(--ink);
-  --primary: var(--midnight);
-  --primary-foreground: #f8fafc;
-  --secondary: var(--gold);
-  --secondary-foreground: var(--midnight);
-  --muted: var(--gold-pale);
+  --primary: var(--blue-mid);
+  --primary-foreground: #ffffff;
+  --secondary: var(--blue-pale);
+  --secondary-foreground: var(--blue-deep);
+  --muted: var(--blue-ghost);
   --muted-foreground: var(--ink-soft);
-  --accent: var(--gold);
-  --accent-foreground: var(--midnight);
+  --accent: var(--blue-mid);
+  --accent-foreground: #ffffff;
   --destructive: #ef4444;
-  --border: var(--rule);
-  --input: rgba(201, 168, 76, 0.25);
-  --ring: var(--gold);
-  --sidebar: var(--cream);
+  --input: var(--border);
+  --ring: var(--blue-mid);
+  --sidebar: var(--blue-ghost);
   --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--midnight);
-  --sidebar-primary-foreground: #f8fafc;
-  --sidebar-accent: var(--gold-pale);
+  --sidebar-primary: var(--blue-deep);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--blue-pale);
   --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--rule);
-  --sidebar-ring: var(--gold);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--blue-mid);
 
   /* Status colors */
-  --cj-success: #5C9E70;
-  --cj-warning: #f59e0b;
-  --cj-error: #A85252;
-  --cj-info: #3b82f6;
+  --cj-success: #10B981;
+  --cj-warning: #F59E0B;
+  --cj-error:   #EF4444;
+  --cj-info:    #3B82F6;
 
   /* Shortcuts used in Tailwind classes */
-  --cj-primary: var(--midnight);
-  --cj-secondary: var(--gold);
-  --cj-accent: var(--gold-light);
+  --cj-primary:   var(--blue-mid);
+  --cj-secondary: var(--blue-bright);
+  --cj-accent:    var(--blue-bright);
 
   /* Typography */
-  --font-sans: "Jost", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Cormorant Garamond", "Georgia", serif;
-  --font-accent: "Jost", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:    "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", "Georgia", serif;
+  --font-accent:  "DM Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 .dark {
@@ -64,8 +62,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.488 0.243 264.376);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -120,7 +118,7 @@ h6 {
 }
 
 .btn-primary:hover {
-  background-color: var(--midnight-mid);
+  background-color: var(--blue-deep);
 }
 
 .btn-outline {
@@ -157,5 +155,5 @@ h6 {
 
 /* Gradient Backgrounds */
 .bg-gradient-hero {
-  background: linear-gradient(to bottom right, var(--cream), #f5f0e8, var(--gold-pale));
+  background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 55%, #0F2952 100%);
 }

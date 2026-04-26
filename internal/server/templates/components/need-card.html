@@ -1,50 +1,33 @@
 {{define "component.need.card"}}
-<article class="bg-card text-card-foreground flex h-full flex-col gap-5 rounded-xl border py-6 shadow-sm">
-  <header class="space-y-3 px-6">
-    <p class="text-3xl font-semibold leading-none text-foreground">{{.OwnerName}}</p>
-    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+<article style="background:#fff;border:1.5px solid #E2E8F0;border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;transition:box-shadow 0.2s,transform 0.2s;" onmouseover="this.style.boxShadow='0 8px 32px rgba(29,78,216,0.12)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+  <div>
+    <p class="font-display" style="font-size:20px;font-weight:600;color:#0F172A;line-height:1.2;">{{.OwnerName}}</p>
+    <div style="font-size:12px;color:#475569;display:flex;align-items:center;gap:6px;margin-top:4px;">
       <span>{{.CityState}}</span>
-      {{if .DistanceMiles}}<span>•</span><span>~{{printf "%.0f" (derefFloat .DistanceMiles)}} mi</span>{{end}}
-      <span>•</span>
-      <span class="h-2.5 w-2.5 rounded-full {{.UrgencyDotClass}}"></span>
-      <span class="font-medium uppercase tracking-wide">{{.UrgencyLabel}}</span>
-    </div>
-
-    <div class="flex flex-wrap items-center gap-2 pt-1">
-      <span class="inline-flex items-center justify-center rounded-full border border-border px-3 py-0.5 text-xs font-medium text-foreground">{{.PrimaryCategory}}</span>
-    </div>
-  </header>
-
-  <div class="flex-1 space-y-4 px-6">
-    <p class="text-sm text-muted-foreground">{{derefOr .ShortDescription "Support this neighbor by learning more and contributing if you can."}}</p>
-
-    <div class="space-y-2">
-      <div class="flex items-center justify-between text-xs text-muted-foreground">
-        <span>${{div .AmountRaisedCents 100}} raised</span>
-        <span>${{div .AmountNeededCents 100}} goal</span>
-      </div>
-      <div class="h-2 w-full rounded-full bg-muted">
-        {{$percent := 0}}
-        {{if gt .AmountNeededCents 0}}
-        {{$percent = div (mul .AmountRaisedCents 100) .AmountNeededCents}}
-        {{end}}
-        {{if ge $percent 75}}
-        <div class="h-2 rounded-full bg-[color:var(--cj-success)] transition-all" style="width: {{$percent}}%"></div>
-        {{else if ge $percent 50}}
-          <div class="h-2 rounded-full bg-[color:var(--cj-warning)] transition-all" style="width: {{$percent}}%"></div>
-          {{else}}
-            <div class="h-2 rounded-full bg-[color:var(--cj-error)] transition-all" style="width: {{$percent}}%"></div>
-            {{end}}
-      </div>
-      <div class="text-xs font-medium text-muted-foreground">{{$percent}}% funded</div>
+      {{if .DistanceMiles}}<span>·</span><span>~{{printf "%.0f" (derefFloat .DistanceMiles)}} mi</span>{{end}}
+      <span>·</span>
+      <span style="width:8px;height:8px;border-radius:50%;display:inline-block;" class="{{.UrgencyDotClass}}"></span>
+      <span style="font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;" class="{{.UrgencyTextClass}}">{{.UrgencyLabel}}</span>
     </div>
   </div>
-
-  <footer class="px-6">
-    <a href="{{route "need.detail" (param "needID" .ID)}}"
-      class="inline-flex h-9 w-full items-center justify-center rounded-md bg-[color:var(--cj-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[color:var(--cj-primary)]/90">
-      View Details
-    </a>
-  </footer>
+  <div>
+    <span style="display:inline-flex;align-items:center;background:#EFF6FF;color:#1D4ED8;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:500;">{{.PrimaryCategory}}</span>
+  </div>
+  <p style="font-size:13px;color:#475569;line-height:1.6;">{{derefOr .ShortDescription "Support this neighbor by learning more and contributing if you can."}}</p>
+  <div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#475569;margin-bottom:5px;">
+      <span>${{div .AmountRaisedCents 100}} raised</span>
+      <span>${{div .AmountNeededCents 100}} goal</span>
+    </div>
+    <div style="height:5px;background:#EFF6FF;border-radius:99px;overflow:hidden;">
+      {{$percent := 0}}
+      {{if gt .AmountNeededCents 0}}
+      {{$percent = div (mul .AmountRaisedCents 100) .AmountNeededCents}}
+      {{end}}
+      <div style="height:5px;border-radius:99px;background:#1D4ED8;width:{{$percent}}%;transition:width 0.4s;"></div>
+    </div>
+    <div style="font-size:11px;color:#475569;margin-top:5px;">{{$percent}}% funded</div>
+  </div>
+  <a href="{{route "need.detail" (param "needID" .ID)}}" style="display:block;width:100%;padding:9px;background:#1D4ED8;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;transition:background 0.15s;" onmouseover="this.style.background='#0F2952'" onmouseout="this.style.background='#1D4ED8'">View Details</a>
 </article>
 {{end}}

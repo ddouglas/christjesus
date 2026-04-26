@@ -87,6 +87,7 @@ type BrowseNeedCard struct {
 	DistanceMiles     *float64
 	UrgencyLabel      string
 	UrgencyDotClass   string
+	UrgencyTextClass  string
 	PrimaryCategoryID string
 	PrimaryCategory   string
 	ShortDescription  *string
@@ -130,6 +131,7 @@ type NeedDetailPageData struct {
 	CityState           string
 	UrgencyLabel        string
 	UrgencyDotClass     string
+	UrgencyTextClass    string
 	FundingPercent      int
 	Story               *NeedStory
 	PrimaryCategory     *NeedCategory
@@ -370,6 +372,7 @@ type ProfileSavedNeedSummary struct {
 	FundingPercent  int
 	UrgencyLabel    string
 	UrgencyDotClass string
+	UrgencyTextClass string
 	DetailHref      string
 	UnsaveAction    string
 }
