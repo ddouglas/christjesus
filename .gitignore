@@ -3,3 +3,5 @@
 .bin/*
 /christjesus
 /tmp/
+christjesus-handoff-key.txt
+.playwright-mcp/

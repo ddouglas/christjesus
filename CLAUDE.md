@@ -2,39 +2,43 @@
 
 ## Project Overview
 
-A Go web application for managing charitable needs. Server-side rendered (SSR) with PostgreSQL, Auth0 authentication, Tigris object storage, Stripe payments, and Fly.io hosting.
+A Go web application for managing charitable needs ("Body of Christ" — bodyofchrist.app, formerly christjesus.app). Server-side rendered (SSR) with PostgreSQL, Auth0 authentication, Tigris object storage, Stripe payments, and Render hosting (deployed via GHCR).
 
 - **Module:** `christjesus`
-- **Go version:** 1.24.0
+- **Go version:** 1.26 (Dockerfile build image; go.mod may lag — check before assuming)
 - **Task runner:** `just` (justfile), which auto-loads `.env`
 
 ---
 
 ## Running Locally
 
+Local dev secrets (DB, Auth0, Stripe, Tigris, etc.) come from the SOPS-encrypted `configs/local/app.enc.yaml` — not a hand-filled `.env`. See [Secrets Management](#secrets-management--sops--age) to get set up with an age key first.
+
 ```bash
-# 1. Start the local Postgres instance
-docker compose up -d
+# 1. Apply schema migrations (against the remote dev DB in configs/local/app.enc.yaml)
+sops exec-env configs/local/app.enc.yaml 'just migrate'
 
-# 2. First time only — copy and fill in env vars
-cp .env.example .env
-# Edit .env with your Auth0, Stripe, Tigris, and DB credentials
+# 2. (Optional) Seed categories and fake data
+sops exec-env configs/local/app.enc.yaml 'just seed'
 
-# 3. Apply schema migrations
-just migrate
-
-# 4. (Optional) Seed categories and fake data
-just seed
-
-# 5. Start with hot reload (recommended)
+# 3. Start with hot reload (recommended)
 just dev
 ```
 
-The app runs on `http://localhost:8080`. `just dev` uses `air` for hot reload and watches `.go`, `.html`, `.css`, `.js`, and `.tpl` files.
+The app runs on `http://localhost:8080`. `just dev` uses `air` for hot reload (watches `.go`, `.html`, `.css`, `.js`, `.tpl`) and already wraps itself in `sops exec-env` — no manual wrapping needed for that one recipe.
+
+**Note:** `configs/local/app.enc.yaml`'s `DATABASE_URL` currently points at the **remote Supabase dev database**, shared across contributors — not a local Postgres instance. `docker-compose.yaml`'s `db` service exists for local/isolated Postgres use (e.g. testing Atlas migrations against a throwaway DB) but the app doesn't use it by default.
+
+Any other recipe that touches the DB or external services and isn't already SOPS-wrapped (`just serve`, `just build`+run, `just test` against a real DB, etc.) needs the same treatment: `sops exec-env configs/local/app.enc.yaml '<command>'`.
+
+**Run in Docker instead of natively:**
+```bash
+just docker-up       # sops exec-env + docker compose up --build app, same secrets, containerized
+```
 
 Alternative startup commands:
 ```bash
-just serve          # go run ./cmd/christjesus serve
+just serve          # go run ./cmd/christjesus serve (needs sops exec-env wrapping — see above)
 just build          # compiles to ./.bin/christjesus
 ```
 
@@ -53,12 +57,19 @@ just build          # compiles to ./.bin/christjesus
 | `just deps` | Tidy Go modules (`go mod tidy`) |
 | `just migrate` | Apply Atlas schema to `DATABASE_URL` |
 | `just migrate-plan` | Dry-run schema migration |
+| `just import-zips` | Import ZIP centroid data (geo/browse features) |
+| `just webhooks` | Spin up ngrok and forward Stripe/Resend webhooks to localhost |
+| `just e2e` / `e2e-headed` / `e2e-ui` | Run Playwright e2e suite (resets DB first) |
+| `just e2e-reset` | Reset DB state for e2e |
+| `just tf-init` | `terraform init` |
+| `just tf-plan/apply/console/state-list [workspace]` | Terraform ops against SOPS-decrypted tfvars (default workspace `development`) — see [Secrets Management](#secrets-management--sops--age) |
+| `just docker-up` | Build and run the app in Docker via `docker compose`, secrets injected via `sops exec-env` |
 
 ---
 
 ## Environment Variables
 
-The justfile loads `.env` automatically. Create `.env` from `.env.example`.
+`just` loads `.env` automatically (`set dotenv-load` in the justfile), but `.env`/`.env.example` today only holds `SOPS_AGE_KEY_FILE` — actual app config comes from SOPS-encrypted files (see [Secrets Management](#secrets-management--sops--age)), not a hand-filled `.env`. The table below documents what the running process expects in its environment, regardless of how it gets there.
 
 **Required:**
 | Variable | Description |
@@ -101,7 +112,7 @@ The justfile loads `.env` automatically. Create `.env` from `.env.example`.
 ## Database — Supabase / PostgreSQL
 
 - **Production:** Supabase-hosted PostgreSQL (connection string in `DATABASE_URL`)
-- **Local dev:** Docker Compose runs `postgres:18-alpine` on `localhost:5432` (user/pass/db all `christjesus`)
+- **Local dev:** By default, `configs/local/app.enc.yaml` points `DATABASE_URL` at a **shared remote Supabase dev database** — not a local instance. `docker-compose.yaml` also runs `postgres:18-alpine` on `localhost:5432` (user/pass/db all `christjesus`) if you want an isolated local DB instead; override `DATABASE_URL` to use it.
 - **Schema tool:** [Atlas](https://atlasgo.io/) with HCL schema files in `migrations/`
 - **Schema namespace:** All tables live in the `christjesus` schema (not `public`); `search_path` is set at connection time
 - **Primary keys:** NanoID text strings, not UUIDs or auto-increment integers
@@ -150,25 +161,38 @@ auth0 users search --query "*" --json \
 
 ---
 
-## Container Platform — Fly.io
+## Container Platform — Render
 
-- **App name:** `christjesus`
-- **Region:** `iad` (US East / Virginia)
-- **Internal port:** `8080`
-- **Config:** `fly.toml`
-
-Machines auto-stop when idle and auto-start on request (`min_machines_running = 0`). VM size is 1 shared CPU / 256MB RAM.
-
-**Deploying:**
-```bash
-fly deploy
-```
-
-**Secrets** must be set via `fly secrets set` — never committed to the repo. This includes `DATABASE_URL`, `AUTH0_CLIENT_SECRET`, `COOKIE_HASH_KEY`, `COOKIE_BLOCK_KEY`, Stripe keys, and Tigris keys.
+**Deployment moved from Fly.io to Render.** CI builds and pushes the image to GHCR, then calls a Render deploy hook — see `.github/workflows/build-and-deploy.yml`. Render infra (project, environment, service, custom domain `development.bodyofchrist.app`) is provisioned by `terraform/render.tf`. `fly.toml` was removed as dead config (Fly is no longer part of the deploy path).
 
 The Dockerfile is a two-stage build:
 1. `golang:1.26-alpine` — builds binary with `CGO_ENABLED=0 GOOS=linux`
 2. `alpine:3.21` — minimal runtime image, runs `christjesus serve`
+
+**No test/lint gate runs in CI** — `.github/workflows/build-and-deploy.yml` builds and deploys on push to `main`/tags without running `just test` first.
+
+---
+
+## Secrets Management — SOPS + age
+
+Secrets live encrypted-at-rest in git as SOPS files, decrypted locally or by Terraform at apply time. **Nothing here should ever be committed in plaintext.**
+
+- **Encryption tool:** [SOPS](https://github.com/getsops/sops) with an [age](https://github.com/FiloSottile/age) recipient (no PGP/KMS).
+- **Recipient config:** `.sops.yaml` (repo root) and `terraform/.sops.yaml` — **keep these two files in sync**, both list the same age public key(s).
+- **Encrypted files:**
+  | File | Consumed by |
+  |---|---|
+  | `configs/development/terraform.enc.yaml` | Terraform, via `data.sops_file` (`terraform/sops.tf`, `carlpett/sops` provider) |
+  | `configs/development/app.enc.yaml` | Terraform, via `data.sops_file` |
+  | `configs/development/terraform.tfvars.enc.json` | `just tf-plan/apply/console/state-list` (decrypted to a tempfile and passed as `-var-file`) |
+  | `configs/local/app.enc.yaml` | `just dev` (`sops exec-env` injects decrypted vars into the `air` process) |
+- **Private key location:** expected at `~/.age/key.txt` (hardcoded in the `dev` justfile recipe) or SOPS' standard lookup (`SOPS_AGE_KEY_FILE` env var, or `~/.config/sops/age/keys.txt`).
+- **Onboarding a new holder of secrets:**
+  1. They run `age-keygen -o ~/.age/key.txt` and send you the printed public key (`age1...`) — never the private key.
+  2. Add their public key to **both** `.sops.yaml` and `terraform/.sops.yaml`.
+  3. Rekey every encrypted file so it's readable by the new recipient: `sops updatekeys -y <file>` for each file listed above.
+  4. Commit the `.sops.yaml` changes and the rekeyed files together.
+- **Rotating out** an old holder: remove their public key from both `.sops.yaml` files, rekey all files the same way, and rotate any underlying credentials they had access to (Auth0, Stripe, Tigris, DB) since they held the means to decrypt them.
 
 ---
 
@@ -184,7 +208,8 @@ internal/
   utils/              # Helpers (nano IDs, pointers, struct utilities)
 pkg/types/            # Shared types: Config, User, Need, etc.
 migrations/           # Atlas HCL schema files (one per table)
-terraform/            # Auth0 and Tigris infrastructure (Terraform)
+terraform/            # Auth0, Tigris, Cloudflare, Render infrastructure (Terraform)
+configs/              # SOPS-encrypted per-workspace config (terraform + app secrets)
 docs/                 # ADRs, design documents, QA plans
 ```
 
@@ -209,4 +234,14 @@ docs/                 # ADRs, design documents, QA plans
 
 - **Object storage:** Tigris (S3-compatible) — not Supabase Storage. `internal/storage/supabase.go` is a legacy file and not active.
 - **Payments:** Stripe (donation intents + webhooks)
-- **IaC:** Terraform Cloud, org `christjesus`, workspace `christjesus-app` (manages Auth0 + Tigris)
+- **DNS:** Cloudflare, zone `bodyofchrist.app` (`terraform/cloudflare.tf`) — MX/TXT records point mail to Zoho; `development.bodyofchrist.app` CNAMEs to the Render service.
+- **Hosting:** Render (`terraform/render.tf`) — see [Container Platform](#container-platform--render-current--flyio-legacy-likely-stale).
+- **IaC:** Terraform Cloud, org `christjesus`, workspace `christjesus-app` (manages Auth0, Tigris, Cloudflare, Render). Secrets read via SOPS — see [Secrets Management](#secrets-management--sops--age).
+
+---
+
+## Known Issues / Handoff Notes (as of 2026-07-19)
+
+- **No CI test gate:** `go test`/lint never run in the deploy pipeline.
+- **Many unmerged feature branches** (27) exist alongside `main` — some may be superseded by items already checked off in `BACKLOG.md`; triage before resuming.
+- `docs/code-review-2026-03-15.md`'s HIGH-severity open-redirect finding (unvalidated `cja_redirect` cookie) was fixed the same day in commit `4dbd6a0` — the doc itself is stale on that point, don't take its findings at face value without checking current code first.

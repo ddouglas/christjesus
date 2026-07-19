@@ -69,6 +69,11 @@ dev:
 	export SOPS_AGE_KEY_FILE=~/.age/key.txt
 	exec sops exec-env configs/local/app.enc.yaml 'air'
 
+docker-up:
+	#!/usr/bin/env bash
+	export SOPS_AGE_KEY_FILE=~/.age/key.txt
+	exec sops exec-env configs/local/app.enc.yaml 'docker compose up --build app'
+
 e2e-reset:
 	go run ./cmd/christjesus e2e-reset
 
