@@ -2,7 +2,23 @@
 
 A Go web application for connecting donors with people in need. Server-side rendered, backed by PostgreSQL, Auth0, Tigris object storage, and Stripe.
 
-Live at [bodyofchrist.app](https://bodyofchrist.app).
+Live at [development.bodyofchrist.app](https://development.bodyofchrist.app).
+
+## Prerequisites
+
+| Tool | Used for |
+|---|---|
+| [Go](https://go.dev/) 1.24+ | Building/running the app |
+| [just](https://github.com/casey/just) | Task runner — nearly every command in this repo goes through it |
+| [air](https://github.com/air-verse/air) | Hot reload for `just dev` |
+| [Docker](https://www.docker.com/) | `docker compose` — local Postgres, `just docker-up` |
+| [sops](https://github.com/getsops/sops) | Decrypting/editing secrets |
+| [age](https://github.com/FiloSottile/age) | Key used by sops |
+| [Terraform](https://developer.hashicorp.com/terraform) | Infra (`just tf-*`) |
+| [Atlas](https://atlasgo.io/) | Schema migrations (`just migrate`) |
+| [ngrok](https://ngrok.com/) | Local webhook tunneling (`just webhooks`) |
+| [Node.js](https://nodejs.org/) | e2e tests (`e2e/`, Playwright) |
+| [GitHub CLI](https://cli.github.com/) | GitHub issues/PRs from the terminal (optional) |
 
 ## Quick start
 
